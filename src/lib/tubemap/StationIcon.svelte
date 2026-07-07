@@ -7,12 +7,14 @@
 		station,
 		lod,
 		isSelected = false,
-		onSelect
+		onSelect,
+		onFocus
 	}: {
 		station: LayoutStation;
 		lod: 'out' | 'mid' | 'in';
 		isSelected?: boolean;
 		onSelect: () => void;
+		onFocus?: () => void;
 	} = $props();
 
 	const color = $derived(lineColorVar(station.traction));
@@ -87,6 +89,7 @@
 		aria-label={station.name}
 		onclick={onSelect}
 		onkeydown={handleKeydown}
+		onfocus={onFocus}
 	/>
 
 	<text

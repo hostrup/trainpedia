@@ -31,6 +31,8 @@ else
 fi
 
 echo -e "\n${BLUE}[4/5] Genbygger og opdaterer Docker-containeren...${NC}"
+# M1: Afvikling af databasemigreringer under deployment
+npx prisma db push
 docker compose -f /hostrup/docker/docker-compose.yml --env-file /hostrup/docker/.env up -d --build trainpedia
 
 echo -e "\n${BLUE}[5/5] Verificerer container status...${NC}"

@@ -6,19 +6,58 @@
 		onClose: () => void;
 	}>();
 
+	let dialogEl = $state<HTMLElement | null>(null);
+
 	$effect(() => {
+		if (!dialogEl) return;
+
+		const focusableElements = dialogEl.querySelectorAll<HTMLElement>(
+			'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+		);
+		const firstElement = focusableElements[0];
+		const lastElement = focusableElements[focusableElements.length - 1];
+
+		if (firstElement) {
+			firstElement.focus();
+		}
+
 		const handleKeydown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') onClose();
+			if (e.key === 'Escape') {
+				onClose();
+				return;
+			}
+
+			if (e.key === 'Tab') {
+				if (focusableElements.length === 0) {
+					e.preventDefault();
+					return;
+				}
+
+				if (e.shiftKey) {
+					if (document.activeElement === firstElement) {
+						lastElement.focus();
+						e.preventDefault();
+					}
+				} else {
+					if (document.activeElement === lastElement) {
+						firstElement.focus();
+						e.preventDefault();
+					}
+				}
+			}
 		};
+
 		window.addEventListener('keydown', handleKeydown);
 		return () => window.removeEventListener('keydown', handleKeydown);
 	});
 </script>
 
 <div
-	class="fixed inset-0 z-[60] bg-black/95 backdrop-blur-md flex flex-col justify-between p-6 overflow-y-auto"
+	bind:this={dialogEl}
+	class="fixed inset-0 z-[60] bg-black/95 backdrop-blur-md flex flex-col justify-between p-6 overflow-y-auto outline-none"
 	role="dialog"
 	aria-modal="true"
+	tabindex="-1"
 >
 	<!-- Top Bar -->
 	<div class="flex justify-between items-center w-full max-w-7xl mx-auto flex-shrink-0">

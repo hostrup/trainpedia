@@ -240,6 +240,45 @@ interface MapItem {
 	sourceUrl: string | null;
 }
 
+async function fetchSPARQLWithRetry(
+	url: string,
+	retries = 5,
+	initialDelay = 2000
+): Promise<Response> {
+	let delay = initialDelay;
+	for (let attempt = 1; attempt <= retries; attempt++) {
+		try {
+			const response = await fetch(url, {
+				headers: {
+					Accept: 'application/sparql-results+json',
+					'User-Agent':
+						'TrainpediaBot/1.0 (https://github.com/hostrup/trainpedia; contact@hostrup.org)'
+				}
+			});
+			if (response.ok) {
+				return response;
+			}
+			if (response.status === 429 || response.status >= 500) {
+				console.warn(
+					`    - Wikidata SPARQL returned HTTP ${response.status}. Retrying in ${delay}ms (attempt ${attempt}/${retries})...`
+				);
+				await new Promise((res) => setTimeout(res, delay));
+				delay *= 2; // exponential backoff
+				continue;
+			}
+			throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+		} catch (err) {
+			if (attempt === retries) throw err;
+			console.warn(
+				`    - Wikidata SPARQL attempt ${attempt} failed: ${err instanceof Error ? err.message : String(err)}. Retrying in ${delay}ms...`
+			);
+			await new Promise((res) => setTimeout(res, delay));
+			delay *= 2;
+		}
+	}
+	throw new Error(`Failed to fetch Wikidata SPARQL after ${retries} attempts`);
+}
+
 async function main() {
 	// 1. Seed Era table
 	await seedEras();
@@ -247,16 +286,7 @@ async function main() {
 	// 2. Discover candidates
 	console.log('Querying Wikidata SPARQL endpoint...');
 	const url = 'https://query.wikidata.org/sparql?query=' + encodeURIComponent(sparqlQuery);
-	const response = await fetch(url, {
-		headers: {
-			Accept: 'application/sparql-results+json',
-			'User-Agent': 'TrainpediaBot/1.0 (https://github.com/hostrup/trainpedia; contact@hostrup.org)'
-		}
-	});
-
-	if (!response.ok) {
-		throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
-	}
+	const response = await fetchSPARQLWithRetry(url);
 
 	const data = (await response.json()) as WikidataResponse;
 	const bindings = data.results.bindings;

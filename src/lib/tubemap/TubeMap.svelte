@@ -145,6 +145,79 @@
 
 	const lineList = Object.keys(LINE_NAMES) as TractionType[];
 
+	function handleFocusStation(x: number, y: number) {
+		if (!zoomContainer || !zoomBehavior) return;
+		const k = transform.k;
+		const vx = x * k + transform.x;
+		const vy = y * k + transform.y;
+		const margin = 100;
+		if (vx < margin || vx > viewportWidth - margin || vy < margin || vy > viewportHeight - margin) {
+			const newX = viewportWidth / 2 - x * k;
+			const newY = viewportHeight / 2 - y * k;
+			select(zoomContainer).call(
+				zoomBehavior.transform,
+				zoomIdentity.translate(newX, newY).scale(k)
+			);
+		}
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (!zoomContainer || !zoomBehavior) return;
+
+		const panStep = 50 / transform.k;
+		let dx = 0;
+		let dy = 0;
+		let dz = 0;
+
+		switch (e.key) {
+			case 'ArrowLeft':
+				dx = panStep;
+				break;
+			case 'ArrowRight':
+				dx = -panStep;
+				break;
+			case 'ArrowUp':
+				dy = panStep;
+				break;
+			case 'ArrowDown':
+				dy = -panStep;
+				break;
+			case '+':
+			case '=':
+				dz = 0.15;
+				break;
+			case '-':
+				dz = -0.15;
+				break;
+			default:
+				return;
+		}
+
+		e.preventDefault();
+
+		if (dz !== 0) {
+			const nextK = Math.max(0.15, Math.min(4, transform.k * (1 + dz)));
+			const cx = viewportWidth / 2;
+			const cy = viewportHeight / 2;
+			const lx = (cx - transform.x) / transform.k;
+			const ly = (cy - transform.y) / transform.k;
+			const nextX = cx - lx * nextK;
+			const nextY = cy - ly * nextK;
+
+			select(zoomContainer).call(
+				zoomBehavior.transform,
+				zoomIdentity.translate(nextX, nextY).scale(nextK)
+			);
+		} else {
+			const nextX = transform.x + dx * transform.k;
+			const nextY = transform.y + dy * transform.k;
+			select(zoomContainer).call(
+				zoomBehavior.transform,
+				zoomIdentity.translate(nextX, nextY).scale(transform.k)
+			);
+		}
+	}
+
 	// FPS-instrumentering (kun dev) — genbruger mønstret fra den tidligere TimelineCanvas.
 	let fps = $state(0);
 	let frameTimes: number[] = [];
@@ -173,12 +246,17 @@
 	});
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
 <div
 	bind:this={zoomContainer}
 	bind:clientWidth={viewportWidth}
 	bind:clientHeight={viewportHeight}
-	class="relative h-full w-full overflow-hidden select-none"
+	class="relative h-full w-full overflow-hidden select-none outline-none"
 	style="background: var(--map-bg);"
+	tabindex="0"
+	onkeydown={handleKeydown}
+	role="application"
+	aria-label="Interactive train map"
 >
 	<div
 		class="absolute origin-top-left will-change-transform"
@@ -206,6 +284,7 @@
 					labelSide={station?.labelSide ?? 'above'}
 					isSelected={selectedClass !== null && String(selectedClass.id) === ic.id}
 					onSelect={() => selectStation(ic.id)}
+					onFocus={() => handleFocusStation(ic.x, (ic.yA + ic.yB) / 2)}
 				/>
 			{/each}
 
@@ -216,6 +295,7 @@
 						{lod}
 						isSelected={selectedClass !== null && String(selectedClass.id) === station.id}
 						onSelect={() => selectStation(station.id)}
+						onFocus={() => handleFocusStation(station.x, station.y)}
 					/>
 				{/if}
 			{/each}

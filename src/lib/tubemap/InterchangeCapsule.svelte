@@ -7,13 +7,15 @@
 		name,
 		labelSide = 'above',
 		isSelected = false,
-		onSelect
+		onSelect,
+		onFocus
 	}: {
 		interchange: LayoutInterchange;
 		name: string;
 		labelSide?: 'above' | 'below';
 		isSelected?: boolean;
 		onSelect: () => void;
+		onFocus?: () => void;
 	} = $props();
 
 	const top = $derived(Math.min(interchange.yA, interchange.yB));
@@ -54,6 +56,7 @@
 	aria-label={name}
 	onclick={onSelect}
 	onkeydown={handleKeydown}
+	onfocus={onFocus}
 />
 
 <text

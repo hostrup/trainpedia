@@ -42,6 +42,13 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 	});
 
+	// F6.3: "The Fleet" — alle byggede individer af klassen, hvis nogen er seedet (F6.2).
+	const fleet = await db.locomotive.findMany({
+		where: { classId: cls.id },
+		orderBy: { currentNumber: 'asc' },
+		select: { currentNumber: true, currentName: true, status: true, location: true }
+	});
+
 	return {
 		cls: {
 			...cls,
@@ -52,6 +59,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			specs: cls.specs.map((s) => ({ ...s, retrievedAt: null })),
 			media: cls.media.map((m) => ({ ...m, retrievedAt: null }))
 		},
-		related
+		related,
+		fleet
 	};
 };

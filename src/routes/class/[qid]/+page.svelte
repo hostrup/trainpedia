@@ -4,6 +4,7 @@
 	import { resolve } from '$app/paths';
 	import SpecificationGrid from '$lib/components/SpecificationGrid.svelte';
 	import InspectLightbox from '$lib/components/InspectLightbox.svelte';
+	import FleetTable from '$lib/components/FleetTable.svelte';
 	import { tractionColor, tractionLabel, buildPeriod, mediaSrcset } from '$lib/loco.js';
 	import { resolveDisplayName } from '$lib/nameScheme.js';
 
@@ -144,6 +145,19 @@
 					</h2>
 					<SpecificationGrid specs={cls.specs} />
 				</section>
+
+				{#if data.fleet.length > 0}
+					<section>
+						<h2
+							class="mb-4 text-[11px] font-bold tracking-widest uppercase"
+							style="color: var(--map-ink-soft);"
+						>
+							The Fleet — {data.fleet.length}
+							{data.fleet.length === 1 ? 'individual' : 'individuals'}
+						</h2>
+						<FleetTable fleet={data.fleet} />
+					</section>
+				{/if}
 
 				<section>
 					<h2

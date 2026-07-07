@@ -228,9 +228,8 @@ async function main() {
 
 			// 2. Upsert Specifications
 			if (cls.specs.length > 0) {
-				for (let sortIdx = 0; sortIdx < cls.specs.length; sortIdx++) {
-					const spec = cls.specs[sortIdx];
-					await prisma.specification.upsert({
+				const specPromises = cls.specs.map((spec, sortIdx) =>
+					prisma.specification.upsert({
 						where: {
 							classId_key: {
 								classId: dbClass.id,
@@ -253,16 +252,17 @@ async function main() {
 							sourceUrl: spec.sourceUrl,
 							retrievedAt: new Date()
 						}
-					});
-				}
+					})
+				);
+				await prisma.$transaction(specPromises);
 				console.log(`  - Upserted ${cls.specs.length} specifications`);
 			}
 
 			// 3. Determine media limit
-			const isFeatured = FEATURED_QIDS.has(cls.wikidataQid);
-			const maxImages = isFeatured ? 20 : 3;
+			const isFeatured = dbClass.isLandmark || FEATURED_QIDS.has(cls.wikidataQid);
+			const maxImages = isFeatured ? 40 : 5;
 			console.log(
-				`  - Media Limit: ${maxImages} images (${isFeatured ? 'Featured' : 'Normal'} class)`
+				`  - Media Limit: ${maxImages} images (${isFeatured ? 'Landmark/Featured' : 'Normal'} class)`
 			);
 
 			// Resumable check: if we already have enough media assets for this class, skip media download
@@ -279,6 +279,7 @@ async function main() {
 
 			// 4. Fetch list of candidates
 			let fileCandidates: string[] = [];
+			const candidateToLocoNumber = new Map<string, string>();
 
 			if (cls.commonsCategory) {
 				try {
@@ -334,6 +335,42 @@ async function main() {
 				}
 			}
 
+			// F6.4: Udvid med målrettet Commons-søgning pr. loco-nummer for kendte lokomotiver i DB
+			const locos = await prisma.locomotive.findMany({
+				where: { classId: dbClass.id, status: { in: ['PRESERVED', 'IN_SERVICE'] } }
+			});
+			if (locos.length > 0) {
+				console.log(
+					`  - Searching Commons for ${locos.length} individual locomotives (PRESERVED/IN_SERVICE)...`
+				);
+				for (const loco of locos) {
+					const queryStr = `"${dbClass.wikipediaTitle || dbClass.name}" "${loco.currentNumber}"`;
+					try {
+						const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(queryStr)}&srnamespace=6&srlimit=5&format=json`;
+						const searchRes = await fetchWithRetry(searchUrl, {
+							headers: { 'User-Agent': USER_AGENT }
+						});
+						if (searchRes.ok) {
+							const searchData = (await searchRes.json()) as any;
+							const results = searchData.query?.search || [];
+							console.log(`    - Loco ${loco.currentNumber}: Found ${results.length} files`);
+							for (const r of results) {
+								if (!fileCandidates.includes(r.title)) {
+									fileCandidates.push(r.title);
+								}
+								let cleanFilename = r.title;
+								if (cleanFilename.startsWith('File:')) {
+									cleanFilename = cleanFilename.substring(5);
+								}
+								candidateToLocoNumber.set(cleanFilename, loco.currentNumber);
+							}
+						}
+					} catch (err) {
+						console.warn(`    - Warning: Individual search failed for ${loco.currentNumber}:`, err);
+					}
+				}
+			}
+
 			// 5. Download and process candidates up to maxImages
 			let savedCount = existingMediaCount;
 			for (const candidateTitle of fileCandidates) {
@@ -345,6 +382,13 @@ async function main() {
 					let filename = candidateTitle;
 					if (filename.startsWith('File:')) {
 						filename = filename.substring(5);
+					}
+
+					const ext = path.extname(filename).toLowerCase();
+					const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.svg', '.gif'];
+					if (!allowedExtensions.includes(ext)) {
+						console.log(`    - Skipping irrelevant file type: ${filename}`);
+						continue;
 					}
 
 					const detailsUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=File:${encodeURIComponent(filename)}&prop=imageinfo&iiprop=url|size|mime|extmetadata&format=json`;
@@ -453,7 +497,10 @@ async function main() {
 					const anecdote = cleanHtml(extmetadata.ImageDescription?.value || null);
 
 					const searchStr = `${metadataTitle} ${anecdote}`;
-					const locoNumber = parseLocoNumber(searchStr);
+					let locoNumber = parseLocoNumber(searchStr);
+					if (!locoNumber && candidateToLocoNumber.has(filename)) {
+						locoNumber = candidateToLocoNumber.get(filename)!;
+					}
 
 					const licenseName =
 						extmetadata.LicenseShortName?.value || extmetadata.License?.value || 'Open License';
