@@ -59,6 +59,16 @@ Baseline: lint 0 fejl · check/tsc 0 fejl · tests 3/3 grønne (2 unit, 1 e2e)
 - [ ] **F5.9** Datakvalitet der understøtter kortet: (a) FA5-fixet — Commons-fallback må ikke fritekst-søge på "class" (beviset står i seed-loggen: _"The two Mr. Wetherbys; a middle-class comedy"_); (b) filtrér ikke-lokomotiv-materiel fra discovery (godsvogne som "SR Cattle Van" er dukket op — kobles til U2); (c) landmark-flag + linjetildeling seedes.
 - **Definition of Done for F5:** Ronni kan åbne kortet, straks se hvad linjerne betyder (legende), zoome fra æra-overblik til station, klikke "Class 37" (uanset navneskema), og alt ligner ét sammenhængende TfL-inspireret univers i lyst design. 60 FPS bevares (LOD/virtualisering genbruges).
 
+## Fase F6 — "Opslagsværket": individniveau for hvert bygget lokomotiv (Ronnis krav 2026-07-07)
+
+**Visionen:** Ved valg af en klasse skal man kunne se ALT om hver enkelt bygget enhed — så man kan slå op, at Class 37 har en specifik maskine, der hedder **37403 "Isle of Mull"**, se dens status, historie og omlitreringer (D6607 → 37307 → 37403). Det gør Trainpedia til et ægte opslagsværk, ikke bare et klassekatalog.
+
+- [ ] **F6.1** Datamodel: ny `Locomotive`-tabel (individ) med relation til `LocomotiveClass`: aktuelt nummer, navn ("Isle of Mull"), øgenavne, status-enum (`IN_SERVICE` / `STORED` / `PRESERVED` / `SCRAPPED` / `EXPORTED` / `UNKNOWN`), aktuel operatør/hjemsted hvis kendt, individuel historik-tekst. Ny `LocomotiveIdentity`-tabel til **omlitrerings-historik** (nummer/navn + periode + kilde), så D6607 → 37307 → 37403 kan vises som tidslinje — og søgning finder individet uanset hvilket nummer man bruger (samme princip som klasse-aliasserne i F5.2/U3).
+- [ ] **F6.2** Seed `06-fleet.ts`: parse fleet-/statustabeller fra Wikipedia-klasseartikler og "List of…"-artikler; supplér med Wikidata-emner for enkeltlokomotiver (bevarede maskiner har ofte egne emner med navn, status og hjemsted). Strict factuality som altid: felter uden kilde forbliver tomme; provenance (sourceUrl + revision) pr. individ. Dæknings-rapport: enheder fundet vs. `totalBuilt` pr. klasse.
+- [ ] **F6.3** UI på `/class/[qid]`: ny "The Fleet"-sektion — søgbar/sortérbar tabel over alle byggede enheder (nummer, navn, status-badge i linjefarven, bevaringssted) med hurtigfilter ("kun bevarede", "kun i drift"). Individ-side `/loco/[nummer]` med omlitrerings-tidslinje, navnehistorik, øgenavne, individuel historie og galleri.
+- [ ] **F6.4** Media-kobling pr. individ: `MediaAsset.locoNumber` findes allerede i skemaet — kobl eksisterende assets til `Locomotive`-records, og udvid `03-media.ts` med målrettet Commons-søgning pr. loco-nummer (fx kategori/søgning "37403"), så individ-siderne får egne billeder. Flere billeder pr. klasse generelt (hæv media-loftet for landmark-klasser).
+- [ ] **F6.5** Komplethed som mål: opslagsværket skal dække ALLE klasser (488 er seedet; udvid jf. U2-beslutningen) og på sigt alle individer, hvor kilderne findes. Berigelses-loop: kør fleet-seed periodisk, log dækningsgrad i seed-rapporten, og prioritér huller efter Ronnis interesse (diesel/el-æraen først, jf. U6).
+
 ## Kræver brugerbeslutning
 
 - [ ] **U1** Authelia-politik (arkitekt-forslag: bypass) — C3
@@ -66,6 +76,7 @@ Baseline: lint 0 fejl · check/tsc 0 fejl · tests 3/3 grønne (2 unit, 1 e2e)
 - [ ] **U3** **Navneskema (Ronnis note 2026-07-07):** Ronni tænker altid "Class 37", selvom klassen hed noget andet fra start (D6700-serien / English Electric Type 3). Der skal kunne VÆLGES hvordan navne vises (TOPS / historisk / bygger), og søgning skal finde klassen uanset hvilket navn man bruger. Foreslået default: TOPS. → implementeres i F5.2 + F5.6.
 - [ ] **U4** Linjefarve-mapping (forslag til godkendelse i C4): Steam = Metropolitan-magenta `#9B0058` (Metropolitan var dampens fødsel), Diesel = District-grøn `#007D32` (BR-grøn diesel-livery), Electric = Victoria-lyseblå `#0098D8` (første automatiske elektriske linje), Experimental/Other = Jubilee-grå `#A0A5A9`. Alternativ: Central-rød til Steam hvis magenta føles forkert.
 - [ ] **U5** Lys-strategi: (a) HELE sitet lyst TfL-univers (anbefalet — mest sammenhængende), eller (b) lyst kort + mørkt museums-tema som toggle?
+- [ ] **U6** Individniveau-prioritering (F6): Kilderne er ujævne — moderne TOPS-klasser (Class 37, 56…) har komplette fleet-lister på Wikipedia, mens pre-grouping-damp ofte kun har data for bevarede enheder. Forslag: start med diesel/el-æraerne (bedst dækket + Ronnis interesse), accepter huller for damp (strict factuality: "Unknown" er OK). Godkendes sammen med C4?
 
 ## Løst
 
