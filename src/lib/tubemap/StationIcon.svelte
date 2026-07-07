@@ -22,6 +22,25 @@
 	// venter til "mellem". Landmark er altid synlig.
 	const visible = $derived(lod !== 'out' || station.stationType === 'landmark');
 
+	let hovered = $state(false);
+	// Fremhævet (bold/farvet label + halo) når valgt ELLER når musen/fokus er over
+	// stationen — giver eksplicit "her kan du klikke"-feedback (Ronnis feedback
+	// 2026-07-07: "svært at se hvor man skal klikke").
+	const emphasized = $derived(isSelected || hovered);
+
+	// Navnelabels for ALLE 98 stationer på én gang giver en ulæselig tekstsuppe
+	// ved zoom-to-fit (Ronnis feedback 2026-07-07: "ikke intuitiv"). Landmark/
+	// interchange er få (~7) og velegnet som altid-synlige orienteringspunkter;
+	// almindelige tick/endestations-navne vises kun ved hover/valg eller når man
+	// har zoomet ind ("in") — ikonet (streg/bar) er stadig synligt, så linjen
+	// bevarer sin visuelle tæthed uden tekst-kollisionerne.
+	const showLabel = $derived(
+		emphasized ||
+			lod === 'in' ||
+			station.stationType === 'landmark' ||
+			station.stationType === 'interchange'
+	);
+
 	const labelX = $derived(
 		station.labelSide === 'left'
 			? station.x - 14
@@ -49,6 +68,19 @@
 </script>
 
 {#if visible}
+	<!-- Hover/fokus-halo: farvet cirkel bag ikonet, kun synlig ved emphasized —
+	     det primære signal om at stationen er klikbar. -->
+	{#if emphasized}
+		<circle
+			cx={station.x}
+			cy={station.y}
+			r="15"
+			fill={color}
+			class="pointer-events-none"
+			style="opacity: 0.18;"
+		/>
+	{/if}
+
 	{#if station.stationType === 'terminus'}
 		<rect
 			x={station.x - GEOMETRY.terminusBarWidth / 2}
@@ -56,6 +88,10 @@
 			width={GEOMETRY.terminusBarWidth}
 			height={GEOMETRY.terminusBarHeight}
 			fill={color}
+			class="transition-transform duration-150"
+			style={emphasized
+				? `transform: scale(1.25); transform-origin: ${station.x}px ${station.y}px;`
+				: ''}
 		/>
 	{:else if station.stationType === 'landmark'}
 		<!-- Landmark: Double-contour ring using line-color and ink-color -->
@@ -93,44 +129,53 @@
 			x2={station.x}
 			y2={station.y + GEOMETRY.tickLength / 2}
 			stroke={color}
-			stroke-width="3"
+			stroke-width={emphasized ? 5 : 3}
+			class="transition-all duration-150"
 		/>
 	{/if}
 
 	<circle
 		cx={station.x}
 		cy={station.y}
-		r="14"
+		r="18"
 		fill="transparent"
 		class="cursor-pointer"
 		role="button"
 		tabindex="0"
-		aria-label={station.name}
+		aria-label="{station.name} — view details"
 		onclick={onSelect}
 		onkeydown={handleKeydown}
-		onfocus={onFocus}
+		onmouseenter={() => (hovered = true)}
+		onmouseleave={() => (hovered = false)}
+		onfocus={() => {
+			hovered = true;
+			onFocus?.();
+		}}
+		onblur={() => (hovered = false)}
 	/>
 
-	<text
-		x={labelX}
-		y={labelY}
-		text-anchor={textAnchor}
-		class="pointer-events-none select-none"
-		style="font-family: var(--font-map); font-size: 12px; fill: {isSelected
-			? 'var(--tfl-blue)'
-			: 'var(--map-ink)'}; font-weight: {isSelected ? 700 : 400};"
-	>
-		{station.name}
-	</text>
-	{#if lod === 'in'}
+	{#if showLabel}
 		<text
 			x={labelX}
-			y={labelY + (station.labelSide === 'above' ? -13 : 13)}
+			y={labelY}
 			text-anchor={textAnchor}
-			class="pointer-events-none tabular-nums select-none"
-			style="font-family: var(--font-ui); font-size: 10px; fill: var(--map-ink-soft);"
+			class="pointer-events-none transition-all duration-150 select-none"
+			style="font-family: var(--font-map); font-size: {emphasized ? 13 : 12}px; fill: {emphasized
+				? 'var(--tfl-blue)'
+				: 'var(--map-ink)'}; font-weight: {emphasized ? 700 : 400};"
 		>
-			{station.introYear}{station.retiredYear ? `–${station.retiredYear}` : ''}
+			{station.name}
 		</text>
+		{#if lod === 'in' || emphasized}
+			<text
+				x={labelX}
+				y={labelY + (station.labelSide === 'above' ? -13 : 13)}
+				text-anchor={textAnchor}
+				class="pointer-events-none tabular-nums select-none"
+				style="font-family: var(--font-ui); font-size: 10px; fill: var(--map-ink-soft);"
+			>
+				{station.introYear}{station.retiredYear ? `–${station.retiredYear}` : ''}
+			</text>
+		{/if}
 	{/if}
 {/if}

@@ -2,6 +2,47 @@
 
 Baseline: lint 0 fejl · check/tsc 0 fejl · tests 27/27 grønne (25 unit, 2 e2e)
 
+## Fase F8 — Kort-interaktion (Claude Sonnet 5, 2026-07-07, iteration 2)
+
+Ronni efter at have set F7 live: "jeg oplever absolut ikke metro linjen som
+intuitiv... svært at se hvor man skal klikke... 'Active year'-slideren virker
+absolut ikke intuitiv." Ren interaktions-/opfattelsesproblematik, ikke data-fejl
+denne gang.
+
+- **Klik-affordance:** `StationIcon.svelte` fik en hover/fokus-halo (farvet
+  cirkel i linjens egen farve) + fed/blå label + tykkere ikon ved hover — det
+  var før usynligt at noget var klikbart. Hit-mål øget 14→18px radius. Tilføjet
+  en synlig, vedvarende hint-tekst over kortet: "👆 Click any station to
+  explore that class · scroll to zoom · drag to pan".
+- **"Active year" var to samtidige tidskontroller på én gang** (æra-filter +
+  årstals-slider, begge dæmpende opacity) — umuligt at gennemskue hvilken der
+  gjorde hvad. Gjort til en eksplicit til/fra "🕐 Time Machine"-knap, FRA som
+  standard (så standardtilstanden kun har ÉN dæmpningskilde); når slået til,
+  vises en tydelig forklarende sætning ("Showing the network as it looked in
+  [år] — classes not yet introduced or already withdrawn are faded out.").
+- **Zoom-to-fit ved indlæsning:** initial transform brugte kun bredde og et
+  fast hjørne-offset — brugeren landede på et tilfældigt udsnit af kortet.
+  Beregner nu bredde OG højde og centrerer HELE netværket i viewporten ved
+  load. Lukker samtidig F7's kendte mangel ("kun 1 zone-ring synlig i default
+  viewport").
+- **Label-kollision var værre end ventet, da hele kortet blev synligt på én
+  gang:** alle 98 stationers navne konkurrerede om pladsen og overlappede i
+  en ulæselig tekstsuppe. Løsning: kun de ~7 landmark-/multi-region-stationer
+  viser navn som standard (få nok til ikke at kollidere); almindelige
+  stationer viser stadig deres ikon (streg/bar), men navnet vises kun ved
+  hover/valg eller når man zoomer helt ind. Justerede desuden håndplacerede
+  x/y/labelSide for de 4 multi-region-klasser (08/37/47/66) i
+  `dieselLayout.ts`, som klumpede sammen omkring centrum.
+- **Ikonforklaring tilføjet i legenden** (streg=klasse, ring=landmark,
+  dobbeltring+prik=multi-region, bar=udfaset) — de 4 stationstyper var
+  tidligere helt uforklarede.
+- Fjernet `InterchangeCapsule.svelte` (dødt, aldrig importeret nogen steder —
+  interchange-visualet lever i `StationIcon.svelte`).
+
+**Verificeret:** Playwright-skærmbilleder af default-visning (zoom-to-fit,
+ryddet legende), hover-state (halo+bold label synlig), Time Machine til/fra.
+`npm run check` 0 fejl, 27/27 tests grønne.
+
 ## Fase F7 — UX-overhaling (Claude Sonnet 5, 2026-07-07)
 
 Ronni: "jeg føler jeg står med et halvt produkt der hverken sejrer i UI eller

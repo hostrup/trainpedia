@@ -30,6 +30,12 @@
 	// Tab and Timeline Slider States
 	let activeTab = $state<'map' | 'chart'>('map');
 	let selectedYear = $state(1975);
+	// Time Machine er FRA som standard (Ronnis feedback 2026-07-07: sliderens
+	// formål var ikke til at gennemskue, og den dæmpede oveni æra/hjul-filtrenes
+	// egen dæmpning — to samtidige tidskontroller). Kun når brugeren aktivt slår
+	// den til, filtreres der på årstal; ellers styres synlighed KUN af
+	// FilterOverlay (æra/hjul).
+	let timeMachineOn = $state(false);
 
 	let zoomContainer = $state<HTMLDivElement | null>(null);
 	let viewportWidth = $state(800);
@@ -72,10 +78,24 @@
 		select(container).call(z);
 		zoomBehavior = z;
 
-		const initialK = untrack(() =>
-			Math.max(0.15, Math.min(1, (container.clientWidth || 800) / (layout.width || 1)))
-		);
-		select(container).call(z.transform, zoomIdentity.translate(20, 20).scale(initialK));
+		// Zoom-to-fit: vis HELE netværket (bredde OG højde, centreret) ved indlæsning
+		// i stedet for et tilfældigt udsnit i øverste venstre hjørne — Ronnis feedback
+		// 2026-07-07 var at kortet var svært at finde rundt i; at se hele billedet
+		// først er det mest grundlæggende skridt mod at gøre det begribeligt.
+		const { initialK, initialX, initialY } = untrack(() => {
+			const cw = container.clientWidth || 800;
+			const ch = container.clientHeight || 600;
+			const k = Math.max(
+				0.15,
+				Math.min(1, Math.min(cw / (layout.width || 1), ch / (layout.height || 1)) * 0.92)
+			);
+			return {
+				initialK: k,
+				initialX: (cw - layout.width * k) / 2,
+				initialY: (ch - layout.height * k) / 2
+			};
+		});
+		select(container).call(z.transform, zoomIdentity.translate(initialX, initialY).scale(initialK));
 
 		return () => {
 			select(container).on('.zoom', null);
@@ -279,7 +299,9 @@
 	}
 
 	function isStationVisible(station: LayoutStation, year: number): boolean {
-		return matchesFieldFilters(station) && isStationActive(station, year);
+		if (!matchesFieldFilters(station)) return false;
+		if (!timeMachineOn) return true;
+		return isStationActive(station, year);
 	}
 
 	function isPathVisible(traction: Traction, year: number) {
@@ -451,19 +473,70 @@
 				</svg>
 			</div>
 
+			<!-- Onboarding hint: adresserer direkte "svært at se hvor man skal klikke" —
+			     station-hover-halo (StationIcon.svelte) er det primære signal, denne
+			     korte tekst er backup for dem der ikke opdager det ved et tilfælde. -->
+			<div
+				class="pointer-events-none absolute top-4 left-1/2 z-20 -translate-x-1/2 rounded-full border px-4 py-1.5 text-xs font-medium whitespace-nowrap shadow-sm"
+				style="background: var(--map-bg); border-color: var(--map-zone); color: var(--map-ink-soft);"
+			>
+				👆 Click any station to explore that class · scroll to zoom · drag to pan
+			</div>
+
 			<!-- Legend -->
 			<div
-				class="absolute top-4 left-4 z-20 flex flex-col gap-1.5 rounded-lg border px-4 py-3 shadow-md"
+				class="absolute top-16 left-4 z-20 flex flex-col gap-3 rounded-lg border px-4 py-3 shadow-md"
 				style="font-family: var(--font-ui); background: var(--map-bg); border-color: var(--map-zone);"
 			>
-				{#each lineList as traction (traction)}
-					<div class="flex items-center gap-2">
-						<span class="h-1 w-6 rounded-full" style="background: {lineColorVar(traction)};"></span>
-						<span class="text-xs font-semibold" style="color: var(--map-ink);"
-							>{LINE_NAMES[traction]}</span
+				<div class="flex flex-col gap-1.5">
+					{#each lineList as traction (traction)}
+						<div class="flex items-center gap-2">
+							<span class="h-1 w-6 rounded-full" style="background: {lineColorVar(traction)};"
+							></span>
+							<span class="text-xs font-semibold" style="color: var(--map-ink);"
+								>{LINE_NAMES[traction]}</span
+							>
+						</div>
+					{/each}
+				</div>
+
+				<!-- Station-ikonnøgle: forklarer de 4 stationstyper, som ellers ikke er
+				     selvforklarende (Ronnis feedback 2026-07-07). -->
+				<div class="flex flex-col gap-1.5 border-t pt-2.5" style="border-color: var(--map-zone);">
+					<div class="flex items-center gap-2.5">
+						<svg width="16" height="16" viewBox="-8 -8 16 16" class="flex-shrink-0">
+							<line x1="0" y1="-6" x2="0" y2="6" stroke="var(--map-ink-soft)" stroke-width="3" />
+						</svg>
+						<span class="text-[11px]" style="color: var(--map-ink-soft);">Class</span>
+					</div>
+					<div class="flex items-center gap-2.5">
+						<svg width="16" height="16" viewBox="-8 -8 16 16" class="flex-shrink-0">
+							<circle r="6" fill="var(--map-bg)" stroke="var(--map-ink)" stroke-width="2" />
+							<circle
+								r="3.5"
+								fill="var(--map-bg)"
+								stroke="var(--map-ink-soft)"
+								stroke-width="1.5"
+							/>
+						</svg>
+						<span class="text-[11px]" style="color: var(--map-ink-soft);">Landmark class</span>
+					</div>
+					<div class="flex items-center gap-2.5">
+						<svg width="16" height="16" viewBox="-8 -8 16 16" class="flex-shrink-0">
+							<circle r="6" fill="var(--map-bg)" stroke="var(--map-ink)" stroke-width="2" />
+							<circle r="2" fill="var(--map-ink)" />
+						</svg>
+						<span class="text-[11px]" style="color: var(--map-ink-soft);">Multi-region class</span>
+					</div>
+					<div class="flex items-center gap-2.5">
+						<svg width="16" height="16" viewBox="-8 -8 16 16" class="flex-shrink-0">
+							<rect x="-2" y="-6" width="4" height="12" fill="var(--map-ink-soft)" />
+						</svg>
+						<span class="text-[11px]" style="color: var(--map-ink-soft);"
+							>Withdrawn (year shown)</span
 						>
 					</div>
-				{/each}
+				</div>
 			</div>
 
 			<!-- Minimap -->
@@ -503,35 +576,59 @@
 			{/if}
 		</div>
 
-		<!-- Time slider control bar -->
+		<!-- Time Machine: FRA som standard (opt-in), så kortets standardtilstand kun
+		     har ÉN dæmpnings-kilde (æra/hjul-filtre). Ronnis feedback 2026-07-07: den
+		     tidligere altid-synlige "Active year"-slider var ikke til at gennemskue
+		     formålet med, og dæmpede oveni filtrenes egen dæmpning. -->
 		<div
-			class="z-50 flex items-center gap-6 border-t px-6 py-4"
+			class="z-50 border-t px-6 py-3"
 			style="border-color: var(--map-zone); background: var(--map-bg);"
 		>
-			<div class="min-w-[140px] text-lg font-bold" style="color: var(--map-ink);">
-				Active year: <span style="color: var(--tfl-blue);">{selectedYear}</span>
-			</div>
-			<div class="relative flex flex-1 flex-col">
-				<input
-					type="range"
-					min="1948"
-					max="2026"
-					bind:value={selectedYear}
-					class="h-1.5 w-full cursor-pointer rounded-full outline-none"
-					style="background: var(--map-zone); accent-color: var(--tfl-blue);"
-				/>
-				<div
-					class="mt-2 flex w-full justify-between text-[10px] font-semibold"
-					style="color: var(--map-ink-soft);"
-				>
-					<span>1948</span>
-					<span>1955</span>
-					<span>1968</span>
-					<span>1982</span>
-					<span>1995</span>
-					<span>2026</span>
+			<button
+				class="flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors"
+				style={timeMachineOn
+					? 'background: var(--tfl-blue); border-color: var(--tfl-blue); color: white;'
+					: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}
+				onclick={() => (timeMachineOn = !timeMachineOn)}
+				aria-pressed={timeMachineOn}
+			>
+				🕐 Time Machine {timeMachineOn ? 'on' : 'off'}
+			</button>
+
+			{#if timeMachineOn}
+				<div class="mt-3 flex items-center gap-6">
+					<p class="max-w-[220px] text-xs leading-snug" style="color: var(--map-ink-soft);">
+						Showing the network as it looked in
+						<span class="text-base font-bold" style="color: var(--tfl-blue);">{selectedYear}</span> —
+						classes not yet introduced or already withdrawn are faded out.
+					</p>
+					<div class="relative flex flex-1 flex-col">
+						<input
+							type="range"
+							min="1948"
+							max="2026"
+							bind:value={selectedYear}
+							class="h-1.5 w-full cursor-pointer rounded-full outline-none"
+							style="background: var(--map-zone); accent-color: var(--tfl-blue);"
+						/>
+						<div
+							class="mt-2 flex w-full justify-between text-[10px] font-semibold"
+							style="color: var(--map-ink-soft);"
+						>
+							<span>1948</span>
+							<span>1955</span>
+							<span>1968</span>
+							<span>1982</span>
+							<span>1995</span>
+							<span>2026</span>
+						</div>
+					</div>
 				</div>
-			</div>
+			{:else}
+				<p class="mt-1.5 text-[11px]" style="color: var(--map-ink-soft);">
+					See which classes existed in any given year.
+				</p>
+			{/if}
 		</div>
 	{:else}
 		<!-- Scatterplot Panel -->
