@@ -13,7 +13,10 @@ export const GET: RequestHandler = async ({ params }) => {
 	const filePath = path.resolve(mediaRoot, fileParam);
 	const resolvedMediaRoot = path.resolve(mediaRoot);
 
-	if (!filePath.startsWith(resolvedMediaRoot)) {
+	const relative = path.relative(resolvedMediaRoot, filePath);
+	const isSafe = relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+
+	if (!isSafe) {
 		throw error(403, 'Forbidden');
 	}
 
