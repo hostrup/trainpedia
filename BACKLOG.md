@@ -31,10 +31,41 @@ Baseline: lint 0 fejl · check/tsc 0 fejl · tests 3/3 grønne (2 unit, 1 e2e)
 - [x] **FA4** Timeline-læsbarhed: æra/årstal-opacitet hævet, DEV-HUD kun i dev-mode, startvisning flyttet til tæt befolket årti, GSAP/CSS-transitionskollision på noder fjernet.
 - [ ] **FA5** `03-media.ts` henter irrelevante filer fra visse Commons-kategorier (fx "Crop production"-PDF'er) — filtrér på filtype/kategori-relevans.
 
+## Fase F5 — "The Tube Map": redesign til et ægte London Underground-univers (plan 2026-07-07)
+
+**Problemet i dag:** Timelinen _citerer_ TfL (glow-streger, 45°-labels) men følger ingen af de regler, der får et metrokort til at virke: der er ingen linje-identiteter, ingen læselige stationsnavne, mørk baggrund frem for lys, og geometrien er spaghetti bestemt af tilfældige årstal. Resultatet er dekoration, ikke et kort.
+
+**Designprincippet:** Harry Becks kort virker, fordi det er et _diagram_, ikke et landkort: få faste vinkler (0°/45°/90°), navngivne linjer med faste farver, stationer som ticks på linjen, interchanges hvor linjer mødes, zoner som baggrundsbånd, hvid baggrund, én skrifttype (Johnston). Oversat til Trainpedia:
+
+| Metrokort-begreb                      | Trainpedia-betydning                                                |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| **Linje** (farve + navn)              | Traktionsform: Steam, Diesel, Electric (+ Experimental)             |
+| **Station**                           | En lokomotivklasse, placeret kronologisk langs linjen               |
+| **Interchange** (dobbeltring)         | Bi-mode/electro-diesel (Class 73, 88, 800…) — "skift mellem linjer" |
+| **Zone-bånd** (lys skravering)        | De 7 historiske æraer som vertikale zoner langs tidsaksen           |
+| **Endestation** (tværstreg)           | Klassens udfasning/tilbagetrækning                                  |
+| **Linjediagram** (stribekort i toget) | Linear browsing-visning af én traktionslinje, klasse for klasse     |
+
+### Epics (rækkefølgen er afhængighedsstyret)
+
+- [ ] **F5.1 (C4-CHECKIN)** Designsystem "TfL-lyst": moodboard + tokens-fil FØR implementering. Hvid/off-white baggrund (`#FFFFFF`/`#F4F4F4`), TfL-blå UI-krom (`#0019A8`), sort tekst, ægte linjefarver fra TfL's identitetsguide (forslag i U4), Johnston-inspireret skrift (fx Hammersmith One via Fontsource) til kort/stationsnavne. Roundel-inspireret logo/stations-markør (juridisk OK: inspireret geometri, IKKE TfL's beskyttede roundel/Johnston). Lys/mørk-strategi besluttes i U5. **Ronni godkender inden F5.3+.**
+- [ ] **F5.2** Datamodel-udvidelse: `ClassAlias`-tabel (aliasser fra Wikidata `skos:altLabel` + pre-TOPS-numre (D6700…), byggerbetegnelser (English Electric Type 3), kaldenavne ("Tractor")) med `scheme`-felt (TOPS / PRE_TOPS / BUILDER / NICKNAME / ORIGINAL). `displayName`-logik vælger navn efter brugerens navneskema-præference (U3). Søgning matcher ALLE aliasser. Seed-script `05-aliases.ts`.
+- [ ] **F5.3** Ny layoutmotor (erstat den nuværende auto-spaghetti): deterministisk Beck-geometri — hver linje har et vandret hovedspor; klasser snapper til et grid (tidsakse kvantiseret pr. 5 år); kun 0°/45°-knæk med faste hjørneradier; parallelle linjer holder fast indbyrdes afstand; stationslabels ALTID vandrette med kollisionshåndtering (som TfL). Ingen glow-filtre — flade linjer i fuld farve på hvid, som originalen.
+- [ ] **F5.4** Zoner & semantic zoom: æraerne som lyse zone-bånd med zonenavn i kanten (à la "Zone 1"); LOD: zoomet ud = linjenettet + zonenavne + kun landmark-stationer (interchange-ringe); mellemzoom = alle stationsticks + navne; klik = placard. Minimap i hjørnet til orientering.
+- [ ] **F5.5** Stations-ikonografi: alm. klasse = tick (kort tværstreg i linjefarven); landmark-klasse (flag i DB: fx Flying Scotsman-klassen A3, Deltic, Class 37, APT) = ring-station; bi-mode = dobbeltring-interchange placeret MELLEM diesel- og electric-linjen med forbindelsesstreg. Udfaset klasse = endestations-tværstreg med årstal.
+- [ ] **F5.6** Navneskema-vælger (løser U3): global præference i header ("Vis navne som: TOPS / Historiske / Byggernavne"), persisteret i cookie så SSR renderer rigtigt; slår igennem på kort, /classes, /class/[qid] og søgning. Default: TOPS (dét Ronni tænker i — "Class 37", ikke "D6700").
+- [ ] **F5.7** Linjediagram-visning `/line/[traction]`: det klassiske vandrette stribekort (som over dørene i toget) — én linje, alle klasser kronologisk med ticks og navne, æra-zoner som baggrundsskift. Dette bliver den _forståelige_ browsing-indgang; det store kort er overblikket.
+- [ ] **F5.8** Lys sammenhæng på tværs: /classes og /class/[qid] flyttes til samme lyse TfL-univers (hvide kort, linjefarve-accenter, sort typografi), så sitet føles som ÉT produkt. Museums-mørke kan evt. bevares som valgfrit tema (U5).
+- [ ] **F5.9** Datakvalitet der understøtter kortet: (a) FA5-fixet — Commons-fallback må ikke fritekst-søge på "class" (beviset står i seed-loggen: _"The two Mr. Wetherbys; a middle-class comedy"_); (b) filtrér ikke-lokomotiv-materiel fra discovery (godsvogne som "SR Cattle Van" er dukket op — kobles til U2); (c) landmark-flag + linjetildeling seedes.
+- **Definition of Done for F5:** Ronni kan åbne kortet, straks se hvad linjerne betyder (legende), zoome fra æra-overblik til station, klikke "Class 37" (uanset navneskema), og alt ligner ét sammenhængende TfL-inspireret univers i lyst design. 60 FPS bevares (LOD/virtualisering genbruges).
+
 ## Kræver brugerbeslutning
 
 - [ ] **U1** Authelia-politik (arkitekt-forslag: bypass) — C3
-- [ ] **U2** Skal discovery udvides ud over de 7 æraers "major classes" til ALT rullende materiel? (briefen siger "preferably all trains of all eras" — start m. ≥20/æra, udvid efter seed-rapport)
+- [ ] **U2** Skal discovery udvides ud over de 7 æraers "major classes" til ALT rullende materiel? (briefen siger "preferably all trains of all eras" — start m. ≥20/æra, udvid efter seed-rapport) — OG omvendt: skal ikke-lokomotiver (godsvogne mv.) UD af det nuværende datasæt?
+- [ ] **U3** **Navneskema (Ronnis note 2026-07-07):** Ronni tænker altid "Class 37", selvom klassen hed noget andet fra start (D6700-serien / English Electric Type 3). Der skal kunne VÆLGES hvordan navne vises (TOPS / historisk / bygger), og søgning skal finde klassen uanset hvilket navn man bruger. Foreslået default: TOPS. → implementeres i F5.2 + F5.6.
+- [ ] **U4** Linjefarve-mapping (forslag til godkendelse i C4): Steam = Metropolitan-magenta `#9B0058` (Metropolitan var dampens fødsel), Diesel = District-grøn `#007D32` (BR-grøn diesel-livery), Electric = Victoria-lyseblå `#0098D8` (første automatiske elektriske linje), Experimental/Other = Jubilee-grå `#A0A5A9`. Alternativ: Central-rød til Steam hvis magenta føles forkert.
+- [ ] **U5** Lys-strategi: (a) HELE sitet lyst TfL-univers (anbefalet — mest sammenhængende), eller (b) lyst kort + mørkt museums-tema som toggle?
 
 ## Løst
 
