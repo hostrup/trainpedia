@@ -49,6 +49,7 @@ export interface LocomotiveClass {
 	totalBuilt: number | null;
 	eraId: number;
 	narrative: string | null;
+	isLandmark: boolean;
 	specs: Specification[];
 	media: MediaAsset[];
 }

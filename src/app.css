@@ -5,11 +5,28 @@
 	--font-display: 'Fraunces Variable', Georgia, serif;
 	--font-serif: 'Fraunces Variable', Georgia, serif;
 	--font-sans: 'Inter Variable', system-ui, -apple-system, sans-serif;
+	--font-map: 'Hammersmith One', 'Inter Variable', system-ui, sans-serif;
 }
 
 :root {
 	/* --- Typography --- */
 	--font-ui: 'Inter Variable', system-ui, -apple-system, sans-serif;
+
+	/* --- Tube map — det lyse TfL-univers (DESIGN-F5-TUBEMAP.md §2) ---
+	   U5-beslutning: HELE sitet migreres hertil i F5.8. Indtil da bruges disse
+	   tokens kun af TubeMap/LineDiagram; resten af sitet bruger stadig
+	   --color-*-tokens nedenfor. */
+	--map-bg: #ffffff;
+	--map-zone: #f4f4f4;
+	--map-ink: #1c1c1e;
+	--map-ink-soft: #6b6e73;
+	--tfl-blue: #0019a8;
+
+	/* Linjefarver — U4 BESLUTTET 2026-07-07: Option A */
+	--line-steam: #9b0058; /* Metropolitan */
+	--line-diesel: #007d32; /* District */
+	--line-electric: #0098d8; /* Victoria */
+	--line-other: #a0a5a9; /* Jubilee — Experimental Line */
 
 	/* --- Color Palette (Museum Dark Mode) --- */
 	--color-bg-base: hsl(210, 20%, 8%); /* Deep slate charcoal */

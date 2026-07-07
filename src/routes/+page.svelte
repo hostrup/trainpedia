@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js';
 	import type { TractionType, LocomotiveClass } from '$lib/types.js';
-	import TimelineCanvas from '$lib/components/TimelineCanvas.svelte';
+	import TubeMap from '$lib/tubemap/TubeMap.svelte';
 	import FilterOverlay from '$lib/components/FilterOverlay.svelte';
 	import MuseumPlacard from '$lib/components/MuseumPlacard.svelte';
 
@@ -28,12 +28,10 @@
 </script>
 
 <svelte:head>
-	<title>Timeline — Trainpedia</title>
+	<title>The Tube Map — Trainpedia</title>
 </svelte:head>
 
-<div
-	class="relative h-full w-full overflow-hidden bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-sans"
->
+<div class="relative h-full w-full overflow-hidden" style="background: var(--map-bg);">
 	<!-- Top Navigation Filters -->
 	<FilterOverlay
 		eras={data.eras}
@@ -43,9 +41,9 @@
 		bind:selectedWheelArrangement
 	/>
 
-	<!-- London Underground inspired Timeline Map -->
+	<!-- Tube map -->
 	<div class="h-full w-full">
-		<TimelineCanvas
+		<TubeMap
 			classes={data.classes}
 			eras={data.eras}
 			bind:selectedClass

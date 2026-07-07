@@ -46,6 +46,7 @@ export const load: PageServerLoad = async () => {
 			totalBuilt: c.totalBuilt,
 			eraId: c.eraId,
 			narrative: c.narrative,
+			isLandmark: c.isLandmark,
 			specs: c.specs.map((s) => ({
 				id: s.id,
 				key: s.key,
