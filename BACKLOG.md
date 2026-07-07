@@ -11,11 +11,56 @@ ALLE 98 klasser.
 **Analysens hovedkonklusion:** F5–F8 har leveret et sammenhængende TfL-univers med
 god interaktion, men "Opslagsværket" (F6-visionen, Ronnis kernekrav) er reelt kun
 en pilot: fleet-data findes for ÉN klasse (Class 37), `totalBuilt` er tomt overalt,
-og søgningen kan ikke finde individer. Datakomplethed er nu den største afstand
-mellem produktet og briefen — ikke UI. Rækkefølgen herunder er prioriteret; en
+og søgningen kan ikke finde individer. Datakomplethed er den største afstand
+mellem produktet og briefen — men Ronnis gennemsyn samme aften afslørede to
+UI-blockers (sektion 0), som skal først. Rækkefølgen herunder er prioriteret; en
 agent kan tage punkterne oppefra. Husdisciplin gælder: `04-reclassify` efter hver
 seed, strict factuality (tomme felter frem for opdigtning), `./deploy.sh` som
 eneste udrulningsvej, BACKLOG.md opdateres når et punkt lukkes.
+
+### 0. BLOCKERS — Ronnis gennemsyn 2026-07-07 aften (rodårsager verificeret i kode + live-site)
+
+Ronni: "forsiden med ringene giver slet ikke mening... der står The Big Four men
+lige under er der lokomotiver fra 80'erne. OG når man har valgt et tog på
+forsiden, kan man ikke komme videre til selve siden med info." Begge dele er
+reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
+
+- [ ] **F9.0a** [Blocker] **Placard-CTA'en er død — kortets bund-bar opsnapper
+      klikket.** Reproduceret med Playwright mod tog.hostrup.org: "Open full
+      chronicle"-linket ER i DOM og synligt, men klik rammer aldrig — fejllog
+      siger ordret `<div class="z-50 border-t px-6 py-3"> ... intercepts pointer
+    events`. Rodårsag: Time Machine-baren (`TubeMap.svelte:584`) fik `z-50` i
+      F8, mens placard-draweren (`MuseumPlacard.svelte:31`) er `z-40` — baren
+      spænder hele kortets bredde i bunden og ligger derfor OVER placardens
+      footer, præcis hvor CTA-knappen sidder. Fix (én linje + disciplin): sænk
+      baren til `z-10` (den skal kun over SVG'en, aldrig over draweren) og
+      dokumentér lagdelingsordenen i en kommentar (kort-overlays z-10/z-20 <
+      backdrop z-30 < placard z-40). **Accept:** Playwright-klik på knappen
+      navigerer faktisk til `/class/[qid]` — tilføj det som e2e-test (F9.10
+      dækker flowet fremover). Regression fra F8; screenshot-verifikationen dér
+      SÅ kun på pixels, aldrig på klikbarhed — endnu et argument for F9.13.
+- [ ] **F9.0b** [Blocker] **Æra-ringene er visuelt usande — radius har INGEN
+      sammenhæng med æra.** Målt mod DB + `dieselLayout.ts` (centrum 600,500):
+      Pilot Scheme-stationer spænder radius 0–1103, Privatisation & Modern
+      60–820; Class 66 (1998!) ligger ved r=60 — næsten i centrum, dybt inde i
+      "The Big Four"-ringen (r=328), og 6 klasser fra 1968+ ligger inden for
+      den. Ronnis observation er præcis. Rodårsag: `zoneRings`
+      (`TubeMap.svelte:146`) ANTAGER at radius koder tid (ringradius = kumulativ
+      max-afstand pr. æra), men de håndplacerede koordinater i `dieselLayout.ts`
+      koder region-RETNING og lokal æstetik — ikke radial kronologi. Ringene
+      lover altså en orden, kortet ikke har. To veje: **(a) hurtig ærlighed:**
+      fjern ringene + deres labels helt (Time Machine og stations-labels bærer
+      tidsdimensionen) — én dags arbejde, ingen datakrav; **(b) den rigtige
+      løsning:** håndhæv radial æra-disciplin i layoutet — genberegn alle
+      koordinater så hver æras stationer ligger i deres eget annulus-bånd
+      (zone 1 = ældste æra inderst, som TfL-zoner; `scripts/generate-diesel-layout.ts`
+      findes allerede som udgangspunkt, og F5.3-beslutningen "æra-zonerne bærer
+      tidsdimensionen" peger entydigt på denne). **Anbefaling: (b)**, evt. med
+      (a) som strakstiltag hvis (b) tager mere end en session. OBS: afhænger af
+      F9.5b (æra-tildelingerne selv er skæve — ring-disciplin oven på forkerte
+      eraId'er flytter bare løgnen). **Accept:** ingen station ligger radialt
+      uden for/inden for en anden æras ring; Playwright-screenshot hvor "The
+      Big Four"-ringens indhold faktisk er 1923–1947-klasser.
 
 ### A. Datakomplethed (højeste værdi — det er her produktet halter mest)
 
