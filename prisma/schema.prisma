@@ -1,0 +1,104 @@
+// Trainpedia datamodel — UDKAST til CHECK-IN C1 (kør IKKE migrate før Ronnis godkendelse)
+// Princip: strict factuality — alle fakta-bærende felter er nullable og ledsages af provenance.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Traction {
+  STEAM
+  DIESEL
+  ELECTRIC
+  OTHER // fx gas turbine (GT3), battery — findes i randen af historien
+}
+
+enum MediaKind {
+  PHOTO
+  BLUEPRINT
+  DIAGRAM
+  DOCUMENT
+}
+
+/// De historiske æraer (Pre-Grouping → Modern Post-Privatisation)
+model Era {
+  id          Int               @id @default(autoincrement())
+  slug        String            @unique // "big-four"
+  name        String // "The Big Four"
+  startYear   Int
+  endYear     Int? // null = løbende (Modern)
+  narrative   String? // kildeciteret æra-fortælling
+  sortIndex   Int
+  classes     LocomotiveClass[]
+  sourceUrl   String?
+  retrievedAt DateTime?
+}
+
+/// En lokomotivklasse — timeline-node. Positioneres efter serviceEntry.
+model LocomotiveClass {
+  id               Int             @id @default(autoincrement())
+  wikidataQid      String          @unique // upsert-nøgle, fx "Q1131502" (Class 55)
+  wikipediaTitle   String? // fx "British Rail Class 55"
+  name             String // "Class 55"
+  nickname         String? // "Deltic"
+  traction         Traction
+  wheelArrangement String? // "Co-Co", "4-6-2" — filterakse
+  serviceEntry     DateTime? // faktisk indsættelsesdato (timeline-position)
+  serviceExit      DateTime?
+  buildStart       Int?
+  buildEnd         Int?
+  totalBuilt       Int?
+  narrative        String? // "hvorfor klassen betød noget" — citeret fra kilde
+  era              Era             @relation(fields: [eraId], references: [id])
+  eraId            Int
+  specs            Specification[]
+  media            MediaAsset[]
+  sourceUrl        String? // Wikipedia-artikel
+  sourceRevision   String? // revisions-id for citatets version
+  retrievedAt      DateTime?
+
+  @@index([eraId, serviceEntry])
+  @@index([traction])
+  @@index([wheelArrangement])
+}
+
+/// Fleksibelt spec-grid (Manufacturer, Designer, Power Output, Tractive Effort, Top Speed, ...)
+model Specification {
+  id          Int             @id @default(autoincrement())
+  class       LocomotiveClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId     Int
+  key         String // "Power Output"
+  value       String // "1.750 hp" — string bevarer kildens præcision/enheder
+  unit        String? // normaliseret enhed hvis parsebar (til evt. sammenligninger)
+  sortIndex   Int             @default(0)
+  sourceUrl   String?
+  retrievedAt DateTime?
+
+  @@unique([classId, key])
+}
+
+/// Medie-asset fra Wikimedia Commons — downloadet lokalt, attribution er JURIDISK påkrævet ved CC-BY/SA
+model MediaAsset {
+  id          Int             @id @default(autoincrement())
+  class       LocomotiveClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId     Int
+  kind        MediaKind
+  localPath   String // "data/media/class-55/xxxx-960.webp" (basename; srcset-varianter afledes)
+  width       Int
+  height      Int
+  title       String? // asset-titel til inspect-view
+  year        Int? // fotografiets årstal (fra Commons-metadata — ellers null)
+  locoNumber  String? // "37001" hvis identificérbart i metadata
+  anecdote    String? // historisk kontekst — KUN fra kildens beskrivelse
+  commonsUrl  String          @unique // kilde + dedup-nøgle
+  license     String // "CC BY-SA 4.0", "Public domain"
+  attribution String? // fotografkreditering (krav ved CC-BY/SA)
+  sortIndex   Int             @default(0)
+  retrievedAt DateTime
+
+  @@index([classId, kind])
+}

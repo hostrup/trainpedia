@@ -1,0 +1,17 @@
+# Secrets — repoet er OFFENTLIGT
+.env
+.env.*
+!.env.example
+
+# Dependencies & build
+node_modules/
+build/
+.svelte-kit/
+
+# Seedede media-assets (gigabytes — bor på serveren, dækket af backup)
+data/media/
+scripts/seed/out/
+
+# Diverse
+*.log
+.DS_Store
