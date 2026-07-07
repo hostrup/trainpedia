@@ -3,11 +3,13 @@
 Du er hovedagent/orkestrator på projektet **Trainpedia** i denne mappe (`/hostrup/docker/projects/trainpedia`). Arkitekturen er fastlagt af en løsningsarkitekt — din opgave er at implementere den loyalt og i høj kvalitet.
 
 ## Trin 0 — Kontekst (før du skriver én linje kode)
+
 1. Læs i denne rækkefølge: `AGENT-BRIEF.md` → `ARCHITECTURE.md` → `BACKLOG.md` → `prisma/schema.prisma` → `scripts/seed/README.md` → `docs/compose-snippet.yml`.
 2. Læs den fælles vidensbase: `/hostrup/data/vault/projekter/trainpedia.md` og `/hostrup/data/vault/server/beslutninger.md` (afsnit 2026-07-06/07) samt `inbox/2026-07-06-npm-vaert-moenstre-og-klon-faelde.md`.
 3. Bekræft kort over for mig, at du har forstået: teknologistakken, de tre check-ins (C1/C2/C3), strict factuality-princippet, og at repoet er OFFENTLIGT (aldrig secrets i git).
 
 ## Arbejdsregler (ufravigelige)
+
 - **Teknologivalg er låst** (ARCHITECTURE.md §1). Ønsker du at afvige: stop og spørg mig med begrundelse.
 - **Check-ins:** Stop ved C1 (datamodel før migrate), C2 (design-tokens + komponentarkitektur + animations-mekanik før UI), C3 (Authelia-politik før proxy). Præsentér, afvent mit svar.
 - **BACKLOG.md er kontrakten:** arbejd fase for fase, flyt punkter til «Løst» med commit-hash, tilføj nye fund som nye punkter. Små atomare commits.
@@ -18,15 +20,17 @@ Du er hovedagent/orkestrator på projektet **Trainpedia** i denne mappe (`/hostr
 - **Strict factuality:** Ingen lokomotiv-fakta må opfindes. Kildeløse felter forbliver NULL og vises som "ukendt". Al media skal have licens + attribution i databasen.
 
 ## Subagent-strategi (du må gerne parallelisere — men styret)
+
 - **Kun DU** committer, kører migrations, kører tests og taler med mig. Subagenter leverer arbejde tilbage til dig.
 - Giv hver subagent ét afgrænset, disjunkt scope og præcis leverancekontrakt. Egnede parallelspor:
-  - *Fase 1:* én subagent per seed-script (discovery / enrichment / media) — de deler kun Zod-kontrakterne i `scripts/seed/`.
-  - *Fase 2-3:* én subagent på timeline-canvas (d3-zoom + LOD), én på placard/showcase-komponenter, én på filter-morph (GSAP Flip) — snitfladen er props/typer, som DU definerer først (efter C2).
-  - *Research-subagenter* (read-only) til fx Wikidata-property-jagt eller GSAP Flip-mønstre.
+  - _Fase 1:_ én subagent per seed-script (discovery / enrichment / media) — de deler kun Zod-kontrakterne i `scripts/seed/`.
+  - _Fase 2-3:_ én subagent på timeline-canvas (d3-zoom + LOD), én på placard/showcase-komponenter, én på filter-morph (GSAP Flip) — snitfladen er props/typer, som DU definerer først (efter C2).
+  - _Research-subagenter_ (read-only) til fx Wikidata-property-jagt eller GSAP Flip-mønstre.
 - Uegnet til parallelisering: skema-ændringer, compose/infrastruktur, deploy — det gør du selv, sekventielt.
 - Validér ALT subagent-output selv (kør koden, kør tests) før merge — subagenters påstande er råmateriale, ikke facit.
 
 ## Definition of Done (hele projektet)
+
 tog.hostrup.org viser den fulde oplevelse: zoombar æra-timeline (60 FPS), filter-morph, museums-placards, showcase m. spec-grid og inspect-lightbox med attribution — alle data med provenance fra Wikipedia/Wikidata/Commons, seed-rapport godkendt af mig, `/review-project` uden Blocker/High-fund, Kuma-monitor grøn, Homepage-entry synlig, og beslutningerne dokumenteret i vaultet.
 
 **Start nu med Trin 0 og rapportér din forståelse — derefter Fase 0 i BACKLOG.md.**

@@ -1,25 +1,25 @@
 # Indsættes i /hostrup/docker/stacks/projects.yml ved første deploy (Fase 4 / C3)
 # Følger wishbuy-mønsteret: DATABASE_URL bygges af master-.env-variabler (TP_* findes allerede).
 
-  # ============================================================================
-  # TRAINPEDIA — Interaktiv britisk jernbanehistorie (tog.hostrup.org)
-  # ============================================================================
-  trainpedia:
-    build:
-      context: ../projects/trainpedia
-      dockerfile: Dockerfile
-    container_name: trainpedia
-    networks:
-      - npm_proxy
-    volumes:
-      # Wikimedia-assets (seedet lokalt — IKKE i git; dækket af server-backup)
-      - $PROJECTS/trainpedia/data/media:/app/data/media:rw
-    environment:
-      - TZ=$TZ
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://${TP_USER}:${TP_PW}@postgresql:5432/${TP_DB}?schema=public
-      - MEDIA_ROOT=/app/data/media
-    depends_on:
-      postgresql:
-        condition: service_healthy
-    restart: unless-stopped
+# ============================================================================
+# TRAINPEDIA — Interaktiv britisk jernbanehistorie (tog.hostrup.org)
+# ============================================================================
+trainpedia:
+  build:
+    context: ../projects/trainpedia
+    dockerfile: Dockerfile
+  container_name: trainpedia
+  networks:
+    - npm_proxy
+  volumes:
+    # Wikimedia-assets (seedet lokalt — IKKE i git; dækket af server-backup)
+    - $PROJECTS/trainpedia/data/media:/app/data/media:rw
+  environment:
+    - TZ=$TZ
+    - NODE_ENV=production
+    - DATABASE_URL=postgresql://${TP_USER}:${TP_PW}@postgresql:5432/${TP_DB}?schema=public
+    - MEDIA_ROOT=/app/data/media
+  depends_on:
+    postgresql:
+      condition: service_healthy
+  restart: unless-stopped
