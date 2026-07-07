@@ -303,23 +303,29 @@
 	// GSAP Flip animation setup for filters
 	let flipState = $state<unknown>(null);
 	const filterKey = $derived(JSON.stringify(filteredClasses.map((c: LocomotiveClass) => c.id)));
+	let isInitial = $state(true);
 
 	$effect.pre(() => {
-		if (filterKey && typeof window !== 'undefined') {
-			flipState = Flip.getState('.timeline-node', { props: 'transform,opacity' });
+		if (filterKey && typeof window !== 'undefined' && !isInitial) {
+			flipState = Flip.getState('.timeline-node', { props: 'opacity' });
 		}
 	});
 
 	$effect(() => {
-		if (filterKey && typeof window !== 'undefined' && flipState) {
-			const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-			if (!prefersReduced) {
-				Flip.from(flipState as Parameters<typeof Flip.from>[0], {
-					duration: 0.6,
-					ease: 'power2.out',
-					absolute: true,
-					stagger: 0.005
-				});
+		if (filterKey && typeof window !== 'undefined') {
+			if (isInitial) {
+				isInitial = false;
+				return;
+			}
+			if (flipState) {
+				const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+				if (!prefersReduced) {
+					Flip.from(flipState as Parameters<typeof Flip.from>[0], {
+						duration: 0.6,
+						ease: 'power2.out',
+						stagger: 0.005
+					});
+				}
 			}
 		}
 	});
