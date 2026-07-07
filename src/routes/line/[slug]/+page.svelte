@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js';
-	import type { LocomotiveClass, TractionType } from '$lib/types.js';
+	import type { LocomotiveClass } from '$lib/types.js';
+	import type { Traction } from '$lib/tubemap/layout.js';
 	import LineDiagram from '$lib/tubemap/LineDiagram.svelte';
 	import MuseumPlacard from '$lib/components/MuseumPlacard.svelte';
 	import { resolveDisplayName, type NameScheme } from '$lib/nameScheme.js';
@@ -12,7 +13,7 @@
 	// også på helt nye/ubeslægtede ruter, så det er en værktøjsbegrænsning, ikke en fejl i
 	// selve datamodellen. Eksplicitte typer her genopretter typesikkerheden i resten af filen.
 	let { data } = $props<{ data: PageData }>();
-	const traction = $derived(data.traction as TractionType);
+	const traction = $derived(data.traction as Traction);
 	const classes = $derived(data.classes as LocomotiveClass[]);
 	const eras = $derived(data.eras as import('$lib/types.js').Era[]);
 	const nameScheme = $derived(data.nameScheme as NameScheme);

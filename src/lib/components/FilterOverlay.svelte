@@ -1,37 +1,24 @@
 <script lang="ts">
-	import type { Era, TractionType } from '$lib/types.js';
+	import type { Era } from '$lib/types.js';
 
 	let {
 		eras,
 		wheelArrangements,
 		selectedEraId = $bindable(null),
-		selectedTraction = $bindable(null),
 		selectedWheelArrangement = $bindable(null)
 	} = $props<{
 		eras: Era[];
 		wheelArrangements: string[];
 		selectedEraId: number | null;
-		selectedTraction: TractionType | null;
 		selectedWheelArrangement: string | null;
 	}>();
 
-	const tractions: { label: string; value: TractionType | null }[] = [
-		{ label: 'All Tractions', value: null },
-		{ label: 'Steam 🚂', value: 'STEAM' },
-		{ label: 'Diesel 🛢️', value: 'DIESEL' },
-		{ label: 'Electric ⚡', value: 'ELECTRIC' },
-		{ label: 'Other ⚙️', value: 'OTHER' }
-	];
-
 	function resetFilters() {
 		selectedEraId = null;
-		selectedTraction = null;
 		selectedWheelArrangement = null;
 	}
 
-	const hasActiveFilters = $derived(
-		selectedEraId !== null || selectedTraction !== null || selectedWheelArrangement !== null
-	);
+	const hasActiveFilters = $derived(selectedEraId !== null || selectedWheelArrangement !== null);
 </script>
 
 <div
@@ -59,24 +46,6 @@
 	</div>
 
 	<div class="hidden h-6 w-px sm:block" style="background: var(--map-zone);"></div>
-
-	<!-- Traction Button Selector -->
-	<div class="flex flex-wrap items-center gap-1.5">
-		{#each tractions as t (t.label)}
-			{@const isSelected = selectedTraction === t.value}
-			<button
-				onclick={() => (selectedTraction = t.value)}
-				class="cursor-pointer rounded-full border px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase transition-all duration-200"
-				style={isSelected
-					? 'background: var(--tfl-blue); color: white; border-color: var(--tfl-blue);'
-					: 'background: var(--map-zone); color: var(--map-ink); border-color: var(--map-zone);'}
-			>
-				{t.label}
-			</button>
-		{/each}
-	</div>
-
-	<div class="hidden h-6 w-px md:block" style="background: var(--map-zone);"></div>
 
 	<!-- Wheel Arrangement Filter -->
 	<div class="flex items-center gap-2">

@@ -9,6 +9,7 @@ const ERAS: MappableEra[] = [
 function loco(overrides: Partial<MappableClass> & { id: number }): MappableClass {
 	return {
 		name: `Class ${overrides.id}`,
+		wikidataQid: 'Q_TEST',
 		narrative: null,
 		traction: 'DIESEL',
 		buildStart: 1960,
@@ -57,29 +58,6 @@ describe('mapClassesToStations', () => {
 			(c) => c.name.toUpperCase()
 		);
 		expect(result[0].name).toBe('BRITISH RAIL CLASS 37');
-	});
-
-	it('udleder interchangeWith for kendte bi-mode-klassenumre', () => {
-		const result = mapClassesToStations(
-			[loco({ id: 73, name: 'British Rail Class 73', traction: 'ELECTRIC' })],
-			ERAS
-		);
-		expect(result[0].interchangeWith).toBe('DIESEL');
-	});
-
-	it('udleder interchangeWith fra narrativ-tekst ("electro-diesel")', () => {
-		const result = mapClassesToStations(
-			[
-				loco({
-					id: 1,
-					name: 'British Rail Class 99',
-					traction: 'DIESEL',
-					narrative: 'An electro-diesel locomotive used for shunting.'
-				})
-			],
-			ERAS
-		);
-		expect(result[0].interchangeWith).toBe('ELECTRIC');
 	});
 
 	it('lader interchangeWith være null for almindelige klasser', () => {

@@ -2,28 +2,27 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types.js';
 import { db } from '$lib/server/db.js';
 import { mapLocomotiveClass } from '$lib/server/mapLocomotiveClass.js';
-import type { Era, TractionType } from '$lib/types.js';
+import type { Era } from '$lib/types.js';
+import { dieselLayout } from '$lib/tubemap/dieselLayout.js';
 
-const TRACTION_SLUGS = ['steam', 'diesel', 'electric', 'other'] as const;
-type TractionSlug = (typeof TRACTION_SLUGS)[number];
+const REGION_SLUGS = ['western', 'eastern', 'midland', 'southern', 'scottish'] as const;
+type RegionSlug = (typeof REGION_SLUGS)[number];
 
-function isTractionSlug(value: string): value is TractionSlug {
-	return (TRACTION_SLUGS as readonly string[]).includes(value);
+function isRegionSlug(value: string): value is RegionSlug {
+	return (REGION_SLUGS as readonly string[]).includes(value);
 }
-
-const SLUG_TO_TRACTION: Record<TractionSlug, TractionType> = {
-	steam: 'STEAM',
-	diesel: 'DIESEL',
-	electric: 'ELECTRIC',
-	other: 'OTHER'
-};
 
 export const load: PageServerLoad = async ({ params }) => {
 	const slug = params.slug.toLowerCase();
-	if (!isTractionSlug(slug)) {
-		throw error(404, `Unknown line: ${params.slug}`);
+	if (!isRegionSlug(slug)) {
+		throw error(404, `Unknown region line: ${params.slug}`);
 	}
-	const traction: TractionType = SLUG_TO_TRACTION[slug];
+
+	const regionUpper = slug.toUpperCase();
+	// Find all wikidataQids matching this region in our layout
+	const matchingQids = dieselLayout
+		.filter((item) => (item.regions as readonly string[]).includes(regionUpper))
+		.map((item) => item.qid);
 
 	let dbEras;
 	let dbClasses;
@@ -31,7 +30,11 @@ export const load: PageServerLoad = async ({ params }) => {
 		[dbEras, dbClasses] = await Promise.all([
 			db.era.findMany({ orderBy: { sortIndex: 'asc' } }),
 			db.locomotiveClass.findMany({
-				where: { traction },
+				where: {
+					wikidataQid: {
+						in: matchingQids
+					}
+				},
 				include: {
 					specs: { orderBy: { sortIndex: 'asc' } },
 					media: { orderBy: { sortIndex: 'asc' } },
@@ -55,7 +58,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	}));
 
 	return {
-		traction,
+		traction: regionUpper as 'WESTERN' | 'EASTERN' | 'MIDLAND' | 'SOUTHERN' | 'SCOTTISH',
 		eras,
 		classes: dbClasses.map(mapLocomotiveClass)
 	};

@@ -41,32 +41,34 @@
 			fill={color}
 		/>
 	{:else if station.stationType === 'landmark'}
+		<!-- Landmark: Double-contour ring using line-color and ink-color -->
 		<circle
 			cx={station.x}
 			cy={station.y}
-			r={GEOMETRY.landmarkRingRadius}
+			r={GEOMETRY.landmarkRingRadius + 2}
 			fill="var(--map-bg)"
 			stroke="var(--map-ink)"
-			stroke-width={GEOMETRY.landmarkRingStroke}
+			stroke-width="2"
+		/>
+		<circle
+			cx={station.x}
+			cy={station.y}
+			r={GEOMETRY.landmarkRingRadius - 2}
+			fill="var(--map-bg)"
+			stroke={color}
+			stroke-width="2"
 		/>
 	{:else if station.stationType === 'interchange'}
-		<!-- Bruges KUN når stationen renderes uden en anden linje at forbinde til (fx
-		     LineDiagram/F5.7, som kun viser én linje ad gangen). TubeMap.svelte foretrækker
-		     InterchangeCapsule, der tegner den rigtige kapsel mellem to linjer. -->
+		<!-- Interchange: White circle with a bold dark outline and dark dot center -->
 		<circle
 			cx={station.x}
 			cy={station.y}
-			r={GEOMETRY.landmarkRingRadius}
+			r={GEOMETRY.landmarkRingRadius + 1}
 			fill="var(--map-bg)"
 			stroke="var(--map-ink)"
-			stroke-width={GEOMETRY.landmarkRingStroke}
+			stroke-width="3"
 		/>
-		<circle
-			cx={station.x}
-			cy={station.y}
-			r={GEOMETRY.landmarkRingRadius - 4}
-			fill="var(--map-ink)"
-		/>
+		<circle cx={station.x} cy={station.y} r="3" fill="var(--map-ink)" />
 	{:else}
 		<line
 			x1={station.x}

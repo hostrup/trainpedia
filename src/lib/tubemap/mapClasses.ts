@@ -1,12 +1,13 @@
 // mapClasses.ts — ren mapping-funktion: DB-formede klasser+æraer → StationInput[]
 // (layout.ts's inputkontrakt). Ingen Svelte-afhængighed; unit-testes isoleret.
-import type { StationInput, Traction } from './layout.js';
+import type { StationInput } from './layout.js';
 
 export interface MappableClass {
 	id: number;
+	wikidataQid: string;
 	name: string;
 	narrative: string | null;
-	traction: Traction;
+	traction: string;
 	buildStart: number | null;
 	serviceEntry: string | null; // ISO-dato eller null
 	serviceExit: string | null; // ISO-dato eller null
@@ -19,30 +20,6 @@ export interface MappableClass {
 export interface MappableEra {
 	id: number;
 	slug: string;
-}
-
-// Electro-diesel/bi-mode er IKKE et DB-felt (schema har ét traction-felt pr. klasse) —
-// dette er en præsentationsheuristik (klassenummer + narrativ-tekst), ikke en påstået
-// kildefaktum. Samme mønster som den tidligere TimelineCanvas' isDualTraction().
-const KNOWN_INTERCHANGE_CLASS_NUMBERS = new Set(['73', '74', '88', '93']);
-
-function classNumber(name: string): string | null {
-	const m = name.match(/class\s+(\d{1,3})\b/i);
-	return m ? m[1] : null;
-}
-
-function deriveInterchange(c: MappableClass): Traction | null {
-	const text = `${c.name} ${c.narrative ?? ''}`.toLowerCase();
-	const num = classNumber(c.name);
-	const looksInterchange =
-		text.includes('electro-diesel') ||
-		text.includes('bi-mode') ||
-		(num !== null && KNOWN_INTERCHANGE_CLASS_NUMBERS.has(num));
-
-	if (!looksInterchange) return null;
-	if (c.traction === 'ELECTRIC') return 'DIESEL';
-	if (c.traction === 'DIESEL') return 'ELECTRIC';
-	return null;
 }
 
 function introYear(c: MappableClass): number | null {
@@ -80,13 +57,14 @@ export function mapClassesToStations(
 
 		stations.push({
 			id: String(c.id),
+			wikidataQid: c.wikidataQid,
 			name: displayName(c),
 			traction: c.traction,
 			introYear: year,
 			retiredYear: retiredYear(c),
 			isLandmark: c.isLandmark,
 			eraSlug,
-			interchangeWith: deriveInterchange(c)
+			interchangeWith: null
 		});
 	}
 	return stations;

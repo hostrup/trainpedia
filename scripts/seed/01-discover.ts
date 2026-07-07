@@ -373,7 +373,7 @@ async function main() {
 			sourceUrl: item.sourceUrl
 		};
 
-		if (eraSlug) {
+		if (eraSlug && traction === 'DIESEL') {
 			const result = CandidateClassSchema.safeParse(candidateRaw);
 			if (result.success) {
 				validCandidates.push(result.data);

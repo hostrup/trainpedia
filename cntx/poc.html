@@ -1,0 +1,1538 @@
+<!doctype html>
+<html lang="da">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Trainpedia Diesel Metro Map PoC</title>
+		<!-- Google Fonts for TfL Aesthetics -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap"
+			rel="stylesheet"
+		/>
+		<style>
+			:root {
+				/* TfL Light Theme Palette */
+				--bg-main: #fcfcfc;
+				--bg-card: #ffffff;
+				--border-color: #e5e5e5;
+				--text-dark: #11141a;
+				--text-muted: #5c6479;
+
+				/* Line Colors (BR Regions) */
+				--color-western: #007d32; /* District Green */
+				--color-eastern: #e11b22; /* Central Red */
+				--color-midland: #0019a8; /* Piccadilly Blue */
+				--color-southern: #00a3e0; /* Victoria Light Blue */
+				--color-scottish: #e25c05; /* Orange / Bakerloo-ish */
+
+				/* UI Fonts */
+				--font-display: 'Outfit', sans-serif;
+				--font-body: 'Inter', sans-serif;
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			body {
+				font-family: var(--font-body);
+				background-color: var(--bg-main);
+				color: var(--text-dark);
+				height: 100vh;
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+			}
+
+			/* Top Header */
+			header {
+				background-color: var(--bg-card);
+				border-bottom: 1px solid var(--border-color);
+				padding: 12px 24px;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				z-index: 100;
+			}
+
+			.logo-area h1 {
+				font-family: var(--font-display);
+				font-weight: 800;
+				font-size: 24px;
+				color: var(--text-dark);
+				letter-spacing: -0.5px;
+			}
+			.logo-area span {
+				color: var(--color-eastern);
+			}
+			.logo-area p {
+				font-size: 11px;
+				color: var(--text-muted);
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				font-weight: 600;
+				margin-top: -2px;
+			}
+
+			/* Navigation / View Tabs */
+			.tabs {
+				display: flex;
+				background: #f1f2f4;
+				padding: 4px;
+				border-radius: 8px;
+				gap: 4px;
+			}
+			.tab-btn {
+				background: none;
+				border: none;
+				padding: 8px 16px;
+				font-size: 13px;
+				font-weight: 600;
+				border-radius: 6px;
+				cursor: pointer;
+				color: var(--text-muted);
+				transition: all 0.2s ease;
+			}
+			.tab-btn.active {
+				background: var(--bg-card);
+				color: var(--text-dark);
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+			}
+
+			/* Main Layout */
+			.workspace {
+				flex: 1;
+				display: flex;
+				position: relative;
+				overflow: hidden;
+			}
+
+			/* View Container */
+			.view-content {
+				flex: 1;
+				position: relative;
+				height: 100%;
+			}
+
+			.view-panel {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				opacity: 0;
+				pointer-events: none;
+				transition: opacity 0.3s ease;
+				display: flex;
+				flex-direction: column;
+			}
+			.view-panel.active {
+				opacity: 1;
+				pointer-events: auto;
+			}
+
+			/* Metro Map Container */
+			.map-container {
+				flex: 1;
+				background-color: #f7f8fa;
+				position: relative;
+				cursor: grab;
+				overflow: hidden;
+			}
+			.map-container:active {
+				cursor: grabbing;
+			}
+
+			/* Map Legend overlay */
+			.map-legend {
+				position: absolute;
+				top: 16px;
+				left: 16px;
+				background: var(--bg-card);
+				border: 1px solid var(--border-color);
+				padding: 16px;
+				border-radius: 8px;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+				z-index: 10;
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+				font-size: 12px;
+			}
+			.legend-title {
+				font-family: var(--font-display);
+				font-weight: 700;
+				margin-bottom: 4px;
+				font-size: 13px;
+			}
+			.legend-item {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				font-weight: 500;
+			}
+			.legend-color {
+				width: 16px;
+				height: 4px;
+				border-radius: 2px;
+			}
+
+			/* Right Side Placard / Detail Panel */
+			.placard-panel {
+				width: 380px;
+				background-color: var(--bg-card);
+				border-left: 1px solid var(--border-color);
+				display: flex;
+				flex-direction: column;
+				height: 100%;
+				box-shadow: -4px 0 24px rgba(0, 0, 0, 0.02);
+				z-index: 20;
+				overflow-y: auto;
+			}
+
+			/* Placard Styling */
+			.placard-header {
+				padding: 24px;
+				border-bottom: 1px solid var(--border-color);
+				position: relative;
+			}
+			.placard-tag {
+				font-size: 10px;
+				font-weight: 700;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				padding: 4px 8px;
+				border-radius: 4px;
+				display: inline-block;
+				margin-bottom: 12px;
+			}
+			.placard-title {
+				font-family: var(--font-display);
+				font-size: 26px;
+				font-weight: 800;
+				line-height: 1.1;
+				margin-bottom: 4px;
+			}
+			.placard-subtitle {
+				font-size: 14px;
+				color: var(--text-muted);
+				font-weight: 500;
+			}
+			.placard-body {
+				padding: 24px;
+				display: flex;
+				flex-direction: column;
+				gap: 20px;
+			}
+			.section-title {
+				font-family: var(--font-display);
+				font-size: 14px;
+				font-weight: 700;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				color: var(--text-muted);
+				margin-bottom: 8px;
+				border-bottom: 2px solid var(--border-color);
+				padding-bottom: 4px;
+			}
+			.specs-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 12px;
+			}
+			.spec-item {
+				display: flex;
+				flex-direction: column;
+			}
+			.spec-label {
+				font-size: 11px;
+				color: var(--text-muted);
+				font-weight: 600;
+			}
+			.spec-value {
+				font-size: 13px;
+				font-weight: 700;
+				margin-top: 2px;
+			}
+
+			.ai-trivia-card {
+				background-color: #fafbfc;
+				border: 1px dashed var(--border-color);
+				border-radius: 8px;
+				padding: 16px;
+				position: relative;
+			}
+			.ai-badge {
+				position: absolute;
+				top: -10px;
+				right: 12px;
+				background: linear-gradient(135deg, #7b2cbf, #5a189a);
+				color: white;
+				font-size: 9px;
+				font-weight: 700;
+				padding: 2px 6px;
+				border-radius: 10px;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+			}
+			.ai-text {
+				font-size: 13px;
+				line-height: 1.5;
+				color: var(--text-dark);
+				font-style: italic;
+			}
+
+			/* Timeline / Year Control Slider */
+			.timeline-slider-bar {
+				background-color: var(--bg-card);
+				border-top: 1px solid var(--border-color);
+				padding: 16px 24px;
+				display: flex;
+				align-items: center;
+				gap: 20px;
+				z-index: 50;
+			}
+			.slider-label {
+				font-family: var(--font-display);
+				font-weight: 800;
+				font-size: 20px;
+				min-width: 140px;
+				color: var(--text-dark);
+			}
+			.slider-wrapper {
+				flex: 1;
+				display: flex;
+				align-items: center;
+				position: relative;
+			}
+			.year-slider {
+				width: 100%;
+				-webkit-appearance: none;
+				height: 6px;
+				border-radius: 3px;
+				background: #e2e4e9;
+				outline: none;
+			}
+			.year-slider::-webkit-slider-thumb {
+				-webkit-appearance: none;
+				width: 20px;
+				height: 20px;
+				border-radius: 50%;
+				background: var(--color-eastern);
+				cursor: pointer;
+				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+				transition: transform 0.1s ease;
+			}
+			.year-slider::-webkit-slider-thumb:hover {
+				transform: scale(1.2);
+			}
+			.ticks-labels {
+				display: flex;
+				justify-content: space-between;
+				width: 100%;
+				position: absolute;
+				top: 22px;
+				font-size: 10px;
+				font-weight: 600;
+				color: var(--text-muted);
+			}
+
+			/* Interactive Map SVG Styling */
+			svg.map-canvas {
+				width: 100%;
+				height: 100%;
+				user-select: none;
+			}
+			.zone-bg {
+				fill: none;
+				stroke: #e2e5ec;
+				stroke-width: 1.5;
+				stroke-dasharray: 4 6;
+			}
+			.zone-label {
+				font-family: var(--font-display);
+				font-weight: 700;
+				font-size: 12px;
+				fill: #a0a6b5;
+			}
+			.tube-line {
+				fill: none;
+				stroke-linecap: round;
+				stroke-linejoin: round;
+				transition: opacity 0.3s ease;
+			}
+			.station-node {
+				cursor: pointer;
+				transition:
+					transform 0.2s ease,
+					opacity 0.3s ease;
+			}
+			.station-node:hover {
+				transform: scale(1.15);
+			}
+			.station-label {
+				font-family: var(--font-body);
+				font-size: 9px;
+				font-weight: 700;
+				fill: var(--text-dark);
+				pointer-events: none;
+				transition: opacity 0.3s ease;
+			}
+
+			/* Interactive Highlight and Dim Modes */
+			.dimmed {
+				opacity: 0.15 !important;
+			}
+			.station-node.selected circle {
+				stroke: var(--text-dark) !important;
+				stroke-width: 3.5px !important;
+			}
+
+			/* Scatterplot Tab Panel */
+			.chart-panel {
+				padding: 32px;
+				flex: 1;
+				background: #fafbfc;
+				display: flex;
+				flex-direction: column;
+				gap: 20px;
+				overflow-y: auto;
+			}
+			.chart-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+			.chart-title h2 {
+				font-family: var(--font-display);
+				font-weight: 800;
+				font-size: 22px;
+			}
+			.chart-title p {
+				font-size: 13px;
+				color: var(--text-muted);
+				margin-top: 4px;
+			}
+			.chart-container {
+				background: var(--bg-card);
+				border: 1px solid var(--border-color);
+				border-radius: 12px;
+				padding: 24px;
+				height: 480px;
+				position: relative;
+				box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+			}
+			.scatterplot-svg {
+				width: 100%;
+				height: 100%;
+			}
+			.chart-tooltip {
+				position: absolute;
+				background: var(--text-dark);
+				color: white;
+				padding: 8px 12px;
+				border-radius: 6px;
+				font-size: 11px;
+				pointer-events: none;
+				opacity: 0;
+				transition: opacity 0.15s ease;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+				z-index: 100;
+				font-family: var(--font-body);
+			}
+			.chart-dot {
+				cursor: pointer;
+				transition:
+					r 0.2s ease,
+					fill-opacity 0.2s ease;
+			}
+			.chart-dot:hover {
+				r: 10px;
+				fill-opacity: 1;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- Header -->
+		<header>
+			<div class="logo-area">
+				<h1>Trainpedia<span>.</span></h1>
+				<p>The British Rail Diesel Network</p>
+			</div>
+			<div class="tabs">
+				<button class="tab-btn active" onclick="switchTab('map')">🚇 Regionalt Metrokort</button>
+				<button class="tab-btn" onclick="switchTab('chart')">📊 Hestekræfter vs. Fart</button>
+			</div>
+		</header>
+
+		<!-- Main Workspace -->
+		<div class="workspace">
+			<!-- View Content (Left side / center) -->
+			<div class="view-content">
+				<!-- Tab 1: Metro Map -->
+				<div id="panel-map" class="view-panel active">
+					<div class="map-container" id="map-parent">
+						<!-- Legend overlay -->
+						<div class="map-legend">
+							<div class="legend-title">British Rail Regioner</div>
+							<div class="legend-item">
+								<span class="legend-color" style="background-color: var(--color-western)"></span>
+								<span>Western Region (Diesel-Hydraulic)</span>
+							</div>
+							<div class="legend-item">
+								<span class="legend-color" style="background-color: var(--color-eastern)"></span>
+								<span>Eastern Region (Express Passenger)</span>
+							</div>
+							<div class="legend-item">
+								<span class="legend-color" style="background-color: var(--color-midland)"></span>
+								<span>London Midland Region (Heavy Mainline)</span>
+							</div>
+							<div class="legend-item">
+								<span class="legend-color" style="background-color: var(--color-southern)"></span>
+								<span>Southern Region (Electro-Diesel / Shunters)</span>
+							</div>
+							<div class="legend-item">
+								<span class="legend-color" style="background-color: var(--color-scottish)"></span>
+								<span>Scottish Region (Mixed / Highlands)</span>
+							</div>
+						</div>
+
+						<!-- SVG Map -->
+						<svg class="map-canvas" id="map-svg" viewBox="0 0 1000 700">
+							<defs>
+								<!-- Dropshadow for text labels -->
+								<filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+									<feGaussianBlur stdDeviation="2" result="blur" />
+									<feComposite in="SourceGraphic" in2="blur" operator="over" />
+								</filter>
+							</defs>
+
+							<!-- Timezones (Concentric Circles / Zones) -->
+							<!-- Zone 1 (Pioneers 1948-1954) -->
+							<circle cx="500" cy="350" r="120" class="zone-bg" />
+							<text x="500" y="245" class="zone-label" text-anchor="middle">
+								ZONE 1: PIONERERNE (1948-1954)
+							</text>
+
+							<!-- Zone 2-3 (TOPS Era 1955-1981) -->
+							<circle cx="500" cy="350" r="240" class="zone-bg" />
+							<text x="500" y="125" class="zone-label" text-anchor="middle">
+								ZONE 2-3: TOPS-PLANEN (1955-1981)
+							</text>
+
+							<!-- Zone 4-5 (Sectorisation 1982-1994) -->
+							<circle cx="500" cy="350" r="340" class="zone-bg" />
+							<text x="500" y="25" class="zone-label" text-anchor="middle">
+								ZONE 4-5: SEKTORISERING & TUNGE GODSTOG (1982-1994)
+							</text>
+
+							<!-- Zone 6 (Privatisation & Modern 1995+) -->
+							<circle cx="500" cy="350" r="440" class="zone-bg" style="stroke-dasharray: 2 4" />
+							<text x="500" y="5" class="zone-label" text-anchor="middle">
+								ZONE 6: PRIVATISERING & FREMTID (1995+)
+							</text>
+
+							<!-- SVG LINES -->
+							<!-- Shared Tracks / Parallel Runs will overlap coordinates -->
+
+							<!-- Southern Region (Victoria Blue) -->
+							<path
+								id="path-southern"
+								d="M 460 310 L 400 350 L 320 350 L 260 400"
+								class="tube-line"
+								stroke="var(--color-southern)"
+								stroke-width="8"
+							/>
+
+							<!-- Western Region (Green) -->
+							<path
+								id="path-western"
+								d="M 500 350 L 450 400 L 400 450 L 300 450 L 220 500"
+								class="tube-line"
+								stroke="var(--color-western)"
+								stroke-width="8"
+							/>
+
+							<!-- London Midland Region (Piccadilly Blue) -->
+							<path
+								id="path-midland"
+								d="M 540 390 L 500 350 L 500 230 L 550 170 L 650 170 L 720 120"
+								class="tube-line"
+								stroke="var(--color-midland)"
+								stroke-width="8"
+							/>
+
+							<!-- Eastern Region (Red) -->
+							<path
+								id="path-eastern"
+								d="M 500 350 L 580 350 L 680 350 L 760 300 L 820 300"
+								class="tube-line"
+								stroke="var(--color-eastern)"
+								stroke-width="8"
+							/>
+
+							<!-- Scottish Region (Orange) -->
+							<!-- Co-runs with Eastern and Midland in places -->
+							<path
+								id="path-scottish"
+								d="M 500 350 L 580 350 L 680 350 L 700 420 L 780 460"
+								class="tube-line"
+								stroke="var(--color-scottish)"
+								stroke-width="8"
+							/>
+
+							<!-- STATION NODES (Interactive Groups) -->
+
+							<!-- Class D16/1 (Pioneer, Zone 1, Midland/LMR) -->
+							<g
+								class="station-node"
+								id="node-d16"
+								onclick="selectStation('d16')"
+								data-year="1948"
+								data-active="1948-1963"
+							>
+								<circle
+									cx="500"
+									cy="230"
+									r="5"
+									fill="white"
+									stroke="var(--color-midland)"
+									stroke-width="4"
+								/>
+								<text x="490" y="225" class="station-label" text-anchor="end">Class D16/1</text>
+							</g>
+
+							<!-- Class D3/7 (Pioneer, Zone 1, Southern) -->
+							<g
+								class="station-node"
+								id="node-d3"
+								onclick="selectStation('d3')"
+								data-year="1952"
+								data-active="1952-1967"
+							>
+								<circle
+									cx="460"
+									cy="310"
+									r="5"
+									fill="white"
+									stroke="var(--color-southern)"
+									stroke-width="4"
+								/>
+								<text x="450" y="305" class="station-label" text-anchor="end">Class D3/7</text>
+							</g>
+
+							<!-- Class 08 (Universal Shunter, Zone 2, ALL REGIONS - Large Interchange Capsule) -->
+							<g
+								class="station-node"
+								id="node-08"
+								onclick="selectStation('08')"
+								data-year="1952"
+								data-active="1952-2026"
+							>
+								<!-- TfL Interchange Capsule -->
+								<rect
+									x="488"
+									y="338"
+									width="24"
+									height="24"
+									rx="12"
+									fill="white"
+									stroke="black"
+									stroke-width="3"
+								/>
+								<circle cx="500" cy="350" r="4" fill="black" />
+								<text
+									x="500"
+									y="374"
+									class="station-label"
+									text-anchor="middle"
+									style="font-weight: 800; font-size: 10px"
+								>
+									Class 08
+								</text>
+							</g>
+
+							<!-- Class 55 Deltic (Landmark, Zone 2, Eastern/Scottish - Dbl Ring) -->
+							<g
+								class="station-node"
+								id="node-55"
+								onclick="selectStation('55')"
+								data-year="1961"
+								data-active="1961-1981"
+							>
+								<!-- Landmark Double Ring Symbol -->
+								<circle
+									cx="680"
+									cy="350"
+									r="9"
+									fill="white"
+									stroke="var(--color-eastern)"
+									stroke-width="3"
+								/>
+								<circle cx="680" cy="350" r="5" fill="white" stroke="black" stroke-width="1.5" />
+								<text
+									x="680"
+									y="334"
+									class="station-label"
+									text-anchor="middle"
+									style="font-weight: 800"
+								>
+									Class 55 Deltic
+								</text>
+							</g>
+
+							<!-- Class 37 (Landmark, Zone 2, Eastern/Western/Scottish - Shared Track Node) -->
+							<g
+								class="station-node"
+								id="node-37"
+								onclick="selectStation('37')"
+								data-year="1960"
+								data-active="1960-2026"
+							>
+								<circle
+									cx="580"
+									cy="350"
+									r="9"
+									fill="white"
+									stroke="var(--color-scottish)"
+									stroke-width="3"
+								/>
+								<circle
+									cx="580"
+									cy="350"
+									r="5"
+									fill="white"
+									stroke="var(--color-eastern)"
+									stroke-width="1.5"
+								/>
+								<text
+									x="580"
+									y="334"
+									class="station-label"
+									text-anchor="middle"
+									style="font-weight: 800"
+								>
+									Class 37
+								</text>
+							</g>
+
+							<!-- Class 52 Western (Landmark, Zone 2, Western - Warship) -->
+							<g
+								class="station-node"
+								id="node-52"
+								onclick="selectStation('52')"
+								data-year="1961"
+								data-active="1961-1977"
+							>
+								<circle
+									cx="400"
+									cy="450"
+									r="9"
+									fill="white"
+									stroke="var(--color-western)"
+									stroke-width="3"
+								/>
+								<circle cx="400" cy="450" r="5" fill="white" stroke="black" stroke-width="1.5" />
+								<text
+									x="400"
+									y="472"
+									class="station-label"
+									text-anchor="middle"
+									style="font-weight: 800"
+								>
+									Class 52 Western
+								</text>
+							</g>
+
+							<!-- Class 50 (Zone 2, Midland/Western - Interchange) -->
+							<g
+								class="station-node"
+								id="node-50"
+								onclick="selectStation('50')"
+								data-year="1967"
+								data-active="1967-1994"
+							>
+								<rect
+									x="438"
+									y="388"
+									width="24"
+									height="24"
+									rx="12"
+									fill="white"
+									stroke="black"
+									stroke-width="2.5"
+								/>
+								<circle cx="450" cy="400" r="4" fill="black" />
+								<text x="464" y="415" class="station-label" text-anchor="start">Class 50</text>
+							</g>
+
+							<!-- Class 33 Crompton (Zone 2, Southern - terminus/end node) -->
+							<g
+								class="station-node"
+								id="node-33"
+								onclick="selectStation('33')"
+								data-year="1960"
+								data-active="1960-1997"
+							>
+								<!-- Terminus Bar -->
+								<line
+									x1="250"
+									y1="390"
+									x2="270"
+									y2="410"
+									stroke="var(--color-southern)"
+									stroke-width="6"
+									stroke-linecap="butt"
+								/>
+								<circle cx="260" cy="400" r="4" fill="white" stroke="black" stroke-width="1.5" />
+								<text x="250" y="415" class="station-label" text-anchor="end">Class 33</text>
+							</g>
+
+							<!-- Class 58 (Zone 4, Midland/Eastern) -->
+							<g
+								class="station-node"
+								id="node-58"
+								onclick="selectStation('58')"
+								data-year="1983"
+								data-active="1983-2002"
+							>
+								<circle
+									cx="650"
+									cy="170"
+									r="5"
+									fill="white"
+									stroke="var(--color-midland)"
+									stroke-width="4"
+								/>
+								<text x="650" y="158" class="station-label" text-anchor="middle">Class 58</text>
+							</g>
+
+							<!-- Class 59 (Zone 4, Western - Yeoman) -->
+							<g
+								class="station-node"
+								id="node-59"
+								onclick="selectStation('59')"
+								data-year="1985"
+								data-active="1985-2026"
+							>
+								<circle
+									cx="300"
+									cy="450"
+									r="5"
+									fill="white"
+									stroke="var(--color-western)"
+									stroke-width="4"
+								/>
+								<text x="300" y="438" class="station-label" text-anchor="middle">Class 59</text>
+							</g>
+
+							<!-- Class 60 (Zone 4, Universal - Terminus) -->
+							<g
+								class="station-node"
+								id="node-60"
+								onclick="selectStation('60')"
+								data-year="1989"
+								data-active="1989-2026"
+							>
+								<line
+									x1="710"
+									y1="110"
+									x2="730"
+									y2="130"
+									stroke="var(--color-midland)"
+									stroke-width="6"
+								/>
+								<circle cx="720" cy="120" r="4" fill="white" stroke="black" stroke-width="1.5" />
+								<text x="734" y="123" class="station-label" text-anchor="start">Class 60</text>
+							</g>
+
+							<!-- Class 66 (Zone 6, Universal Freight - Modern Terminus) -->
+							<g
+								class="station-node"
+								id="node-66"
+								onclick="selectStation('66')"
+								data-year="1998"
+								data-active="1998-2026"
+							>
+								<line
+									x1="810"
+									y1="290"
+									x2="830"
+									y2="310"
+									stroke="var(--color-eastern)"
+									stroke-width="6"
+								/>
+								<circle cx="820" cy="300" r="4" fill="white" stroke="black" stroke-width="1.5" />
+								<text
+									x="828"
+									y="286"
+									class="station-label"
+									text-anchor="middle"
+									style="font-weight: 700"
+								>
+									Class 66
+								</text>
+							</g>
+						</svg>
+					</div>
+
+					<!-- Year Slider Control -->
+					<div class="timeline-slider-bar">
+						<div class="slider-label">
+							Aktivt år: <span id="year-display" style="color: var(--color-eastern)">1975</span>
+						</div>
+						<div class="slider-wrapper">
+							<input
+								type="range"
+								min="1948"
+								max="2026"
+								value="1975"
+								class="year-slider"
+								id="timeline-slider"
+								oninput="updateTimeline(this.value)"
+							/>
+							<div class="ticks-labels">
+								<span>1948</span>
+								<span>1955</span>
+								<span>1968</span>
+								<span>1982</span>
+								<span>1995</span>
+								<span>2026</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Tab 2: Scatterplot Chart -->
+				<div id="panel-chart" class="view-panel">
+					<div class="chart-panel">
+						<div class="chart-header">
+							<div class="chart-title">
+								<h2>Hestekræfter vs. Tophastighed</h2>
+								<p>
+									Hold musen over prikkerne for at sammenligne ydeevnen på britiske dieselklasser.
+								</p>
+							</div>
+						</div>
+						<div class="chart-container">
+							<!-- Chart Tooltip -->
+							<div class="chart-tooltip" id="chart-tooltip"></div>
+
+							<!-- Scatterplot SVG -->
+							<svg class="scatterplot-svg" viewBox="0 0 800 400">
+								<!-- Grid lines -->
+								<line x1="80" y1="350" x2="750" y2="350" stroke="#ccc" stroke-width="1" />
+								<line x1="80" y1="50" x2="80" y2="350" stroke="#ccc" stroke-width="1" />
+
+								<!-- X Axis Labels (Speed mph) -->
+								<text x="80" y="370" font-size="10" font-weight="600" text-anchor="middle">
+									0 mph
+								</text>
+								<text x="247" y="370" font-size="10" font-weight="600" text-anchor="middle">
+									50 mph
+								</text>
+								<text x="415" y="370" font-size="10" font-weight="600" text-anchor="middle">
+									100 mph
+								</text>
+								<text x="582" y="370" font-size="10" font-weight="600" text-anchor="middle">
+									150 mph
+								</text>
+								<text x="750" y="370" font-size="10" font-weight="600" text-anchor="middle">
+									200 mph
+								</text>
+								<text
+									x="415"
+									y="390"
+									font-size="12"
+									font-weight="700"
+									text-anchor="middle"
+									fill="var(--text-muted)"
+								>
+									TOP HASTIGHED (MPH)
+								</text>
+
+								<!-- Y Axis Labels (Horsepower hp) -->
+								<text x="70" y="354" font-size="10" font-weight="600" text-anchor="end">0 hp</text>
+								<text x="70" y="279" font-size="10" font-weight="600" text-anchor="end">
+									1.000 hp
+								</text>
+								<text x="70" y="204" font-size="10" font-weight="600" text-anchor="end">
+									2.000 hp
+								</text>
+								<text x="70" y="129" font-size="10" font-weight="600" text-anchor="end">
+									3.000 hp
+								</text>
+								<text x="70" y="54" font-size="10" font-weight="600" text-anchor="end">
+									4.000 hp
+								</text>
+
+								<text
+									x="25"
+									y="200"
+									font-size="12"
+									font-weight="700"
+									text-anchor="middle"
+									fill="var(--text-muted)"
+									transform="rotate(-90 25 200)"
+								>
+									HESTEKRÆFTER (HP)
+								</text>
+
+								<!-- Dot Elements -->
+								<!-- Class 08 (20mph, 350hp) -->
+								<circle
+									class="chart-dot"
+									cx="147"
+									cy="324"
+									r="7"
+									fill="var(--color-southern)"
+									fill-opacity="0.8"
+									stroke="#111"
+									stroke-width="1.5"
+									onmouseover="
+										showTooltip(event, 'Class 08', '350 hp', '20 mph', 'Universal Shunter')
+									"
+									onmouseout="hideTooltip()"
+									onclick="selectStation('08')"
+								/>
+
+								<!-- Class D3/7 (20mph, 400hp) -->
+								<circle
+									class="chart-dot"
+									cx="147"
+									cy="320"
+									r="7"
+									fill="var(--color-southern)"
+									fill-opacity="0.8"
+									stroke="#111"
+									stroke-width="1.5"
+									onmouseover="
+										showTooltip(event, 'Class D3/7', '400 hp', '20 mph', 'Pioneer Shunter')
+									"
+									onmouseout="hideTooltip()"
+									onclick="selectStation('d3')"
+								/>
+
+								<!-- Class 37 (90mph, 1750hp) -->
+								<circle
+									class="chart-dot"
+									cx="381"
+									cy="222"
+									r="8"
+									fill="var(--color-eastern)"
+									fill-opacity="0.8"
+									stroke="#111"
+									stroke-width="1.5"
+									onmouseover="
+										showTooltip(event, 'Class 37', '1.750 hp', '90 mph', 'Mixed Traffic Workhorse')
+									"
+									onmouseout="hideTooltip()"
+									onclick="selectStation('37')"
+								/>
+
+								<!-- Class 55 Deltic (100mph, 3300hp) -->
+								<circle
+									class="chart-dot"
+									cx="415"
+									cy="106"
+									r="9"
+									fill="var(--color-eastern)"
+									fill-opacity="0.8"
+									stroke="#111"
+									stroke-width="1.5"
+									onmouseover="
+										showTooltip(
+											event,
+											'Class 55 Deltic',
+											'3.300 hp',
+											'100 mph',
+											'East Coast Express'
+										)
+									"
+									onmouseout="hideTooltip()"
+									onclick="selectStation('55')"
+								/>
+
+								<!-- Class 52 Western (90mph, 2700hp) -->
+								<circle
+									class="chart-dot"
+									cx="381"
+									cy="151"
+									r="8"
+									fill="var(--color-western)"
+									fill-opacity="0.8"
+									stroke="#111"
+									stroke-width="1.5"
+									onmouseover="
+										showTooltip(
+											event,
+											'Class 52 Western',
+											'2.700 hp',
+											'90 mph',
+											'Western Hydraulic'
+										)
+									"
+									onmouseout="hideTooltip()"
+									onclick="selectStation('52')"
+								/>
+
+								<!-- Class 50 (100mph, 2700hp) -->
+								<circle
+									class="chart-dot"
+									cx="415"
+									cy="151"
+									r="7"
+									fill="var(--color-midland)"
+									fill-opacity="0.8"
+									stroke="#111"
+									stroke-width="1.5"
+									onmouseover="
+										showTooltip(event, 'Class 50', '2.700 hp', '100 mph', 'Mainline Passenger')
+									"
+									onmouseout="hideTooltip()"
+									onclick="selectStation('50')"
+								/>
+
+								<!-- Class 58 (80mph, 3300hp) -->
+								<circle
+									class="chart-dot"
+									cx="348"
+									cy="106"
+									r="7"
+									fill="var(--color-midland)"
+									fill-opacity="0.8"
+									stroke="#111"
+									stroke-width="1.5"
+									onmouseover="
+										showTooltip(event, 'Class 58', '3.300 hp', '80 mph', 'Heavy Freight')
+									"
+									onmouseout="hideTooltip()"
+									onclick="selectStation('58')"
+								/>
+
+								<!-- Class 59 (60mph, 3300hp) -->
+								<circle
+									class="chart-dot"
+									cx="281"
+									cy="106"
+									r="7"
+									fill="var(--color-western)"
+									fill-opacity="0.8"
+									stroke="#111"
+									stroke-width="1.5"
+									onmouseover="
+										showTooltip(
+											event,
+											'Class 59',
+											'3.300 hp',
+											'60 mph',
+											'Private Quarry Heavy Freight'
+										)
+									"
+									onmouseout="hideTooltip()"
+									onclick="selectStation('59')"
+								/>
+
+								<!-- Class 66 (75mph, 3200hp) -->
+								<circle
+									class="chart-dot"
+									cx="331"
+									cy="114"
+									r="7"
+									fill="var(--color-eastern)"
+									fill-opacity="0.8"
+									stroke="#111"
+									stroke-width="1.5"
+									onmouseover="
+										showTooltip(
+											event,
+											'Class 66',
+											'3.200 hp',
+											'75 mph',
+											'Universal Freight Workhorse'
+										)
+									"
+									onmouseout="hideTooltip()"
+									onclick="selectStation('66')"
+								/>
+							</svg>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Detail Placard Panel (Right side) -->
+			<div class="placard-panel">
+				<div
+					class="placard-header"
+					id="placard-header-bg"
+					style="border-bottom: 4px solid var(--color-eastern)"
+				>
+					<span
+						class="placard-tag"
+						id="placard-region-tag"
+						style="background-color: var(--color-eastern); color: white"
+						>Eastern Region</span
+					>
+					<h2 class="placard-title" id="placard-title">Class 55 Deltic</h2>
+					<div class="placard-subtitle" id="placard-subtitle">Også kendt som "Deltic"</div>
+				</div>
+
+				<div class="placard-body">
+					<div>
+						<div class="section-title">Tekniske Data</div>
+						<div class="specs-grid">
+							<div class="spec-item">
+								<span class="spec-label">Producent</span>
+								<span class="spec-value" id="spec-manufacturer">English Electric</span>
+							</div>
+							<div class="spec-item">
+								<span class="spec-label">Hjulopsætning</span>
+								<span class="spec-value" id="spec-wheel">Co-Co</span>
+							</div>
+							<div class="spec-item">
+								<span class="spec-label">Hestekræfter</span>
+								<span class="spec-value" id="spec-power">3.300 hp</span>
+							</div>
+							<div class="spec-item">
+								<span class="spec-label">Tophastighed</span>
+								<span class="spec-value" id="spec-speed">100 mph (160 km/h)</span>
+							</div>
+							<div class="spec-item">
+								<span class="spec-label">Byggeår</span>
+								<span class="spec-value" id="spec-built">1961 - 1962</span>
+							</div>
+							<div class="spec-item">
+								<span class="spec-label">Antal Bygget</span>
+								<span class="spec-value" id="spec-count">22 enheder</span>
+							</div>
+						</div>
+					</div>
+
+					<div>
+						<div class="section-title">AI Historie & Trivia</div>
+						<div class="ai-trivia-card">
+							<span class="ai-badge">AI Beriget Trivia</span>
+							<p class="ai-text" id="placard-trivia">
+								"Klassen er berømt for sine unikke modstillede stempel-dieselmotorer (Napier
+								Deltic), som oprindeligt blev designet til hurtige motortorpedobåde. Deres
+								karakteristiske, brølende motorlyd og utrolige acceleration gjorde dem til store
+								favoritter på East Coast Main Line, hvor de hurtigt overtog de fineste eksprestog
+								fra damplokomotiverne."
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- JavaScript logic -->
+		<script>
+			// Mock Data for the 10 Diesel Classes
+			const stationData = {
+				d16: {
+					title: 'Class D16/1',
+					subtitle: 'LMS Diesel Pioneer',
+					region: 'London Midland Region',
+					color: 'var(--color-midland)',
+					manufacturer: 'LMS Derby Works',
+					wheel: 'Co-Co',
+					power: '1.600 hp',
+					speed: '100 mph (160 km/h)',
+					built: '1947 - 1948',
+					count: '2 enheder',
+					trivia:
+						'Dette var de første hovedlinje-diesellokomotiver bygget i Storbritannien. De blev designet af H.G. Ivatt og banede vejen for hele BR moderniseringsplanen. Deres markante, firkantede næser fik dem til at skille sig ud i damptiden.'
+				},
+				d3: {
+					title: 'Class D3/7',
+					subtitle: 'Tidlig Rangermaskine',
+					region: 'Southern Region',
+					color: 'var(--color-southern)',
+					manufacturer: 'SR Ashford Works',
+					wheel: '0-6-0',
+					power: '400 hp',
+					speed: '20 mph (32 km/h)',
+					built: '1952',
+					count: '3 enheder',
+					trivia:
+						'Disse tidlige pioner-shuntere var forløbere for den universelle Class 08. De blev bygget på Southern Railway design, men leveret lige efter nationaliseringen. De kørte primært på de sydlige rangerbanegårde.'
+				},
+				'08': {
+					title: 'Class 08',
+					subtitle: 'Den Universelle Ranger',
+					region: 'Alle Regioner',
+					color: 'var(--text-dark)',
+					manufacturer: 'BR Derby & Darlington',
+					wheel: '0-6-0',
+					power: '350 hp',
+					speed: '20 mph (32 km/h)',
+					built: '1952 - 1962',
+					count: '996 enheder',
+					trivia:
+						'Det absolut mest talrige britiske lokomotiv i historien! Med næsten 1000 byggede maskiner fandtes de på ethvert depot og enhver rangerbanegård i alle 5 regioner. En ægte slide-workhorse der stadig er i drift mange steder.'
+				},
+				37: {
+					title: 'Class 37',
+					subtitle: 'Også kendt som "Tractor"',
+					region: 'Eastern / Western / Scottish',
+					color: 'var(--color-scottish)',
+					manufacturer: 'English Electric',
+					wheel: 'Co-Co',
+					power: '1.750 hp',
+					speed: '90 mph (145 km/h)',
+					built: '1960 - 1965',
+					count: '309 enheder',
+					trivia:
+						'Fik øgenavnet "Tractor" af jernbaneentusiaster på grund af dens karakteristiske, rytmiske motorlyd under tung belastning. En utrolig alsidig maskine, der kørte godstog i Wales, ekspres-persontog i Skotland og alt derimellem. 100% legendarisk.'
+				},
+				55: {
+					title: 'Class 55 Deltic',
+					subtitle: 'Hurtigløberen fra East Coast',
+					region: 'Eastern Region',
+					color: 'var(--color-eastern)',
+					manufacturer: 'English Electric',
+					wheel: 'Co-Co',
+					power: '3.300 hp',
+					speed: '100 mph (160 km/h)',
+					built: '1961 - 1962',
+					count: '22 enheder',
+					trivia:
+						'Klassen er berømt for sine unikke modstillede stempel-dieselmotorer (Napier Deltic), som oprindeligt blev designet til hurtige motortorpedobåde. Deres karakteristiske, brølende motorlyd og utrolige acceleration gjorde dem til store favoritter på East Coast Main Line.'
+				},
+				52: {
+					title: 'Class 52 Western',
+					subtitle: 'Den Diesel-Hydrauliske Wizzo',
+					region: 'Western Region',
+					color: 'var(--color-western)',
+					manufacturer: 'Crewe & Swindon Works',
+					wheel: 'C-C',
+					power: '2.700 hp',
+					speed: '90 mph (145 km/h)',
+					built: '1961 - 1964',
+					count: '74 enheder',
+					trivia:
+						'Kørte udelukkende på Western Region, som insisterede på lette, tyskinspirerede diesel-hydrauliske transmissioner frem for diesel-elektriske. Alle 74 lokomotiver fik navne der startede med "Western" (fx Western Enterprise). Kærligt kendt som "Thousand" eller "Wizzos".'
+				},
+				50: {
+					title: 'Class 50 Hoover',
+					subtitle: 'Hurtigtoget fra West Coast',
+					region: 'Midland / Western',
+					color: 'var(--color-midland)',
+					manufacturer: 'English Electric',
+					wheel: 'Co-Co',
+					power: '2.700 hp',
+					speed: '100 mph (160 km/h)',
+					built: '1967 - 1968',
+					count: '50 enheder',
+					trivia:
+						'Fik øgenavnet "Hoover" (støvsuger) på grund af den meget kraftige hylelyd fra ventilationsanlægget, der sugede støv ud af motorrummet. De kørte først de hurtige ekspresser mellem Crewe og Glasgow, og blev senere flyttet til Western Region.'
+				},
+				33: {
+					title: 'Class 33 Crompton',
+					subtitle: 'Southern Region Type 3',
+					region: 'Southern Region',
+					color: 'var(--color-southern)',
+					manufacturer: 'BRCW',
+					wheel: 'Bo-Bo',
+					power: '1.550 hp',
+					speed: '85 mph (137 km/h)',
+					built: '1960 - 1962',
+					count: '98 enheder',
+					trivia:
+						'Bygget specifikt til Southern Regions smallere profil. De var udstyret med elektrisk togvarme (ETH), hvilket var yderst moderne i 1960. Fik navnet "Crompton" efter leverandøren af den elektriske generator.'
+				},
+				58: {
+					title: 'Class 58 Bone',
+					subtitle: 'Det modulære godstog',
+					region: 'London Midland Region',
+					color: 'var(--color-midland)',
+					manufacturer: 'BREL Doncaster',
+					wheel: 'Co-Co',
+					power: '3.300 hp',
+					speed: '80 mph (130 km/h)',
+					built: '1983 - 1987',
+					count: '50 enheder',
+					trivia:
+						'Blev populært kaldt "The Bone" (knoglen) på grund af dets usædvanlige form med et smalt centralt motorrum og brede førerhuse i enderne. Det blev designet til nem vedligeholdelse ved hjælp av udskiftelige motormoduler.'
+				},
+				59: {
+					title: 'Class 59 Yeoman',
+					subtitle: 'Det amerikanske gennembrud',
+					region: 'Western Region',
+					color: 'var(--color-western)',
+					manufacturer: 'Electro-Motive Div. (USA)',
+					wheel: 'Co-Co',
+					power: '3.300 hp',
+					speed: '60 mph (97 km/h)',
+					built: '1985 - 1995',
+					count: '15 enheder',
+					trivia:
+						'Det allerførste amerikansk-byggede lokomotiv, der blev importeret til privat drift i Storbritannien (købt af stenbruds-firmaet Foster Yeoman). Dens utrolige pålidelighed chokerede British Rail og banede vejen for den senere Class 66.'
+				},
+				60: {
+					title: 'Class 60 Tug',
+					subtitle: 'Den Tunge Godstrækker',
+					region: 'Alle Regioner',
+					color: 'var(--color-midland)',
+					manufacturer: 'Brush Traction',
+					wheel: 'Co-Co',
+					power: '3.100 hp',
+					speed: '60 mph (97 km/h)',
+					built: '1989 - 1993',
+					count: '100 enheder',
+					trivia:
+						'Blev introduceret for at trække de allertungeste stål- og kultog for BR. Fik øgenavnet "Tug" (bugserbåd) på grund af dens enorme trækkraft og langsomme, stabile acceleration. Er stadig i drift som en af de stærkeste maskiner.'
+				},
+				66: {
+					title: 'Class 66 Shed',
+					subtitle: 'Privatiseringens konge',
+					region: 'Alle Regioner',
+					color: 'var(--color-eastern)',
+					manufacturer: 'EMD (Canada/USA)',
+					wheel: 'Co-Co',
+					power: '3.200 hp',
+					speed: '75 mph (120 km/h)',
+					built: '1998 - 2016',
+					count: '250+ enheder',
+					trivia:
+						'Fik øgenavnet "Shed" (skur) på grund af dens flade, tag-agtige tagstruktur. Den blev rygraden i privatiseret godstransport i hele Storbritannien og Europa på grund af uovertruffen driftssikkerhed. Næsten alle andre ældre BR-lokomotiver blev udrangeret da denne ankom.'
+				}
+			};
+
+			// Tab Switcher Logic
+			function switchTab(tabId) {
+				document.querySelectorAll('.tab-btn').forEach((btn) => btn.classList.remove('active'));
+				document
+					.querySelectorAll('.view-panel')
+					.forEach((panel) => panel.classList.remove('active'));
+
+				if (tabId === 'map') {
+					event.target.classList.add('active');
+					document.getElementById('panel-map').classList.add('active');
+				} else if (tabId === 'chart') {
+					event.target.classList.add('active');
+					document.getElementById('panel-chart').classList.add('active');
+				}
+			}
+
+			// Sidebar Update Logic
+			function selectStation(stationId) {
+				const data = stationData[stationId];
+				if (!data) return;
+
+				// Highlight node in SVG Map
+				document
+					.querySelectorAll('.station-node')
+					.forEach((node) => node.classList.remove('selected'));
+				const svgNode = document.getElementById('node-' + stationId);
+				if (svgNode) svgNode.classList.add('selected');
+
+				// Update Sidebar Placard UI
+				const header = document.getElementById('placard-header-bg');
+				const tag = document.getElementById('placard-region-tag');
+				const title = document.getElementById('placard-title');
+				const subtitle = document.getElementById('placard-subtitle');
+
+				// Spec values
+				const manufacturer = document.getElementById('spec-manufacturer');
+				const wheel = document.getElementById('spec-wheel');
+				const power = document.getElementById('spec-power');
+				const speed = document.getElementById('spec-speed');
+				const built = document.getElementById('spec-built');
+				const count = document.getElementById('spec-count');
+				const trivia = document.getElementById('placard-trivia');
+
+				// Apply Data & Colors
+				header.style.borderBottomColor = data.color;
+				tag.style.backgroundColor = data.color;
+				tag.textContent = data.region;
+				title.textContent = data.title;
+				subtitle.textContent = data.subtitle;
+
+				manufacturer.textContent = data.manufacturer;
+				wheel.textContent = data.wheel;
+				power.textContent = data.power;
+				speed.textContent = data.speed;
+				built.textContent = data.built;
+				count.textContent = data.count;
+				trivia.textContent = data.trivia;
+			}
+
+			// Timeline Slider Interaction
+			function updateTimeline(year) {
+				document.getElementById('year-display').textContent = year;
+
+				// Iterate over all station nodes in the SVG map
+				document.querySelectorAll('.station-node').forEach((node) => {
+					const activeRange = node.getAttribute('data-active').split('-');
+					const start = parseInt(activeRange[0]);
+					const end = parseInt(activeRange[1]);
+
+					if (year >= start && year <= end) {
+						node.classList.remove('dimmed');
+					} else {
+						node.classList.add('dimmed');
+					}
+				});
+
+				// Iterate over path lines (dim if not matching era)
+				// 1948-1954: Only early pioneers (Southern and Midland active in Zone 1)
+				const pathSouthern = document.getElementById('path-southern');
+				const pathWestern = document.getElementById('path-western');
+				const pathMidland = document.getElementById('path-midland');
+				const pathEastern = document.getElementById('path-eastern');
+				const pathScottish = document.getElementById('path-scottish');
+
+				if (year < 1955) {
+					pathWestern.classList.add('dimmed');
+					pathEastern.classList.add('dimmed');
+					pathScottish.classList.add('dimmed');
+					pathSouthern.classList.remove('dimmed');
+					pathMidland.classList.remove('dimmed');
+				} else if (year >= 1955 && year < 1998) {
+					pathSouthern.classList.remove('dimmed');
+					pathMidland.classList.remove('dimmed');
+					pathWestern.classList.remove('dimmed');
+					pathEastern.classList.remove('dimmed');
+					pathScottish.classList.remove('dimmed');
+				} else if (year >= 1998) {
+					// Dim retired lines or keep active
+					pathWestern.classList.add('dimmed'); // Hydraulics retired
+					pathSouthern.classList.remove('dimmed');
+					pathMidland.classList.remove('dimmed');
+					pathEastern.classList.remove('dimmed');
+					pathScottish.classList.remove('dimmed');
+				}
+			}
+
+			// Scatterplot Chart Tooltip Logic
+			const tooltip = document.getElementById('chart-tooltip');
+
+			function showTooltip(event, name, hp, speed, desc) {
+				tooltip.style.opacity = 1;
+				tooltip.innerHTML = `<strong>${name}</strong><br>Hestekræfter: ${hp}<br>Tophastighed: ${speed}<br><span style="color:#aaa;font-size:10px;">${desc}</span>`;
+
+				// Position tooltip near cursor relative to the chart container
+				const container = document.querySelector('.chart-container');
+				const rect = container.getBoundingClientRect();
+				const x = event.clientX - rect.left + 15;
+				const y = event.clientY - rect.top - 15;
+
+				tooltip.style.left = x + 'px';
+				tooltip.style.top = y + 'px';
+			}
+
+			function hideTooltip() {
+				tooltip.style.opacity = 0;
+			}
+
+			// Initial setup
+			updateTimeline(1975);
+		</script>
+	</body>
+</html>

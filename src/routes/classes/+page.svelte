@@ -2,7 +2,7 @@
 	import type { PageData } from './$types.js';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import { tractionColor, tractionLabel, buildPeriod, mediaSrcset, TRACTIONS } from '$lib/loco.js';
+	import { tractionColor, tractionLabel, buildPeriod, mediaSrcset } from '$lib/loco.js';
 	import { resolveDisplayName } from '$lib/nameScheme.js';
 
 	let { data } = $props<{ data: PageData }>();
@@ -63,33 +63,6 @@
 						: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}
 				>
 					{era.name}
-				</a>
-			{/each}
-		</div>
-
-		<div class="flex flex-wrap items-center gap-1.5">
-			<span
-				class="mr-1 text-[10px] font-semibold tracking-widest uppercase"
-				style="color: var(--map-ink-soft);">Traction</span
-			>
-			<a
-				href={filterHref({ traction: '' })}
-				class="rounded-full border px-3 py-1 text-xs transition-colors"
-				style={data.filters.traction === ''
-					? 'background: var(--tfl-blue); border-color: var(--tfl-blue); color: white; font-weight: 600;'
-					: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}>All</a
-			>
-			{#each TRACTIONS as traction (traction)}
-				<a
-					href={filterHref({ traction })}
-					class="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors"
-					style={data.filters.traction === traction
-						? `background: ${tractionColor(traction)}; border-color: ${tractionColor(traction)}; color: white; font-weight: 600;`
-						: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}
-				>
-					<span class="h-2 w-2 rounded-full" style="background-color: {tractionColor(traction)}"
-					></span>
-					{tractionLabel(traction)}
 				</a>
 			{/each}
 		</div>

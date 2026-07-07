@@ -2,29 +2,33 @@ import type { Traction } from './layout.js';
 
 /** Linjenavne til legende/UI (F5.4 legende, F5.7 sidetitel). */
 export const LINE_NAMES: Record<Traction, string> = {
-	STEAM: 'Steam',
-	DIESEL: 'Diesel',
-	ELECTRIC: 'Electric',
-	OTHER: 'Experimental'
+	WESTERN: 'Western Region (Diesel-Hydraulic)',
+	EASTERN: 'Eastern Region (Express Passenger)',
+	MIDLAND: 'London Midland Region (Heavy Mainline)',
+	SOUTHERN: 'Southern Region (Electro-Diesel / Shunters)',
+	SCOTTISH: 'Scottish Region (Mixed / Highlands)'
 };
 
-/** TfL-homage bag hver linjefarve (U4 Option A) — kun til tooltip/kontekst. */
+/** TfL-homage bag hver linjefarve. */
 export const LINE_TFL_HOMAGE: Record<Traction, string> = {
-	STEAM: 'Metropolitan',
-	DIESEL: 'District',
-	ELECTRIC: 'Victoria',
-	OTHER: 'Jubilee'
+	WESTERN: 'District',
+	EASTERN: 'Central',
+	MIDLAND: 'Piccadilly',
+	SOUTHERN: 'Victoria',
+	SCOTTISH: 'Orange'
 };
 
 export function lineColorVar(traction: Traction): string {
 	switch (traction) {
-		case 'STEAM':
-			return 'var(--line-steam)';
-		case 'DIESEL':
-			return 'var(--line-diesel)';
-		case 'ELECTRIC':
-			return 'var(--line-electric)';
-		default:
-			return 'var(--line-other)';
+		case 'WESTERN':
+			return 'var(--color-western)';
+		case 'EASTERN':
+			return 'var(--color-eastern)';
+		case 'MIDLAND':
+			return 'var(--color-midland)';
+		case 'SOUTHERN':
+			return 'var(--color-southern)';
+		case 'SCOTTISH':
+			return 'var(--color-scottish)';
 	}
 }

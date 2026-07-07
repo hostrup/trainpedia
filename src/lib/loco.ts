@@ -1,9 +1,14 @@
 // Delte helpers for lokomotivklasse-præsentation (badges, farver, srcset).
-import type { TractionType } from './types.js';
 import { lineColorVar } from './tubemap/colors.js';
+import type { Traction } from './tubemap/layout.js';
 
 // Samme farvekilde som kortet (U4 Option A) — ingen parallel palet.
-export const tractionColor = lineColorVar;
+export function tractionColor(traction: string): string {
+	if (['WESTERN', 'EASTERN', 'MIDLAND', 'SOUTHERN', 'SCOTTISH'].includes(traction)) {
+		return lineColorVar(traction as Traction);
+	}
+	return 'var(--color-midland)';
+}
 
 export function tractionLabel(traction: string): string {
 	switch (traction) {
@@ -17,8 +22,6 @@ export function tractionLabel(traction: string): string {
 			return 'Other';
 	}
 }
-
-export const TRACTIONS: TractionType[] = ['STEAM', 'DIESEL', 'ELECTRIC', 'OTHER'];
 
 // localPath peger på 960px-varianten; 480/1920 ligger ved siden af med samme hash.
 export function mediaSrcset(localPath: string): { src: string; srcset: string } {

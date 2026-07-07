@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types.js';
-	import type { TractionType, LocomotiveClass } from '$lib/types.js';
+	import type { LocomotiveClass } from '$lib/types.js';
 	import TubeMap from '$lib/tubemap/TubeMap.svelte';
 	import FilterOverlay from '$lib/components/FilterOverlay.svelte';
 	import MuseumPlacard from '$lib/components/MuseumPlacard.svelte';
@@ -10,7 +10,6 @@
 
 	// Interactive filter states
 	let selectedEraId = $state<number | null>(null);
-	let selectedTraction = $state<TractionType | null>(null);
 	let selectedWheelArrangement = $state<string | null>(null);
 
 	// Navigation/selection states
@@ -38,7 +37,6 @@
 		eras={data.eras}
 		{wheelArrangements}
 		bind:selectedEraId
-		bind:selectedTraction
 		bind:selectedWheelArrangement
 	/>
 
@@ -48,7 +46,6 @@
 			classes={data.classes}
 			eras={data.eras}
 			bind:selectedClass
-			{selectedTraction}
 			{selectedEraId}
 			{selectedWheelArrangement}
 			displayName={(c) => resolveDisplayName(c.name, c.aliases ?? [], data.nameScheme)}
