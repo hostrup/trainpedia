@@ -155,7 +155,3 @@ Desuden på `LocomotiveClass`: `isLandmark Boolean @default(false)` (F5.5).
 5. F5.7 LineDiagram, F5.8 lys-migrering af /classes + /class/[qid].
 6. F6.1–F6.4 individ-niveau; pilot: Class 37-fleeten (U6).
 7. Hver fase: tests grønne, `./deploy.sh`, BACKLOG synk (husets SOP).
-
-```
-
-```
