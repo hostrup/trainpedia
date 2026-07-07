@@ -1,6 +1,122 @@
 # Backlog — trainpedia (review 2026-07-07)
 
-Baseline: lint 0 fejl · check/tsc 0 fejl · tests 27/27 grønne (25 unit, 2 e2e)
+Baseline (genverificeret 2026-07-07 aften, Claude Fable 5): lint 0 fejl · check/tsc
+0 fejl (1 a11y-warning, se F9.8) · 25 unit-tests grønne · working tree ren på main.
+DB-fakta: 98 klasser (100% DIESEL) · 309 individer (kun 1/98 klasser har fleet-data)
+· 353 media-assets (13 klasser har 0) · 853 identities · `totalBuilt` er NULL på
+ALLE 98 klasser.
+
+## Fase F9 — Opslagsværkets komplethed + oprydning (analyse 2026-07-07, Claude Fable 5)
+
+**Analysens hovedkonklusion:** F5–F8 har leveret et sammenhængende TfL-univers med
+god interaktion, men "Opslagsværket" (F6-visionen, Ronnis kernekrav) er reelt kun
+en pilot: fleet-data findes for ÉN klasse (Class 37), `totalBuilt` er tomt overalt,
+og søgningen kan ikke finde individer. Datakomplethed er nu den største afstand
+mellem produktet og briefen — ikke UI. Rækkefølgen herunder er prioriteret; en
+agent kan tage punkterne oppefra. Husdisciplin gælder: `04-reclassify` efter hver
+seed, strict factuality (tomme felter frem for opdigtning), `./deploy.sh` som
+eneste udrulningsvej, BACKLOG.md opdateres når et punkt lukkes.
+
+### A. Datakomplethed (højeste værdi — det er her produktet halter mest)
+
+- [ ] **F9.1** [High] **Generalisér fleet-seeden ud over Class 37-piloten.**
+      `scripts/seed/06-fleet.ts:18` har en hardcodet liste med præcis ét opslag
+      (Q3306037 → "List of British Rail Class 37 locomotives"). Kun 1/98 klasser har
+      individer i DB — F6.5's "100% dækning" gælder klasse-niveau, ikke individ-niveau.
+      Fix: auto-opdag pr. klasse om en "List of British Rail Class NN locomotives"-
+      artikel findes (Wikipedia API-eksistenstjek ud fra `wikipediaTitle`/TOPS-nummer);
+      fallback: parse fleet-/statustabel i selve klasseartiklen hvis den har en.
+      Genbrug pilotens cheerio-parser og bevar idempotens (upsert på
+      `[classId, currentNumber]`) + provenance (sourceUrl+sourceRevision). Klasser uden
+      parsebar kilde forbliver tomme (strict factuality — huller er OK).
+      **Accept:** dæknings-rapport (individer fundet vs. Total Built pr. klasse)
+      udskrives; de store TOPS-klasser med kendte listeartikler (08, 20, 31, 40, 47,
+      50, 55…) har fleets i DB; genkørsel ændrer intet (idempotens).
+- [ ] **F9.2** [High] **Backfill `LocomotiveClass.totalBuilt` — feltet er NULL på
+      alle 98 klasser.** Kilden findes allerede to steder: Specification-rækken
+      "Total Built" (`06-fleet.ts:113` parser den allerede ad-hoc) og Wikidata P2560
+      (hentes i `01-discover.ts` men når åbenbart ikke DB-feltet for det nuværende
+      datasæt). Nyt engangsscript efter `backfill-regions.ts`-mønsteret (eller ind i
+      `04-reclassify.ts` så det kører pr. seed). Uden feltet kan hverken
+      fleet-dækningsrapporten (F9.1) eller "N built"-visninger regne rigtigt.
+      **Accept:** `totalBuilt` udfyldt hvor en kilde findes; /classes-kortene og
+      /class/[qid] viser tallet; antal resterende NULL rapporteres.
+- [ ] **F9.3** [Medium] **Søgningen finder ikke individer.** Header-søgningen går
+      til /classes, hvis load (`src/routes/classes/+page.server.ts:14-18`) kun matcher
+      klassenavn/nickname/ClassAlias — søgning på "37403" eller "D6607" giver 0 hits,
+      selvom 853 `LocomotiveIdentity`-rækker findes og `/loco/[number]` allerede
+      slår op på historiske numre. (Kendt datahul noteret i F5.6 — "søgningen bør
+      udvides når F6.2 er kørt"; F6.2 ER kørt.) Fix: match q mod
+      `Locomotive.currentNumber` + `LocomotiveIdentity.number`; ved unikt match vis
+      et "Individuals"-resultat der linker til `/loco/[nummer]` (eller redirect ved
+      eksakt match). **Accept:** søgning på "37403", "D6607" og "Isle of Mull" fører
+      brugeren til individsiden for 37403.
+- [ ] **F9.4** [Medium] **Media-huller: 13/98 klasser har 0 billeder** (bl.a.
+      Class 74, LNER J45, en stribe tidlige LMS/BR-shuntere — kør
+      `media: { none: {} }`-query for den aktuelle liste). Gennemsnittet er ~3,6
+      assets/klasse mod briefens ≥20-mål. Kør `03-media.ts` målrettet hullerne
+      (Commons-kategori + intitle-fallback, jf. F5.9a) og hæv media-loftet for
+      landmark-klasserne (F6.4-hensigten). Nogle obskure shuntere HAR måske intet
+      på Commons — det er acceptabelt, men skal så stå i rapporten.
+      **Accept:** antal klasser med 0 media reduceret og dokumenteret før/efter;
+      landmark-klasser har mærkbart flere assets.
+- [ ] **F9.5** [Medium] **Æra-hygiejne.** (a) "Pre-Grouping" har 0 klasser efter
+      diesel-pivoten, men sendes stadig til kortets zone-bånd og /classes-filteret —
+      skjul/udelad tomme æraer i UI (behold rækken i DB til evt. genudvidelse, U7).
+      (b) Fordelingen 16/65/2/4/11 på de øvrige æraer ser skæv ud: "The Diesel &
+      Electric Transition Era" (1968–1981) har kun 2 klasser, selvom HST/Class 43,
+      56 m.fl. hører hjemme dér — verificér `04-reclassify.ts`'s æra-grænselogik mod
+      buildStart-fordelingen og genplacér fejlplacerede klasser. **Accept:** ingen
+      tomme æra-zoner på kortet; stikprøve (Class 43, 56, 58) ligger i den æra deres
+      introduktionsår tilsiger.
+- [ ] **F9.6** [Low] **`seed-report.md` er forældet og misvisende** — den beskriver
+      et 152-klassers damp-univers ("488 klasser undervejs") fra FØR diesel-pivoten.
+      Opdater `scripts/generate-report.ts` til nuværende scope: klasser/æra,
+      media-dækning (inkl. 0-media-listen), spec-dækning, fleet-dækning pr. klasse
+      (kobler til F9.1/F9.2), og genkør den som fast afslutning på seed-kæden.
+      **Accept:** rapporten afspejler DB'ens faktiske tal (98 klasser osv.).
+- [ ] **F9.7** [Low] Én klasse mangler narrativ: British Rail Class 97/6
+      (Q4970874). Kør enrichment målrettet; findes ingen kildetekst, vises "unknown"
+      (acceptabelt) — men undersøg først om `wikipediaTitle` blot mangler/er forkert.
+
+### B. Kode- og testkvalitet
+
+- [ ] **F9.8** [Medium] a11y-warning (eneste i `npm run check`):
+      `src/lib/tubemap/TubeMap.svelte:404` — `<div>` med mouse/keyboard-listeners
+      uden rolle. Giv elementet `role="application"` + `tabindex` og aria-label
+      (det ER kortets interaktionsflade), eller flyt listeners til et interaktivt
+      element. Keyboard-navigation på kortet (piletaster/tab mellem stationer) er
+      i samme åndedrag værd at overveje, men er ikke et krav for at lukke punktet.
+- [ ] **F9.9** [Low] **Scaffold-oprydning** (alt sammen committet og med i
+      prod-build): `src/routes/demo/**` (demo-ruter skibes på tog.hostrup.org!),
+      `src/lib/vitest-examples/**`, `scratch/test-layout.ts`,
+      `playwright-screenshots/home-page.png` (mappen bør i .gitignore som
+      test-results allerede er). Slet + tilføj gitignore-linjer. OBS: 2 af de
+      "27 tests" i den gamle baseline var demo-tests — forvent at totalen falder;
+      det er korrekt, ikke en regression.
+- [ ] **F9.10** [Low] **E2E-dækning er reelt én test** (home-page smoke;
+      `src/routes/home.e2e.ts`). Tilføj smoke-e2e for de flows F5–F8 byggede:
+      /classes med søgning ("English Electric Type 3" → Class 37), /class/Q3306037
+      (fleet-tabellen renderer 309 rækker/paginering), /loco/37403
+      (omlitrerings-tidslinje D6607→37307→37403), navneskema-vælgeren (cookie +
+      SSR), Time Machine-toggle. Hold dem hurtige — ingen zoom-gestus-test i CI.
+- [ ] **F9.11** [Low] `prisma/schema.prisma` — L2 (shadow-db) består; se "Åben".
+      Og gentest TS-fælden fra F5.7/F5.8 (`Record[...]`-indeksering kollapser til
+      `any` under TypeScript 6.0.3) efter næste TypeScript-bump — fjern
+      `as TractionType`-casts i `/line/[slug]` og `MuseumPlacard.svelte` hvis fixet.
+
+### C. UX-udeståender (arvet fra F7/F8 — kræver browser-verifikation)
+
+- [ ] **F9.12** [Medium] Labelkollision nær centrum ved mellemzoom er kun delvist
+      løst (F7-udestående): LOD skjuler labels udzoomet, men i mellemzoom kan tætte
+      stationer stadig overlappe. Implementér kollisions-forskydning (labelSide-flip
+      eller y-nudge ud fra målte tekstbredder) i `TubeMap.svelte`/`StationIcon.svelte`.
+      Verificér med Playwright-screenshots på 2-3 zoom-niveauer.
+- [ ] **F9.13** [Low] Interaktiv browser-verifikation af zoom-følelsen (LOD-
+      overgange k<0.5/k<2, zone-ringes opdagelighed ved pan, 60 FPS-budgettet) har
+      aldrig fået øjne på sig — F5.4/F5.8 noterede det eksplicit. Kør med
+      Chrome-værktøjet mod dev-serveren eller tog.hostrup.org og notér fund som
+      nye backlog-punkter frem for at rette i blinde.
 
 ## Fase F8 — Kort-interaktion (Claude Sonnet 5, 2026-07-07, iteration 2)
 
@@ -178,13 +294,14 @@ testet om brugeren naturligt opdager dem ved zoom/pan).
 - [x] **F6.2** Seed `06-fleet.ts`: parse fleet-/statustabeller fra Wikipedia-klasseartikler og "List of…"-artikler; supplér med Wikidata-emner for enkeltlokomotiver (bevarede maskiner har ofte egne emner med navn, status og hjemsted). Strict factuality som altid: felter uden kilde forbliver tomme; provenance (sourceUrl + revision) pr. individ. Dæknings-rapport: enheder fundet vs. `totalBuilt` pr. klasse. **Implementeret (pilot Class 37/U6):** parser Wikipedias regelmæssige fleet-tabel (BTC/TOPS×3/Post-TOPS×2-omlitreringskæde, Names, Status, Notes) via cheerio. Navn↔nummer er IKKE 1:1 i kilden — kun sidste navn gemmes som `currentName`, øvrige i `nicknames`; `LocomotiveIdentity` bærer udelukkende den verificerbare nummer-kæde. Idempotent (upsert på `[classId, currentNumber]`, identities slettes+genskabes pr. individ). **Resultat: 309/309 individer (100% dækning), IN_SERVICE=40/STORED=21/PRESERVED=39/SCRAPPED=209.** Pilot-eksemplet matcher briefen præcist: 37403 "Isle of Mull" (nicknames: Glendarroch, Ben Cruachan), identities D6607→37307→37403, fuld sourceUrl+sourceRevision-provenance. **Udestår:** Wikidata-emner for enkeltlokomotiver (supplerende hjemsted/status for bevarede maskiner) — ikke gjort i denne pilot, mulig fremtidig udvidelse.
 - [x] **F6.3** UI på `/class/[qid]`: ny "The Fleet"-sektion — søgbar/sortérbar tabel over alle byggede enheder (nummer, navn, status-badge i linjefarven, bevaringssted) med hurtigfilter ("kun bevarede", "kun i drift"). Individ-side `/loco/[nummer]` med omlitrerings-tidslinje, navnehistorik, øgenavne, individuel historie og galleri.
 - [x] **F6.4** Media-kobling pr. individ: `MediaAsset.locoNumber` findes allerede i skemaet — kobl eksisterende assets til `Locomotive`-records, og udvid `03-media.ts` med målrettet Commons-søgning pr. loco-nummer (fx kategori/søgning "37403"), så individ-siderne får egne billeder. Flere billeder pr. klasse generelt (hæv media-loftet for landmark-klasser).
-- [x] **F6.5** Komplethed som mål: opslagsværket dækker nu 100% af alle dieselklasser, og udrulningen fokuserer udelukkende på britiske diesel-lokomotiver.
+- [x] **F6.5** Komplethed som mål: opslagsværket dækker nu 100% af alle dieselklasser, og udrulningen fokuserer udelukkende på britiske diesel-lokomotiver. **Præcisering (analyse 2026-07-07): "100%" gælder KLASSE-niveau (alle 98 dieselklasser har en side). Individ-niveau er stadig kun Class 37-piloten (1/98 klasser, 309 individer) — generalisering er F9.1.**
 - [x] **Sprint 2 (Udrullet 2026-07-07):** 100% diesel-scope integreret med 2D Region Metrokort, spec-scatterplot og Timeline Slider.
 
 ## Kræver brugerbeslutning
 
-- [ ] **U1** Authelia-politik (arkitekt-forslag: bypass) — C3
-- [ ] **U2** Skal discovery udvides ud over de 7 æraers "major classes" til ALT rullende materiel? (briefen siger "preferably all trains of all eras" — start m. ≥20/æra, udvid efter seed-rapport) — OG omvendt: skal ikke-lokomotiver (godsvogne mv.) UD af det nuværende datasæt?
+- [ ] **U1** Authelia-politik (arkitekt-forslag: bypass) — C3. Blokerer intet i F9, men skal afklares før sitet regnes som "færdigt lanceret".
+- [x] **U2** ~~Skal discovery udvides ud over de 7 æraers "major classes" til ALT rullende materiel? — OG omvendt: skal ikke-lokomotiver UD?~~ **Overhalet af F6.5-pivoten 2026-07-07:** datasættet er nu 100% britiske diesel-LOKOMOTIVER (98 klasser; godsvogne/ikke-lokomotiver blev renset ud af `clean-non-diesel.ts`). Spørgsmålet genopstår som U7.
+- [ ] **U7** Skal damp- og el-æraerne genindføres i datasættet, og i givet fald hvornår? (Briefen siger "all trains of all eras"; diesel-scope var en bevidst kompletheds-prioritering. Genudvidelse rører æra-strukturen (F9.5a), kort-layoutet (dieselLayout.ts er diesel-specifik) og fleet-seeden.) **Anbefaling: udskyd til F9's datakomplethed er lukket for diesel — ellers gentages "halvt produkt"-problemet fra F7 i tre traktioner på én gang.**
 - [x] **U3** ✅ BESLUTTET 2026-07-07: Navneskema-vælger med default TOPS ("Class 37"); søgning matcher alle aliasser (D6700, English Electric Type 3, "Tractor"). → implementeres i F5.2 + F5.6.
 - [x] **U4** ✅ BESLUTTET 2026-07-07: **Option A** — Steam = Metropolitan-magenta `#9B0058`, Diesel = District-grøn `#007D32`, Electric = Victoria-lyseblå `#0098D8`, Experimental/Other = Jubilee-grå `#A0A5A9`.
 - [x] **U5** ✅ BESLUTTET 2026-07-07: **HELE sitet i det lyse TfL-univers** — ingen mørk toggle. Linjefarven følger med ind på klasse-/individ-sider via `--line-color`.
