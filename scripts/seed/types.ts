@@ -6,6 +6,18 @@ export type Traction = z.infer<typeof TractionSchema>;
 export const MediaKindSchema = z.enum(['PHOTO', 'BLUEPRINT', 'DIAGRAM', 'DOCUMENT']);
 export type MediaKind = z.infer<typeof MediaKindSchema>;
 
+export const AliasSchemeSchema = z.enum(['TOPS', 'PRE_TOPS', 'BUILDER', 'NICKNAME', 'ORIGINAL']);
+export type AliasScheme = z.infer<typeof AliasSchemeSchema>;
+
+// Class alias contract (F5.2/U3) — alternative navne/numre for en klasse
+export const ClassAliasCandidateSchema = z.object({
+	classId: z.number().int(),
+	alias: z.string().min(1),
+	scheme: AliasSchemeSchema,
+	sourceUrl: z.string().nullable()
+});
+export type ClassAliasCandidate = z.infer<typeof ClassAliasCandidateSchema>;
+
 // Specification contract
 export const SpecificationSchema = z.object({
 	key: z.string(),

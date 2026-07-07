@@ -20,9 +20,18 @@ Idempotente TypeScript-scripts (`tsx`), køres i rækkefølge. Al output valider
 - Metadata: titel, år (fra `DateTimeOriginal`/beskrivelse hvis parsebar), loco-nummer (regex på beskrivelse, fx \b\d{5}\b eller klassepræfiks), fotograf-attribution, licens — manglende felter = NULL
 - Mål: ≥20 assets/klasse; rate-limit venligt (maxlag-param, User-Agent med kontakt)
 
-## 4. `04-report.ts`
+## 4. `04-reclassify.ts` — datatriage
 
-- Genererer `seed-report.md`: klasser/æra, assets/klasse-fordeling, specs-dækning, licens-fordeling, fejlliste → fremlægges for Ronni
+- Udleder traction fra Whyte-notation + BR TOPS-nummerserier og genplacerer æra efter traction+år. Idempotent — **køres efter ENHVER seed-kørsel**, da upserts i 03-media.ts kan overskrive traction/æra-felterne.
+
+## 5. `05-aliases.ts` — Wikidata-aliasser (F5.2/U3)
+
+- Per klasse: `skos:altLabel` (en) fra Wikidata + det eksisterende `nickname`-felt → `ClassAlias`-rækker klassificeret til `AliasScheme` (PRE_TOPS/BUILDER/NICKNAME/ORIGINAL) ud fra mønstre (selskabsprefiks = ORIGINAL, "British Rail(ways) class …" = PRE_TOPS, "D6700"-stil = PRE_TOPS, "X Type N" = BUILDER, ellers NICKNAME). TOPS-navnet i sig selv duplikeres ikke — det er allerede `LocomotiveClass.name`.
+- Idempotent (upsert på `[classId, alias]`) — genkør efter enhver ny klasse-seed.
+
+## Rapport (udestår)
+
+- `seed-report.md`: klasser/æra, assets/klasse-fordeling, specs-dækning, licens-fordeling, fejlliste → fremlægges for Ronni (ikke implementeret som separat script endnu, se BACKLOG)
 
 ## Kørsel
 
