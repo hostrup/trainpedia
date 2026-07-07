@@ -10,7 +10,8 @@ export const load: PageServerLoad = async ({ params }) => {
 			include: {
 				era: true,
 				specs: { orderBy: { sortIndex: 'asc' } },
-				media: { orderBy: { sortIndex: 'asc' } }
+				media: { orderBy: { sortIndex: 'asc' } },
+				aliases: { select: { alias: true, scheme: true } }
 			}
 		});
 	} catch (err) {

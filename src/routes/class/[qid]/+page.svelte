@@ -5,9 +5,11 @@
 	import SpecificationGrid from '$lib/components/SpecificationGrid.svelte';
 	import InspectLightbox from '$lib/components/InspectLightbox.svelte';
 	import { tractionColor, tractionLabel, buildPeriod, mediaSrcset } from '$lib/loco.js';
+	import { resolveDisplayName } from '$lib/nameScheme.js';
 
 	let { data } = $props<{ data: PageData }>();
 	const cls = $derived(data.cls);
+	const displayName = $derived(resolveDisplayName(cls.name, cls.aliases, data.nameScheme));
 
 	let activeLightboxMedia = $state<MediaAsset | null>(null);
 
@@ -29,7 +31,7 @@
 </script>
 
 <svelte:head>
-	<title>{cls.name} — Trainpedia</title>
+	<title>{displayName} — Trainpedia</title>
 	{#if cls.narrative}
 		<meta name="description" content={cls.narrative.slice(0, 160)} />
 	{/if}
@@ -77,7 +79,7 @@
 				{/if}
 			</div>
 			<h1 class="font-display mt-2 text-3xl font-semibold text-white drop-shadow-lg sm:text-5xl">
-				{cls.name}
+				{displayName}
 			</h1>
 			{#if cls.nickname}
 				<p class="font-serif mt-1 text-lg text-amber-400 italic drop-shadow">“{cls.nickname}”</p>

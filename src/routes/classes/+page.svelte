@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { tractionColor, tractionLabel, buildPeriod, mediaSrcset, TRACTIONS } from '$lib/loco.js';
+	import { resolveDisplayName } from '$lib/nameScheme.js';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -135,7 +136,7 @@
 
 					<div class="flex flex-1 flex-col p-4">
 						<h2 class="font-display text-base leading-snug font-semibold text-white">
-							{cls.name}
+							{resolveDisplayName(cls.name, cls.aliases, data.nameScheme)}
 						</h2>
 						{#if cls.nickname}
 							<p class="font-serif text-sm text-amber-400/90 italic">“{cls.nickname}”</p>

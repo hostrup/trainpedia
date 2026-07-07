@@ -12,6 +12,8 @@ export interface MappableClass {
 	serviceExit: string | null; // ISO-dato eller null
 	isLandmark: boolean;
 	eraId: number;
+	/** Ikke brugt af selve layoutet — kun til stede så en displayName-callback (F5.6) kan læse aliasser. */
+	aliases?: { alias: string; scheme: string }[];
 }
 
 export interface MappableEra {

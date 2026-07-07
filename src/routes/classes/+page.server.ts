@@ -10,9 +10,12 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	const where: Prisma.LocomotiveClassWhereInput = {};
 	if (q) {
+		// Søgning matcher navn, kaldenavn OG alle aliasser (D6700, "Tractor", English Electric
+		// Type 3 osv.) — F5.2/U3-kravet om at kunne finde en klasse uanset hvilket navn man kender.
 		where.OR = [
 			{ name: { contains: q, mode: 'insensitive' } },
-			{ nickname: { contains: q, mode: 'insensitive' } }
+			{ nickname: { contains: q, mode: 'insensitive' } },
+			{ aliases: { some: { alias: { contains: q, mode: 'insensitive' } } } }
 		];
 	}
 	if (eraSlug) where.era = { slug: eraSlug };
@@ -46,7 +49,8 @@ export const load: PageServerLoad = async ({ url }) => {
 						orderBy: { sortIndex: 'asc' },
 						take: 1,
 						select: { localPath: true, title: true }
-					}
+					},
+					aliases: { select: { alias: true, scheme: true } }
 				}
 			})
 		]);

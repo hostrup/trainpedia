@@ -1,5 +1,11 @@
 export type TractionType = 'STEAM' | 'DIESEL' | 'ELECTRIC' | 'OTHER';
 export type MediaKind = 'PHOTO' | 'SCHEMATIC' | 'BLUEPRINT' | 'DIAGRAM' | 'DOCUMENT';
+export type AliasSchemeType = 'TOPS' | 'PRE_TOPS' | 'BUILDER' | 'NICKNAME' | 'ORIGINAL';
+
+export interface ClassAlias {
+	alias: string;
+	scheme: AliasSchemeType;
+}
 
 export interface Era {
 	id: number;
@@ -52,4 +58,5 @@ export interface LocomotiveClass {
 	isLandmark: boolean;
 	specs: Specification[];
 	media: MediaAsset[];
+	aliases: ClassAlias[];
 }

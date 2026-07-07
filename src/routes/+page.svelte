@@ -4,6 +4,7 @@
 	import TubeMap from '$lib/tubemap/TubeMap.svelte';
 	import FilterOverlay from '$lib/components/FilterOverlay.svelte';
 	import MuseumPlacard from '$lib/components/MuseumPlacard.svelte';
+	import { resolveDisplayName } from '$lib/nameScheme.js';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -50,6 +51,7 @@
 			{selectedTraction}
 			{selectedEraId}
 			{selectedWheelArrangement}
+			displayName={(c) => resolveDisplayName(c.name, c.aliases ?? [], data.nameScheme)}
 		/>
 	</div>
 

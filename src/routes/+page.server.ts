@@ -18,6 +18,9 @@ export const load: PageServerLoad = async () => {
 				},
 				media: {
 					orderBy: { sortIndex: 'asc' }
+				},
+				aliases: {
+					select: { alias: true, scheme: true }
 				}
 			}
 		});
@@ -47,6 +50,7 @@ export const load: PageServerLoad = async () => {
 			eraId: c.eraId,
 			narrative: c.narrative,
 			isLandmark: c.isLandmark,
+			aliases: c.aliases,
 			specs: c.specs.map((s) => ({
 				id: s.id,
 				key: s.key,

@@ -6,8 +6,12 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { invalidateAll } from '$app/navigation';
+	import { NAME_SCHEMES, NAME_SCHEME_LABELS, type NameScheme } from '$lib/nameScheme.js';
+	import type { LayoutData } from './$types.js';
+	import type { Snippet } from 'svelte';
 
-	let { children } = $props();
+	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	const navItems = [
 		{ href: resolve('/'), label: 'Timeline' },
@@ -17,6 +21,16 @@
 	function isActive(href: string): boolean {
 		if (href === '/') return page.url.pathname === '/';
 		return page.url.pathname.startsWith(href);
+	}
+
+	async function handleNameSchemeChange(e: Event) {
+		const scheme = (e.currentTarget as HTMLSelectElement).value as NameScheme;
+		await fetch('/api/name-scheme', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ scheme })
+		});
+		await invalidateAll();
 	}
 </script>
 
@@ -50,7 +64,25 @@
 			{/each}
 		</nav>
 
-		<form action="/classes" method="GET" class="ml-auto flex items-center" role="search">
+		<div class="ml-auto flex items-center gap-1.5">
+			<label
+				for="name-scheme"
+				class="hidden text-[10px] tracking-widest text-[var(--color-text-muted)] uppercase sm:inline"
+				>Vis navne som:</label
+			>
+			<select
+				id="name-scheme"
+				value={data.nameScheme}
+				onchange={handleNameSchemeChange}
+				class="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-xs text-white outline-none transition-all focus:border-white/30"
+			>
+				{#each NAME_SCHEMES as scheme (scheme)}
+					<option value={scheme}>{NAME_SCHEME_LABELS[scheme]}</option>
+				{/each}
+			</select>
+		</div>
+
+		<form action="/classes" method="GET" class="flex items-center" role="search">
 			<input
 				type="search"
 				name="q"
