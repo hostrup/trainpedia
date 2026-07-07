@@ -48,6 +48,7 @@ export const CandidateClassSchema = z.object({
 	eraSlug: z.string(),
 	designer: z.string().nullable(),
 	manufacturer: z.string().nullable(),
+	commonsCategory: z.string().nullable(),
 	sourceUrl: z.string().nullable()
 });
 export type CandidateClass = z.infer<typeof CandidateClassSchema>;

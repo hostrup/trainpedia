@@ -82,13 +82,15 @@ SELECT DISTINCT
   ?designer ?designerLabel ?manufacturer ?manufacturerLabel 
   ?totalBuilt ?commonsCategory ?wikipediaUrl ?nickname
 WHERE {
-  ?item wdt:P31 wd:Q19832486.
+  ?item wdt:P31 ?classType.
+  VALUES ?classType { wd:Q19832486 wd:Q811704 }
   {
     ?item wdt:P17 wd:Q145.
   } UNION {
     ?item wdt:P137 ?operator.
     VALUES ?operator { wd:Q206384 wd:Q631174 wd:Q672618 wd:Q745347 wd:Q1195655 }
   }
+
 
   OPTIONAL { ?item wdt:P729 ?serviceEntry. }
   OPTIONAL { ?item wdt:P730 ?serviceExit. }
@@ -234,6 +236,7 @@ interface MapItem {
 	manufacturer: string | null;
 	subclasses: Set<string>;
 	powerSources: Set<string>;
+	commonsCategory: string | null;
 	sourceUrl: string | null;
 }
 
@@ -280,6 +283,7 @@ async function main() {
 				manufacturer: binding.manufacturerLabel?.value || null,
 				subclasses: new Set<string>(),
 				powerSources: new Set<string>(),
+				commonsCategory: binding.commonsCategory?.value || null,
 				sourceUrl: binding.wikipediaUrl?.value || null
 			});
 		}
@@ -294,6 +298,8 @@ async function main() {
 		if (binding.wheelArrangementLabel && !item.wheelArrangement)
 			item.wheelArrangement = binding.wheelArrangementLabel.value;
 		if (binding.nickname && !item.nickname) item.nickname = binding.nickname.value;
+		if (binding.commonsCategory && !item.commonsCategory)
+			item.commonsCategory = binding.commonsCategory.value;
 		if (binding.totalBuilt && item.totalBuilt === null)
 			item.totalBuilt = parseInt(binding.totalBuilt.value, 10);
 	}
@@ -333,6 +339,7 @@ async function main() {
 			eraSlug,
 			designer: item.designer,
 			manufacturer: item.manufacturer,
+			commonsCategory: item.commonsCategory,
 			sourceUrl: item.sourceUrl
 		};
 
