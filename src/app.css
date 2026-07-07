@@ -1,0 +1,108 @@
+/* 🚂 Trainpedia CSS Design Tokens */
+
+/* Self-hosted fonts configuration via Fontsource placeholder.
+   The fonts are installed via npm and will be imported in layout. */
+:root {
+	/* --- Typography --- */
+	--font-display: 'Fraunces', Georgia, serif;
+	--font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+
+	/* --- Color Palette (Museum Dark Mode) --- */
+	--color-bg-base: hsl(210, 20%, 8%); /* Deep slate charcoal */
+	--color-bg-surface: hsl(210, 18%, 13%); /* Muted dark container */
+	--color-bg-elevated: hsl(210, 16%, 18%); /* High elevation panels */
+
+	--color-text-primary: hsl(210, 10%, 95%); /* Soft off-white */
+	--color-text-secondary: hsl(210, 10%, 75%); /* Muted silver */
+	--color-text-muted: hsl(210, 8%, 50%); /* Dark gray silver */
+
+	/* --- Era Highlights (Tactile Brass, Rust, and Electric Cyan) --- */
+	--color-accent-steam: hsl(38, 60%, 55%); /* Classic polished brass/gold */
+	--color-accent-steam-rgb: 217, 160, 64;
+
+	--color-accent-diesel: hsl(20, 75%, 55%); /* Warm rust / industrial orange */
+	--color-accent-diesel-rgb: 236, 108, 44;
+
+	--color-accent-electric: hsl(190, 85%, 50%); /* Electric blue / modernization cyan */
+	--color-accent-electric-rgb: 19, 206, 235;
+
+	--color-accent-other: hsl(280, 65%, 60%); /* Gasturbines, battery experimental purple */
+	--color-accent-other-rgb: 167, 87, 219;
+
+	/* --- Border & Divider Tokens --- */
+	--color-border-subtle: hsla(210, 10%, 100%, 0.08);
+	--color-border-glow: hsla(210, 10%, 100%, 0.15);
+
+	/* --- Motion Timing --- */
+	--transition-bezier-heavy: cubic-bezier(0.25, 1, 0.5, 1); /* Custom elastic slide */
+	--transition-bezier-fast: cubic-bezier(0.16, 1, 0.3, 1);
+	--transition-duration-normal: 350ms;
+	--transition-duration-fast: 200ms;
+
+	/* --- Spacing System (4px baseline) --- */
+	--spacing-1: 0.25rem;
+	--spacing-2: 0.5rem;
+	--spacing-3: 0.75rem;
+	--spacing-4: 1rem;
+	--spacing-6: 1.5rem;
+	--spacing-8: 2rem;
+	--spacing-12: 3rem;
+	--spacing-16: 4rem;
+
+	/* --- Shadows & Blur (Glassmorphism) --- */
+	--shadow-subtle: 0 4px 20px rgba(0, 0, 0, 0.5);
+	--shadow-museum: 0 20px 40px rgba(0, 0, 0, 0.75);
+	--glass-bg: rgba(22, 28, 34, 0.75);
+	--glass-blur: blur(16px);
+}
+
+/* Base resets & styles */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	background-color: var(--color-bg-base);
+	color: var(--color-text-primary);
+	font-family: var(--font-ui);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	overflow: hidden;
+	height: 100vh;
+	width: 100vw;
+}
+
+h1,
+h2,
+h3,
+h4,
+.font-serif {
+	font-family: var(--font-display);
+	font-weight: 500;
+	letter-spacing: -0.02em;
+}
+
+/* Specific tabular alignment for numbers */
+.tabular-nums {
+	font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+::-webkit-scrollbar-track {
+	background: var(--color-bg-base);
+}
+::-webkit-scrollbar-thumb {
+	background: var(--color-bg-surface);
+	border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: var(--color-border-glow);
+}
