@@ -51,10 +51,25 @@ i baggrunden bærer tidsdimensionen. Bekræftet af Ronni 2026-07-07.
 
 ## 3. Geometri-regler (F5.3 layoutmotor)
 
-1. Hver linje har et **vandret hovedspor** (fast y pr. linje, fast indbyrdes
+> **AMENDMENT 2026-07-07 (samme dag, F6-session):** Ronni så det deployede kort og
+> vurderede at rene, ubrudte vandrette linjer læser som et "swim lane"-diagram, ikke
+> et metrokort — kravet er eksplicit at kortet på en almindelig 4K-skærm i Chrome skal
+> ligne et Underground-kort i STILEN. Regel 1 er derfor opdateret: hver linje har et
+> **bånd** (ikke længere ét fast y), og bugter sig med 45°-knæk ved æra-skift — se
+> "Meander" nedenfor. Reglen om kun 0°/45°-knæk (regel 2) står ved magt og er nu det,
+> der reelt bruges, ikke kun en urealiseret constraint.
+
+1. Hver linje har et **vandret hovedbånd** (fast basis-y pr. linje, fast indbyrdes
    afstand ≥ 80px). Rækkefølge top→bund: Steam, Diesel, Electric, Experimental.
+   **Meander:** linjen skifter niveau (±1 trin × 20px, mønster `[0,1,0,-1]` der
+   cykler) hver gang den, i kronologisk rækkefølge, krydser en æra-grænse. Skiftet
+   tegnes som fladt spor → 45°-diagonal → fladt spor (aldrig en ren lodret linje).
+   Stationens faktiske y følger dens niveau, så tick/ring sidder præcis på det
+   bugtede spor. Interchange-kapsler forbliver forbundet til nabolinjens BASIS-y
+   (ikke dens niveau), da to uafhængige meandre ellers ikke kan forbindes meningsfuldt.
 2. Kun **0°/45°-knæk** med fast hjørneradius (linjebredde × 1,5).
-   Linjebredde 7px (kort), 5px (linjediagram).
+   Linjebredde 7px (kort), 5px (linjediagram). Hjørner afrundes med `stroke-linejoin:
+round` — matcher radius-kravet uden manuel bue-geometri.
 3. **Ordinal x-placering**: stationerne på en linje sorteres efter introår og
    placeres med fast interval (STATION_GAP ≈ 140px ved zoom 1). Æra-grænser
    beregnes EFTER placering: zonens x-udstrækning = fra første til sidste

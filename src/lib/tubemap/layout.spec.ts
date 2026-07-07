@@ -192,6 +192,98 @@ describe('computeLayout — 1D-mode (F5.7 LineDiagram genbrug)', () => {
 	});
 });
 
+describe('computeLayout — meander (amendment 2026-07-07): 45°-knæk ved æra-skift', () => {
+	it('holder samme niveau (y) inden for én æra på en linje', () => {
+		const result = computeLayout([
+			station({ id: 'd1', eraSlug: 'era-a', introYear: 1960 }),
+			station({ id: 'd2', eraSlug: 'era-a', introYear: 1965 }),
+			station({ id: 'd3', eraSlug: 'era-a', introYear: 1970 })
+		]);
+		const ys = new Set(result.stations.map((s) => s.y));
+		expect(ys.size).toBe(1);
+	});
+
+	it('skifter niveau med præcis levelStep når linjen krydser en æra-grænse', () => {
+		const result = computeLayout([
+			station({ id: 'd1', eraSlug: 'era-a', introYear: 1960 }),
+			station({ id: 'd2', eraSlug: 'era-b', introYear: 1970 })
+		]);
+		const d1 = result.stations.find((s) => s.id === 'd1')!;
+		const d2 = result.stations.find((s) => s.id === 'd2')!;
+		expect(d2.y - d1.y).toBe(GEOMETRY.levelPattern[1] * GEOMETRY.levelStep);
+	});
+
+	it('cykler gennem levelPattern ved flere æra-skift på samme linje', () => {
+		const result = computeLayout([
+			station({ id: 'd1', eraSlug: 'era-a', introYear: 1960 }),
+			station({ id: 'd2', eraSlug: 'era-b', introYear: 1965 }),
+			station({ id: 'd3', eraSlug: 'era-c', introYear: 1970 }),
+			station({ id: 'd4', eraSlug: 'era-d', introYear: 1975 })
+		]);
+		const baseY = result.paths[0].y;
+		const byId = new Map(result.stations.map((s) => [s.id, s.y]));
+		const [p0, p1, p2, p3] = GEOMETRY.levelPattern;
+		expect(byId.get('d1')).toBe(baseY + p0 * GEOMETRY.levelStep);
+		expect(byId.get('d2')).toBe(baseY + p1 * GEOMETRY.levelStep);
+		expect(byId.get('d3')).toBe(baseY + p2 * GEOMETRY.levelStep);
+		expect(byId.get('d4')).toBe(baseY + p3 * GEOMETRY.levelStep);
+	});
+
+	it('path.d er fortsat en simpel lige linje når linjen aldrig skifter æra', () => {
+		const result = computeLayout([
+			station({ id: 'd1', eraSlug: 'era-a', introYear: 1960 }),
+			station({ id: 'd2', eraSlug: 'era-a', introYear: 1970 })
+		]);
+		expect(result.paths[0].d.match(/L/g)?.length).toBe(1);
+	});
+
+	it('path.d indeholder et 45°-knæk (to ekstra punkter) hvor niveauet skifter', () => {
+		const result = computeLayout([
+			station({ id: 'd1', eraSlug: 'era-a', introYear: 1960 }),
+			station({ id: 'd2', eraSlug: 'era-b', introYear: 1970 })
+		]);
+		// M + 3×L (flad-diagonal-flad) i stedet for M + 1×L for et rent fladt spor.
+		expect(result.paths[0].d.match(/L/g)?.length).toBe(3);
+	});
+
+	it('path.y forbliver linjens BASIS-y (uændret af meander) til brug for Minimap', () => {
+		const result = computeLayout([
+			station({ id: 'd1', eraSlug: 'era-a', introYear: 1960 }),
+			station({ id: 'd2', eraSlug: 'era-b', introYear: 1970 })
+		]);
+		expect(result.paths[0].y).toBe(GEOMETRY.marginY);
+	});
+
+	it('height rummer det maksimale niveau-udsving på begge sider', () => {
+		const flat = computeLayout([station({ id: 'd1', eraSlug: 'era-a' })]);
+		const meandering = computeLayout([
+			station({ id: 'd1', eraSlug: 'era-a', introYear: 1960 }),
+			station({ id: 'd2', eraSlug: 'era-b', introYear: 1970 })
+		]);
+		const maxExcursion = Math.max(...GEOMETRY.levelPattern.map(Math.abs)) * GEOMETRY.levelStep;
+		expect(meandering.height - flat.height).toBe(0); // samme antal linjer, ekstra margin er konstant
+		expect(meandering.height).toBeGreaterThanOrEqual(GEOMETRY.marginY * 2 + 2 * maxExcursion);
+	});
+
+	it('interchange-kapsler forbinder til nabolinjens BASIS-y, ikke dens niveau', () => {
+		const result = computeLayout([
+			station({ id: 'd1', traction: 'DIESEL', eraSlug: 'era-a', introYear: 1960 }),
+			station({
+				id: 'd2',
+				traction: 'DIESEL',
+				eraSlug: 'era-b',
+				introYear: 1970,
+				interchangeWith: 'ELECTRIC'
+			}),
+			station({ id: 'e1', traction: 'ELECTRIC', eraSlug: 'era-a', introYear: 1960 }),
+			station({ id: 'e2', traction: 'ELECTRIC', eraSlug: 'era-b', introYear: 1970 })
+		]);
+		const electricBaseY = result.paths.find((p) => p.traction === 'ELECTRIC')!.y;
+		const d2 = result.stations.find((s) => s.id === 'd2')!;
+		expect(d2.interchangeY).toBe(electricBaseY);
+	});
+});
+
 describe('GEOMETRY — konstanter matcher spec §2/§3/§6 præcist', () => {
 	it('har de aftalte værdier', () => {
 		expect(GEOMETRY.stationGap).toBe(140);
@@ -204,5 +296,7 @@ describe('GEOMETRY — konstanter matcher spec §2/§3/§6 præcist', () => {
 		expect(GEOMETRY.tickLength).toBe(12);
 		expect(GEOMETRY.terminusBarWidth).toBe(8);
 		expect(GEOMETRY.terminusBarHeight).toBe(28);
+		expect(GEOMETRY.levelStep).toBe(20);
+		expect(GEOMETRY.levelPattern).toEqual([0, 1, 0, -1]);
 	});
 });

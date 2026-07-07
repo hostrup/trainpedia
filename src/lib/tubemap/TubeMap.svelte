@@ -193,6 +193,7 @@
 					stroke={lineColorVar(path.traction)}
 					stroke-width={GEOMETRY.lineWidthMap}
 					stroke-linecap="round"
+					stroke-linejoin="round"
 					fill="none"
 				/>
 			{/each}

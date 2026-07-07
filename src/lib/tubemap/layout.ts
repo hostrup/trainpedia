@@ -1,12 +1,16 @@
 // layout.ts — ren Beck-geometrimotor (INGEN Svelte-afhængighed, unit-testes isoleret).
 // Implementerer geometri-reglerne fra docs/DESIGN-F5-TUBEMAP.md §3:
-// 1) fast y pr. linje, rækkefølge Steam→Diesel→Electric→Other, min. indbyrdes afstand
-// 2) kun 0/45°-knæk med fast hjørneradius (eksponeret som konstant til rendering-laget)
+// 1) hvert linje-BÅND har en fast basis-y, rækkefølge Steam→Diesel→Electric→Other,
+//    min. indbyrdes afstand. Linjen MEANDRER: skifter niveau (±1 trin) ved hvert
+//    æra-skift i den kronologiske rækkefølge, tegnet med et 45°-knæk (AMENDMENT
+//    2026-07-07 — rene vandrette linjer læste som et diagram, ikke et metrokort)
+// 2) kun 0/45°-knæk; hjørner afrundes i rendering-laget (stroke-linejoin: round)
 // 3) ordinal x-placering pr. linje (introår afgør RÆKKEFØLGE, ikke afstand); æra-zoner
 //    beregnes EFTER placering ud fra de faktisk placerede stationer
 // 4) labels er altid vandrette; standard-alternering over/under (reel kollisionsmåling
 //    med tekstbredde sker i TubeMap.svelte, som kender skriftens faktiske metrics)
-// 5) interchange-kapsel mellem to linjer på stationens x
+// 5) interchange-kapsel mellem to linjer på stationens x (forbinder til nabolinjens
+//    BASIS-y, ikke dens niveau — to uafhængige meandre kan ikke forbindes meningsfuldt)
 // 6) landmark-ring / tick / endestation som distinkte stationstyper
 
 export const LINE_ORDER = ['STEAM', 'DIESEL', 'ELECTRIC', 'OTHER'] as const;
@@ -15,10 +19,10 @@ export type Traction = (typeof LINE_ORDER)[number];
 /** Geometri-konstanter fra spec §2/§3/§6 — eneste kilde til sandhed for rendering-laget. */
 export const GEOMETRY = {
 	stationGap: 140, // STATION_GAP ved zoom 1
-	lineGap: 80, // mindste indbyrdes afstand mellem linjespor
+	lineGap: 80, // mindste indbyrdes afstand mellem linjebånd
 	lineWidthMap: 7, // px — kortet
 	lineWidthDiagram: 5, // px — linjediagram (F5.7)
-	cornerRadiusFactor: 1.5, // × linjebredde
+	cornerRadiusFactor: 1.5, // × linjebredde (afrundes via stroke-linejoin i renderen)
 	landmarkRingRadius: 8,
 	landmarkRingStroke: 3.5,
 	interchangeCapsuleStroke: 3,
@@ -27,7 +31,11 @@ export const GEOMETRY = {
 	terminusBarHeight: 28,
 	marginX: 60,
 	marginY: 60,
-	zoneMargin: 40
+	zoneMargin: 40,
+	// Meander (amendment 2026-07-07): niveau-trin i px og det cykliske mønster linjen
+	// bevæger sig igennem for hvert æra-skift den passerer.
+	levelStep: 20,
+	levelPattern: [0, 1, 0, -1] as const
 } as const;
 
 export interface StationInput {
@@ -72,16 +80,17 @@ export interface LayoutStation {
 	labelSide: 'above' | 'below';
 	eraSlug: string;
 	interchangeWith: Traction | null;
-	/** y-position for den tilstødende linje, til kapsel-tegning (null hvis ikke interchange, eller den anden linje ikke er til stede i inputtet). */
+	/** y-position for den tilstødende linjes BASIS (til kapsel-tegning) — null hvis ikke interchange, eller den anden linje ikke er til stede i inputtet. */
 	interchangeY: number | null;
 }
 
 export interface LayoutPath {
 	traction: Traction;
+	/** Linjens BASIS-y (uden meander) — bruges af Minimap som forenklet reference. */
 	y: number;
 	x0: number;
 	x1: number;
-	/** Simpelt SVG path — hovedsporet er altid en ren vandret linje (fast y pr. linje). */
+	/** Fuldt SVG path inkl. 45°-meander-knæk ved æra-skift. */
 	d: string;
 }
 
@@ -117,6 +126,27 @@ function classifyStation(s: StationInput): StationType {
 	return 'tick';
 }
 
+/** Bygger et polyline-path med et 45°-knæk midt i hvert gap hvor niveauet skifter. */
+function buildMeanderPath(points: { x: number; y: number }[]): string {
+	if (points.length === 0) return '';
+	let d = `M ${points[0].x} ${points[0].y}`;
+	for (let i = 1; i < points.length; i++) {
+		const prev = points[i - 1];
+		const curr = points[i];
+		if (prev.y === curr.y) {
+			d += ` L ${curr.x} ${curr.y}`;
+			continue;
+		}
+		const kinkRun = Math.abs(curr.y - prev.y); // 45° ⇒ vandret løb = lodret løb
+		const gap = curr.x - prev.x;
+		const flatEach = Math.max(0, (gap - kinkRun) / 2);
+		const xA = prev.x + flatEach;
+		const xB = xA + kinkRun;
+		d += ` L ${xA} ${prev.y} L ${xB} ${curr.y} L ${curr.x} ${curr.y}`;
+	}
+	return d;
+}
+
 export function computeLayout(input: StationInput[], options: LayoutOptions = {}): LayoutResult {
 	const stationGap = options.stationGap ?? GEOMETRY.stationGap;
 	const lineGap = Math.max(options.lineGap ?? GEOMETRY.lineGap, GEOMETRY.lineGap);
@@ -124,6 +154,8 @@ export function computeLayout(input: StationInput[], options: LayoutOptions = {}
 	const marginY = options.marginY ?? GEOMETRY.marginY;
 	const zoneMargin = options.zoneMargin ?? GEOMETRY.zoneMargin;
 	const mode = options.mode ?? '2d';
+	const levelStep = GEOMETRY.levelStep;
+	const levelPattern = GEOMETRY.levelPattern;
 
 	const byTraction = new Map<Traction, StationInput[]>();
 	for (const s of input) {
@@ -133,12 +165,12 @@ export function computeLayout(input: StationInput[], options: LayoutOptions = {}
 
 	const presentLines = LINE_ORDER.filter((t) => byTraction.has(t));
 
-	const yByTraction = new Map<Traction, number>();
+	// Linjens BASIS-y (uden meander) — bruges til interchange-kapsler og Minimap.
+	const baseYByTraction = new Map<Traction, number>();
 	if (mode === '1d') {
-		// Linjediagram: kun ét spor på skærmen — altid samme baseline uanset traktion.
-		for (const t of presentLines) yByTraction.set(t, marginY);
+		for (const t of presentLines) baseYByTraction.set(t, marginY);
 	} else {
-		presentLines.forEach((t, i) => yByTraction.set(t, marginY + i * lineGap));
+		presentLines.forEach((t, i) => baseYByTraction.set(t, marginY + i * lineGap));
 	}
 
 	const stations: LayoutStation[] = [];
@@ -151,15 +183,26 @@ export function computeLayout(input: StationInput[], options: LayoutOptions = {}
 			return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 		});
 
-		const y = yByTraction.get(traction)!;
+		const baseY = baseYByTraction.get(traction)!;
+
+		let levelIndex = 0;
+		let prevEraSlug: string | null = null;
+		const points: { x: number; y: number }[] = [];
 
 		list.forEach((s, index) => {
 			const x = marginX + index * stationGap;
 			maxX = Math.max(maxX, x);
 
+			if (prevEraSlug !== null && s.eraSlug !== prevEraSlug) {
+				levelIndex = (levelIndex + 1) % levelPattern.length;
+			}
+			prevEraSlug = s.eraSlug;
+			const y = baseY + levelPattern[levelIndex] * levelStep;
+			points.push({ x, y });
+
 			const interchangeY =
-				s.interchangeWith !== null && yByTraction.has(s.interchangeWith)
-					? yByTraction.get(s.interchangeWith)!
+				s.interchangeWith !== null && baseYByTraction.has(s.interchangeWith)
+					? baseYByTraction.get(s.interchangeWith)!
 					: null;
 
 			stations.push({
@@ -181,7 +224,7 @@ export function computeLayout(input: StationInput[], options: LayoutOptions = {}
 
 		const x0 = marginX;
 		const x1 = list.length > 0 ? marginX + (list.length - 1) * stationGap : marginX;
-		paths.push({ traction, y, x0, x1, d: `M ${x0} ${y} L ${x1} ${y}` });
+		paths.push({ traction, y: baseY, x0, x1, d: buildMeanderPath(points) });
 	}
 
 	const interchanges: LayoutInterchange[] = stations
@@ -209,8 +252,12 @@ export function computeLayout(input: StationInput[], options: LayoutOptions = {}
 		})
 		.filter((z): z is LayoutZone => z !== null);
 
+	// Ekstra vertikal margin til meander-udsvinget (maks. niveau × levelStep på hver side).
+	const maxLevelExcursion = Math.max(...levelPattern.map(Math.abs)) * levelStep;
 	const height =
-		mode === '1d' ? marginY * 2 : marginY * 2 + Math.max(0, presentLines.length - 1) * lineGap;
+		mode === '1d'
+			? marginY * 2 + 2 * maxLevelExcursion
+			: marginY * 2 + Math.max(0, presentLines.length - 1) * lineGap + 2 * maxLevelExcursion;
 
 	return {
 		stations,
