@@ -34,7 +34,8 @@
 
 <!-- Sliding Placard Drawer -->
 <div
-	class="absolute top-0 right-0 h-full w-[450px] max-w-full z-40 shadow-[var(--shadow-museum)] flex flex-col transition-transform duration-500 var(--transition-bezier-heavy) bg-slate-950/90 border-l border-white/10 backdrop-blur-md"
+	class="absolute top-0 right-0 h-full w-[450px] max-w-full z-40 shadow-2xl flex flex-col transition-transform duration-500 bg-slate-950/90 border-l border-white/10 backdrop-blur-md"
+	style="transition-timing-function: var(--transition-bezier-heavy);"
 	class:translate-x-full={!isOpen}
 	class:translate-x-0={isOpen}
 >

@@ -4,7 +4,7 @@ Baseline: lint 0 fejl · check/tsc 0 fejl · tests 3/3 grønne (2 unit, 1 e2e)
 
 ## Åben
 
-- [ ] **B1** [Blocker] `src/routes/data/media/[...file]/+server.ts:13-18` — Path traversal-sårbarhed i filserver-endpoint. Bevis: `if (!filePath.startsWith(resolvedMediaRoot))` tillader adgang til søskendemapper med fælles præfiks (f.eks. `data/media-backups`). Fix: brug `path.relative` til at tjekke for `..` og absolutte stier.
+- [x] **B1** [Blocker] `src/routes/data/media/[...file]/+server.ts:13-18` — Path traversal-sårbarhed i filserver-endpoint. Bevis: `if (!filePath.startsWith(resolvedMediaRoot))` tillader adgang til søskendemapper med fælles præfiks (f.eks. `data/media-backups`). Fix: brug `path.relative` til at tjekke for `..` og absolutte stier.
 - [ ] **H1** [High] `src/lib/components/TimelineCanvas.svelte:548` — Kollision mellem GSAP Flip og Tailwind transition-all. Bevis: `class="... border transition-all duration-300 ..."` medfører hakkende animationer, da CSS modarbejder GSAP's transform-opdateringer. Fix: fjern `transition-all` fra GSAP-animerede noder.
 - [ ] **H2** [High] `src/lib/components/TimelineCanvas.svelte:471` — SVG metroruter snapper øjeblikkeligt ved filter-skift frem for at glide flydende med station noderne. Bevis: `<path d={line.path} ... />` transitioneres ikke med GSAP. Fix: tildel noderne og linje-ændringer en koordinat-transition eller synkronisér layout morphing.
 - [ ] **H3** [High] `src/lib/components/TimelineCanvas.svelte:43` — FPS-beregning i requestAnimationFrame laver Svelte-stats opdateringer på hver frame, hvilket skaber unødig reaktivitetsoverhead. Bevis: `fps = Math.round(...)` kaldes ~60 gange/sek. Fix: throttle opdateringer af `fps` staten til hver 500ms.

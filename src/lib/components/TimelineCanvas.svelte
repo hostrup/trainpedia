@@ -46,6 +46,7 @@
 
 	$effect(() => {
 		let active = true;
+		let lastUpdate = performance.now();
 		function tickFps() {
 			if (!active) return;
 			const now = performance.now();
@@ -55,8 +56,11 @@
 			if (frameTimes.length > 60) {
 				frameTimes.shift();
 			}
-			const avg = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
-			fps = Math.round(1000 / avg);
+			if (now - lastUpdate > 500) {
+				const avg = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+				fps = Math.round(1000 / avg);
+				lastUpdate = now;
+			}
 			requestAnimationFrame(tickFps);
 		}
 		requestAnimationFrame(tickFps);
