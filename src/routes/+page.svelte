@@ -4,7 +4,6 @@
 	import TimelineCanvas from '$lib/components/TimelineCanvas.svelte';
 	import FilterOverlay from '$lib/components/FilterOverlay.svelte';
 	import MuseumPlacard from '$lib/components/MuseumPlacard.svelte';
-	import ShowcaseGallery from '$lib/components/ShowcaseGallery.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -15,7 +14,6 @@
 
 	// Navigation/selection states
 	let selectedClass = $state<LocomotiveClass | null>(null);
-	let showcaseOpen = $state<boolean>(false);
 
 	// Extract unique, non-null wheel arrangements from seeded dataset with explicit types
 	const wheelArrangements = $derived(
@@ -29,8 +27,12 @@
 	);
 </script>
 
+<svelte:head>
+	<title>Timeline — Trainpedia</title>
+</svelte:head>
+
 <div
-	class="relative w-screen h-screen overflow-hidden bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-sans"
+	class="relative h-full w-full overflow-hidden bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-sans"
 >
 	<!-- Top Navigation Filters -->
 	<FilterOverlay
@@ -42,7 +44,7 @@
 	/>
 
 	<!-- London Underground inspired Timeline Map -->
-	<div class="w-full h-full">
+	<div class="h-full w-full">
 		<TimelineCanvas
 			classes={data.classes}
 			eras={data.eras}
@@ -54,16 +56,5 @@
 	</div>
 
 	<!-- Side Info placard drawer -->
-	<MuseumPlacard
-		classData={selectedClass}
-		onClose={() => (selectedClass = null)}
-		onShowcaseDetail={() => (showcaseOpen = true)}
-	/>
-
-	<!-- Immersive Detail Media & Specs Gallery -->
-	<ShowcaseGallery
-		classData={selectedClass}
-		isOpen={showcaseOpen}
-		onClose={() => (showcaseOpen = false)}
-	/>
+	<MuseumPlacard classData={selectedClass} onClose={() => (selectedClass = null)} />
 </div>

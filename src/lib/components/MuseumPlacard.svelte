@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { LocomotiveClass } from '$lib/types.js';
+	import { resolve } from '$app/paths';
 
-	let { classData, onClose, onShowcaseDetail } = $props<{
+	let { classData, onClose } = $props<{
 		classData: LocomotiveClass | null;
 		onClose: () => void;
-		onShowcaseDetail: () => void;
 	}>();
 
 	const isOpen = $derived(classData !== null);
@@ -172,13 +172,13 @@
 
 		<!-- Footer actions (Sticky) -->
 		<div class="p-6 border-t border-white/10 bg-slate-950 flex flex-col gap-2 flex-shrink-0">
-			<button
-				onclick={onShowcaseDetail}
+			<a
+				href={resolve('/class/[qid]', { qid: classData.wikidataQid })}
 				class="w-full py-3 px-4 rounded-lg bg-amber-500 text-black font-semibold text-sm hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/10 cursor-pointer flex items-center justify-center gap-2"
 			>
-				<span>Showcase Detail Gallery</span>
+				<span>Open full chronicle</span>
 				<span class="text-xs">➔</span>
-			</button>
+			</a>
 		</div>
 	{/if}
 </div>

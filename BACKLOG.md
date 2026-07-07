@@ -21,7 +21,15 @@ Baseline: lint 0 fejl · check/tsc 0 fejl · tests 3/3 grønne (2 unit, 1 e2e)
 - [ ] **L2** [Low] `prisma/schema.prisma:8-11` — Manglende `shadowDatabaseUrl`. Bevis: tvinger os til at bruge `db push` frem for `migrate dev` lokalt. Fix: opsæt shadow-db i schema hvis shadow-db database oprettes.
 - [ ] **L3** [Low] `scripts/seed/03-media.ts:231-256` — Ineffektive sekventielle DB-kald i seed loops. Bevis: upsert af specifications kører én ad gangen i stedet for transaktion/batch. Fix: brug `prisma.$transaction`.
 - [ ] **L4** [Low] `src/lib/components/TimelineCanvas.svelte:374` — Hover stroke-width på metrolinjer er utilgængelig grundet `pointer-events-none` på forælder. Bevis: `<svg class="... pointer-events-none">`. Fix: tilføj `pointer-events-stroke` på stierne.
-- [ ] **L5** [Low] `src/lib/components/TimelineCanvas.svelte:402` — Lav kontrast på årstal-skala tekster. Bevis: `text-[var(--color-text-muted)] opacity-30` mod mørk baggrund. Fix: øg opaciteten for bedre læsbarhed.
+- [x] **L5** [Low] `src/lib/components/TimelineCanvas.svelte:402` — Lav kontrast på årstal-skala tekster. Bevis: `text-[var(--color-text-muted)] opacity-30` mod mørk baggrund. Fix: øg opaciteten for bedre læsbarhed.
+
+## Førstehjælp 2026-07-07 (Claude Fable 5)
+
+- [x] **FA1** Datatriage: `scripts/seed/04-reclassify.ts` — traction udledt af Whyte-notation + BR TOPS-nummerserier (334 klasser stod som OTHER); æraer genplaceret efter traction+år, så Class 37/47/55 ligger i Diesel & Electric-æraen. Køres efter hver seed.
+- [x] **FA2** Rigtig Tailwind 4 (`@tailwindcss/vite`) erstatter det håndskrevne pseudo-utility-stylesheet i app.css, hvor over halvdelen af de anvendte klasser manglede. Fraunces/Inter installeret via Fontsource (var aldrig installeret).
+- [x] **FA3** Informationsarkitektur: header-navigation (Timeline/Explore + søgefelt), ny søgbar oversigt `/classes` (q/era/traction-filtre) og dyb-linkbar detaljeside `/class/[qid]` (hero, narrativ, specs, galleri, lightbox). ShowcaseGallery-modalen udgået; placard linker til detaljesiden.
+- [x] **FA4** Timeline-læsbarhed: æra/årstal-opacitet hævet, DEV-HUD kun i dev-mode, startvisning flyttet til tæt befolket årti, GSAP/CSS-transitionskollision på noder fjernet.
+- [ ] **FA5** `03-media.ts` henter irrelevante filer fra visse Commons-kategorier (fx "Crop production"-PDF'er) — filtrér på filtype/kategori-relevans.
 
 ## Kræver brugerbeslutning
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dev } from '$app/environment';
 	import type { Era, LocomotiveClass, TractionType } from '$lib/types.js';
 	import { select } from 'd3-selection';
 	import { zoom as d3Zoom, zoomIdentity } from 'd3-zoom';
@@ -90,11 +91,12 @@
 
 		select(container).call(z);
 
-		// Initial transform to focus on the start of history
-		const initialK = container.clientWidth && container.clientWidth > 800 ? 0.85 : 0.5;
-		const initialX = container.clientWidth && container.clientWidth > 800 ? 100 : 20;
+		// Initial transform: åbn på et tæt befolket årti (1870'erne) frem for det
+		// næsten tomme 1825-hjørne, så første indtryk viser faktisk indhold.
+		const initialK = container.clientWidth && container.clientWidth > 800 ? 0.7 : 0.4;
+		const initialX = 60 - yearToX(1868) * initialK;
 
-		select(container).call(z.transform, zoomIdentity.translate(initialX, 100).scale(initialK));
+		select(container).call(z.transform, zoomIdentity.translate(initialX, 60).scale(initialK));
 	});
 
 	// Helper: Determine year for sorting and plotting
@@ -409,7 +411,7 @@
 				<text
 					x={tick.x + 8}
 					y={90}
-					class="font-mono text-xs font-bold tracking-wider tabular-nums fill-current text-[var(--color-text-muted)] opacity-30"
+					class="font-mono text-xs font-bold tracking-wider tabular-nums fill-current text-[var(--color-text-muted)] opacity-70"
 				>
 					{tick.year}
 				</text>
@@ -434,14 +436,14 @@
 				<text
 					x={eraX + 24}
 					y={layout.startY + 15}
-					class="font-display font-bold uppercase tracking-widest text-4xl fill-current text-[var(--color-text-secondary)] opacity-10 pointer-events-none"
+					class="font-display font-bold uppercase tracking-widest text-4xl fill-current text-[var(--color-text-secondary)] opacity-40 pointer-events-none"
 				>
 					{layout.era.name}
 				</text>
 				<text
 					x={eraX + 24}
 					y={layout.startY + 45}
-					class="font-mono text-sm tracking-widest tabular-nums fill-current text-[var(--color-text-muted)] opacity-15 pointer-events-none"
+					class="font-mono text-sm tracking-widest tabular-nums fill-current text-[var(--color-text-muted)] opacity-50 pointer-events-none"
 				>
 					{layout.era.startYear} — {layout.era.endYear ? layout.era.endYear : 'PRESENT'}
 				</text>
@@ -485,7 +487,6 @@
 					fill="none"
 					stroke-linecap="round"
 					filter="url(#tube-glow)"
-					class="transition-all duration-300 hover:stroke-[10px]"
 					opacity="0.8"
 				/>
 			{/each}
@@ -504,7 +505,7 @@
 					<button
 						onclick={() => (selectedClass = node.classData)}
 						aria-label={node.classData.name}
-						class="absolute timeline-node pointer-events-auto w-3 h-3 rounded-full hover:scale-150 transition-all duration-200"
+						class="absolute timeline-node pointer-events-auto w-3 h-3 rounded-full hover:scale-150"
 						style="
               left: {node.x - 6}px;
               top: {node.y - 6}px;
@@ -555,7 +556,7 @@
 					<!-- 3. High Zoom Rich Card Mode -->
 					<button
 						onclick={() => (selectedClass = node.classData)}
-						class="absolute timeline-node pointer-events-auto flex flex-row items-stretch p-3.5 rounded-xl border transition-all duration-300 text-left hover:scale-[1.03] group"
+						class="absolute timeline-node pointer-events-auto flex flex-row items-stretch p-3.5 rounded-xl border text-left hover:scale-[1.03] group"
 						style="
               left: {node.x}px;
               top: {node.y - 55}px;
@@ -633,30 +634,32 @@
 		</div>
 	</div>
 
-	<!-- Top right developer stats HUD panel (FPS & Stats Counter) -->
-	<div
-		class="absolute top-4 right-4 z-10 font-mono text-[10px] tracking-wide text-[var(--color-text-secondary)] bg-slate-950/80 border border-white/10 px-3 py-2 rounded-md shadow-2xl flex flex-col gap-1 backdrop-blur-sm pointer-events-none"
-	>
-		<div class="flex items-center gap-1.5">
-			<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-			<span class="font-bold">DEV DIAGNOSTICS</span>
+	<!-- Top right developer stats HUD panel (FPS & Stats Counter) — kun i dev-mode -->
+	{#if dev}
+		<div
+			class="absolute top-4 right-4 z-10 font-mono text-[10px] tracking-wide text-[var(--color-text-secondary)] bg-slate-950/80 border border-white/10 px-3 py-2 rounded-md shadow-2xl flex flex-col gap-1 backdrop-blur-sm pointer-events-none"
+		>
+			<div class="flex items-center gap-1.5">
+				<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+				<span class="font-bold">DEV DIAGNOSTICS</span>
+			</div>
+			<div class="h-px bg-white/10 my-1"></div>
+			<div class="flex justify-between gap-4">
+				<span>Render Performance:</span>
+				<span class="font-semibold tabular-nums {fps < 50 ? 'text-red-400' : 'text-emerald-400'}"
+					>{fps} FPS</span
+				>
+			</div>
+			<div class="flex justify-between gap-4">
+				<span>Zoom Scale (k):</span>
+				<span class="font-semibold tabular-nums text-cyan-400">{transform.k.toFixed(2)}x</span>
+			</div>
+			<div class="flex justify-between gap-4">
+				<span>Visible Stations:</span>
+				<span class="font-semibold tabular-nums text-amber-400"
+					>{visibleNodes.length} / {allNodes.length}</span
+				>
+			</div>
 		</div>
-		<div class="h-px bg-white/10 my-1"></div>
-		<div class="flex justify-between gap-4">
-			<span>Render Performance:</span>
-			<span class="font-semibold tabular-nums {fps < 50 ? 'text-red-400' : 'text-emerald-400'}"
-				>{fps} FPS</span
-			>
-		</div>
-		<div class="flex justify-between gap-4">
-			<span>Zoom Scale (k):</span>
-			<span class="font-semibold tabular-nums text-cyan-400">{transform.k.toFixed(2)}x</span>
-		</div>
-		<div class="flex justify-between gap-4">
-			<span>Visible Stations:</span>
-			<span class="font-semibold tabular-nums text-amber-400"
-				>{visibleNodes.length} / {allNodes.length}</span
-			>
-		</div>
-	</div>
+	{/if}
 </div>
