@@ -118,6 +118,147 @@ eneste udrulningsvej, BACKLOG.md opdateres når et punkt lukkes.
       Chrome-værktøjet mod dev-serveren eller tog.hostrup.org og notér fund som
       nye backlog-punkter frem for at rette i blinde.
 
+### D. Datakvalitet som SYSTEM (ikke engangsoprydning)
+
+Sektionerne A–C lukker de konkrete huller, der findes i dag. Denne sektion gør
+kvalitet til noget, pipelinen HÅNDHÆVER, så hullerne ikke opstår igen ved næste
+seed. Filosofien følger husets strict factuality: kvalitetsgaten opfinder aldrig
+data — den opdager, rapporterer og (ved harde brud) blokerer.
+
+- [ ] **F9.14** [High] **Automatiseret kvalitetsgate: `scripts/seed/08-validate.ts`**
+      som nyt, sidste led i `npm run seed`-kæden (og køres alene via
+      `npm run validate`). Læser HELE databasen og tjekker invarianter i to
+      klasser: **HARD (exit-kode 1 — deploy.sh kan gate på den):**
+      (1) alle MediaAssets med CC-BY/CC-BY-SA-licens HAR attribution — det er et
+      juridisk krav, ikke en smagssag (skemaet tillader NULL i dag);
+      (2) `localPath` for hvert asset findes fysisk i `data/media/` (og omvendt:
+      forældreløse filer på disken uden DB-række rapporteres);
+      (3) tidslogik: `serviceEntry ≤ serviceExit`, `buildStart ≤ buildEnd`,
+      identiteters `fromYear ≤ toYear`;
+      (4) ingen dublet-numre i samme individs identitetskæde.
+      **SOFT (rapporteres, blokerer ikke):** klasser uden narrativ/media/specs;
+      individtal > `totalBuilt` (dublet- eller parsefejl-indikator); klasser hvis
+      introduktionsår ligger uden for deres æras grænser; `regions` uden for det
+      gyldige sæt (WESTERN/EASTERN/MIDLAND/SOUTHERN/SCOTTISH); aliasser der er
+      identiske med klassens eget navn (støj). Output: `DATA-QUALITY.md` i
+      repo-roden (samme genkørbare ånd som seed-report; F9.6 kan slå de to
+      rapporter sammen hvis det er naturligt). **Accept:** gaten kører grønt på
+      nuværende DB efter A-sektionens fixes, fanger bevidst indplantede brud i
+      en testkørsel, og `deploy.sh` kører den før build.
+- [ ] **F9.15** [Medium] **Spec-normalisering ved seed frem for runtime-regex.**
+      F7's scatterplot-bug ("90 mph (145 km/h)" → 90145) var et symptom på, at
+      numeriske spec-værdier parses ad-hoc i UI-laget. Fix ved roden: additivt
+      felt `valueNumeric Float?` på `Specification` (skemaet HAR allerede `unit`,
+      men det udfyldes aldrig); `02-enrich.ts` parser tal+enhed én gang ved seed
+      (genbrug F7's forbedrede regex fra scatterplot-koden); scatterplottet og
+      fremtidige sammenligninger (F10.4) læser `valueNumeric`/`unit` direkte.
+      Skemaændringen er additiv (ingen C1-checkin nødvendig jf. F6.1-præcedens
+      for additive felter), men nævnes for Ronni ved næste lejlighed.
+      **Accept:** scatterplottet indeholder ingen regex-parsing af spec-strenge;
+      `valueNumeric`-dækning rapporteres i kvalitetsgaten (F9.14).
+- [ ] **F9.16** [Medium] **Provenance synligt i UI — gør strict factuality til en
+      FEATURE.** Produktets største troværdighedsaktiv er, at intet er opdigtet,
+      men brugeren kan ikke se det: `retrievedAt`/`sourceRevision` gemmes på alle
+      fakta-bærende rækker men vises ingen steder (kun rå "Source"-links på
+      klasse-/individsider). Fix: (a) diskret provenance-linje ved narrativ og
+      fleet-data — "Source: Wikipedia · retrieved 7 Jul 2026 · revision …" med
+      link til den PRÆCISE reviderede version (`oldid=`-URL); (b) ny statisk
+      `/about`-side der forklarer dataprincippet (alt fra Wikipedia/Wikidata/
+      Commons, tomme felter frem for AI-gæt), licenserne og genseed-kadencen;
+      link i headeren/footeren; (c) audit af at ALLE flader der viser billeder
+      har en attributions-vej (lightboxen har det — men gallerithumbnails,
+      placard-hero og /classes-kort viser billeder uden synlig kreditering;
+      afklar om lightbox-adgang fra hver flade er nok, ellers tilføj
+      hover/caption-kreditering). **Accept:** en bruger kan fra enhver
+      fakta-visning klikke sig til den eksakte kilde-revision; /about findes.
+- [ ] **F9.17** [Low] **Freshness/ældning.** Status-data forældes (STORED bliver
+      SCRAPPED, bevarede maskiner flytter hjemsted) — `retrievedAt` findes men
+      bruges ikke. Kvalitetsgaten (F9.14) rapporterer aldersfordeling pr. tabel
+      ("ældste fleet-data: N dage"), og genseed-proceduren dokumenteres i
+      `scripts/seed/README.md` (rækkefølge, idempotens-garantier, forventet
+      varighed). Evt. planlagt kvartalsvis genseed er en DRIFTS-beslutning —
+      afvent Ronni (hører under U1-agtige driftsvalg, kræver ikke ny U).
+
+## Fase F10 — UX/UI-oplevelser (forslag, analyse 2026-07-07 — prioriteret efter værdi/indsats)
+
+F9 lukker huller; F10 bygger OVENPÅ et komplet datasæt og gør opslagsværket til
+en oplevelse. Punkterne er designet så de genbruger eksisterende byggeklodser
+(linjefarve-tokens, FleetTable, layout-motoren) frem for at introducere nye
+subsystemer. F10.1–F10.3 kan startes uden brugerbeslutninger; resten er mærket.
+
+- [ ] **F10.1** [High] **Fleet-status-søjle på klassesiden** — klassens
+      "overlevelseshistorie" i ét blik. Oven over FleetTable på `/class/[qid]`:
+      én vandret stacked bar med statusfordelingen (In service → Stored →
+      Preserved → Scrapped → Exported/Unknown) i linjefarve-afledte nuancer
+      (genbrug `color-mix`-mønsteret fra FleetTable's status-badges), med
+      antal+procent pr. segment og klik-to-filter (klik på "Preserved"-segmentet
+      aktiverer FleetTable's eksisterende quick-filter). Samtidig: FleetTable
+      renderer i dag ALLE rækker — fint til Class 37 (309), men Class 08 (~1000
+      bygget) kræver paginering/virtualisering når F9.1 lander; byg det ind her.
+      **Accept:** Playwright-screenshot af Class 37-siden med søjlen; tabel med >500 rækker scroller uden jank. **Afhængighed:** giver først bred værdi
+      efter F9.1, men kan bygges og verificeres mod Class 37 nu.
+- [ ] **F10.2** [High] **Søge-typeahead i headeren.** I dag er søgning en fuld
+      sideindlæsning til /classes uden feedback undervejs. Fix: debounced
+      dropdown under header-feltet med grupperede resultater — "Classes"
+      (navn/alias-match, viser linjefarve-prik + æra) og "Individuals"
+      (nummer/navn-match via F9.3's opslag, viser status-badge) — piletast-
+      navigation + Enter, direkte til `/class/[qid]` hhv. `/loco/[nummer]`.
+      Nyt letvægts-endpoint `GET /api/search?q=` (genbruger F9.3's
+      where-klausuler, `take: 8`, ingen media-joins). Grund-UX'en (form →
+      /classes) bevares som fallback uden JS. **Accept:** at taste "37403"
+      viser individet uden sideskift; "Deltic" viser Class 55; Escape lukker;
+      e2e-smoke dækker begge. **Afhængighed:** F9.3.
+- [ ] **F10.3** [Medium] **Genopliv de forældreløse linjediagrammer.**
+      `/line/[slug]` blev korrekt migreret til region-linjer i F7
+      (`western/eastern/midland/southern/scottish`), men INTET i UI'et linker
+      til dem længere — legenden i TubeMap.svelte viser kun farve+navn som død
+      tekst (F5.7's links forsvandt i migreringen). Fix: legendens linjenavne
+      bliver links til `/line/[slug]`; klassesiden får "View the Western line
+      →"-links pr. region-badge; linjediagram-siden får tilbage-link til kortet
+      med linjen fremhævet. Linjediagrammet ER produktets bedste
+      mobil-/begynder-indgang (vandret scroll, ingen zoom) — det fortjener
+      synlighed frem for udfasning. **Accept:** alle 5 region-sider kan nås med
+      klik fra forsiden; intet dødt UI tilbage.
+- [ ] **F10.4** [Medium] **Klasse-sammenligning ("Compare").** Vælg 2-3 klasser
+      (checkbox på /classes-kort + "Compare"-knap i placarden) → `/compare?a=…&b=…`
+      med side-om-side spec-grid (rækker alignet på spec-nøgle, tal fra
+      F9.15's `valueNumeric` så "1.750 hp" og "2,580 hp" faktisk kan
+      sammenlignes), hero-billeder, fleet-status-søjler (F10.1) og æra/region-
+      badges i hver klasses linjefarve. Museums-metaforen holder: det er
+      "Top Trumps med kildehenvisninger". **Accept:** delbar URL; tom/1-klasse-
+      tilstand degraderer pænt. **Afhængighed:** F9.15 (tal), F10.1 (søjler).
+- [ ] **F10.5** [Medium] **"Where can I see one today?" — bevarings-oversigt.**
+      Efter F9.1 findes `location` for bevarede individer på tværs af klasser.
+      Ny rute `/preserved`: grupperet efter bevaringssted (Severn Valley Railway,
+      NRM York …) med antal, klasse-chips i linjefarver og links til individerne
+      — svaret på museums-spørgsmålet "hvor kan jeg opleve et i virkeligheden?".
+      Start som grupperet liste — INGEN eksterne korttiles (CSP/no-CDN-princip);
+      et selvhostet UK-omrids-SVG kan komme senere hvis listen bærer.
+      **Accept:** siden findes med reelle grupperinger; steder normaliseres let
+      (trim/case) men gættes ALDRIG (strict factuality — "Unknown location" er
+      en gyldig gruppe). **Afhængighed:** F9.1 (ellers er siden Class 37-only).
+- [ ] **F10.6** [Medium] **Individ-sidens galleri-fallback.** `/loco/[number]`
+      viser i dag kun billeder hvis `locoNumber`-metadata matcher — det giver 0
+      billeder for langt de fleste individer (223 af 353 assets har loco-nummer,
+      fordelt på få klasser). Fix: fald tilbage til klassens galleri med tydelig,
+      ærlig mærkning ("Imagery of the class — not verified as this specific
+      locomotive"), så siden aldrig føles tom, uden at bryde strict factuality.
+      **Accept:** intet individ har en tom galleri-sektion når klassen har media;
+      mærkningen skelner altid verificeret-individ fra klasse-fallback.
+- [ ] **F10.7** [Low] **OG/share-metadata pr. side.** Klassesiden har kun en
+      tekst-description; deling viser intet visuelt. Tilføj `og:title`/`og:image`
+      (klassens første media-asset i 960-varianten) + `twitter:card` på
+      /class/[qid] og /loco/[nummer]. Fuldt SSR-genererede composite-billeder
+      (foto + linjefarve-bånd + navn) er en KAN-udvidelse — start med det enkle.
+      **Accept:** et delt Class 37-link viser billede + titel i et link-preview.
+- [ ] **F10.8** [Low] **"Random class"-knap** i headeren (terning-ikon) →
+      server-redirect til en tilfældig `/class/[qid]` — museums-serendipitet,
+      ~20 linjer. God "første oplevelse" for besøgende der ikke ved hvad de
+      leder efter.
+
+**Kræver Ronnis beslutning før byggeri (se U8/U9):** mobil-strategi og
+kuraterede fortællinger — begge er retningsvalg, ikke implementeringsdetaljer.
+
 ## Fase F8 — Kort-interaktion (Claude Sonnet 5, 2026-07-07, iteration 2)
 
 Ronni efter at have set F7 live: "jeg oplever absolut ikke metro linjen som
@@ -302,6 +443,8 @@ testet om brugeren naturligt opdager dem ved zoom/pan).
 - [ ] **U1** Authelia-politik (arkitekt-forslag: bypass) — C3. Blokerer intet i F9, men skal afklares før sitet regnes som "færdigt lanceret".
 - [x] **U2** ~~Skal discovery udvides ud over de 7 æraers "major classes" til ALT rullende materiel? — OG omvendt: skal ikke-lokomotiver UD?~~ **Overhalet af F6.5-pivoten 2026-07-07:** datasættet er nu 100% britiske diesel-LOKOMOTIVER (98 klasser; godsvogne/ikke-lokomotiver blev renset ud af `clean-non-diesel.ts`). Spørgsmålet genopstår som U7.
 - [ ] **U7** Skal damp- og el-æraerne genindføres i datasættet, og i givet fald hvornår? (Briefen siger "all trains of all eras"; diesel-scope var en bevidst kompletheds-prioritering. Genudvidelse rører æra-strukturen (F9.5a), kort-layoutet (dieselLayout.ts er diesel-specifik) og fleet-seeden.) **Anbefaling: udskyd til F9's datakomplethed er lukket for diesel — ellers gentages "halvt produkt"-problemet fra F7 i tre traktioner på én gang.**
+- [ ] **U8** **Mobil-strategi.** Tubemappet er designet desktop-først (Ronnis 4K-krav i F5-amendmentet); på en telefon er pan/zoom-SVG med 98 stationer en dårlig oplevelse. Valg: (a) **anbefalet:** små skærme får linjediagrammerne (F10.3) og /classes som primær indgang — kortet vises med en "best on a larger screen"-note; (b) dedikeret mobil-tilpasning af selve kortet (dyrt, tvivlsom gevinst); (c) mobil ignoreres bevidst. Berører navigation, så beslut FØR F10.3 poleres færdig.
+- [ ] **U9** **Kuraterede fortællinger/ture** ("The Deltic story", "Pilot Scheme-fiaskoerne" — en sekvens af eksisterende klasse-/individsider med korte overgangstekster). Det ville give sitet en redaktionel stemme, men overgangstekster er PR DEFINITION ikke-citeret indhold — en bevidst undtagelse fra strict factuality-princippet, som kun Ronni kan give. Alternativ inden for princippet: ture uden fritekst, kun kuraterede sekvenser med kilde-citerede uddrag.
 - [x] **U3** ✅ BESLUTTET 2026-07-07: Navneskema-vælger med default TOPS ("Class 37"); søgning matcher alle aliasser (D6700, English Electric Type 3, "Tractor"). → implementeres i F5.2 + F5.6.
 - [x] **U4** ✅ BESLUTTET 2026-07-07: **Option A** — Steam = Metropolitan-magenta `#9B0058`, Diesel = District-grøn `#007D32`, Electric = Victoria-lyseblå `#0098D8`, Experimental/Other = Jubilee-grå `#A0A5A9`.
 - [x] **U5** ✅ BESLUTTET 2026-07-07: **HELE sitet i det lyse TfL-univers** — ingen mørk toggle. Linjefarven følger med ind på klasse-/individ-sider via `--line-color`.
