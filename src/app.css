@@ -653,3 +653,7 @@ h4,
 .translate-x-0 {
 	transform: translateX(0);
 }
+
+.whitespace-nowrap {
+	white-space: nowrap;
+}
