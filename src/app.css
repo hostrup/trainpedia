@@ -646,12 +646,17 @@ h4,
 	box-shadow: var(--shadow-museum);
 }
 
-/* Drawer sliding transition styles */
 .translate-x-full {
 	transform: translateX(100%);
 }
 .translate-x-0 {
 	transform: translateX(0);
+}
+.translate-y-full {
+	transform: translateY(100%);
+}
+.translate-y-0 {
+	transform: translateY(0);
 }
 
 .whitespace-nowrap {

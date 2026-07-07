@@ -32,9 +32,12 @@
 </script>
 
 <div
-	class="fixed inset-0 z-50 bg-[var(--color-bg-base)] flex flex-col transition-transform duration-500 var(--transition-bezier-heavy)"
+	class="fixed inset-0 z-50 flex flex-col transition-transform duration-500"
+	style="transition-timing-function: var(--transition-bezier-heavy); background-color: var(--color-bg-base);"
 	class:translate-y-full={!isOpen}
 	class:translate-y-0={isOpen}
+	class:pointer-events-none={!isOpen}
+	class:pointer-events-auto={isOpen}
 >
 	{#if classData}
 		<!-- Header Section -->
