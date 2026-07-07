@@ -24,6 +24,15 @@ enum MediaKind {
   DOCUMENT
 }
 
+/// Navneskema for en klasses aliasser (F5.2/F5.6/U3) — styrer visning + søgning.
+enum AliasScheme {
+  TOPS // "Class 37" — default visning (Ronni tænker i TOPS)
+  PRE_TOPS // "D6700"
+  BUILDER // "English Electric Type 3"
+  NICKNAME // "Tractor"
+  ORIGINAL // oprindeligt selskabsnavn/nummer før nationalisering, hvor forskelligt fra PRE_TOPS
+}
+
 /// De historiske æraer (Pre-Grouping → Modern Post-Privatisation)
 model Era {
   id          Int               @id @default(autoincrement())
@@ -53,10 +62,12 @@ model LocomotiveClass {
   buildEnd         Int?
   totalBuilt       Int?
   narrative        String? // "hvorfor klassen betød noget" — citeret fra kilde
+  isLandmark       Boolean         @default(false) // F5.5: ring-station på kortet (fx A3, Deltic, Class 37, APT)
   era              Era             @relation(fields: [eraId], references: [id])
   eraId            Int
   specs            Specification[]
   media            MediaAsset[]
+  aliases          ClassAlias[]
   sourceUrl        String? // Wikipedia-artikel
   sourceRevision   String? // revisions-id for citatets version
   retrievedAt      DateTime?
@@ -64,6 +75,22 @@ model LocomotiveClass {
   @@index([eraId, serviceEntry])
   @@index([traction])
   @@index([wheelArrangement])
+}
+
+/// Alternative navne/numre for en klasse (Wikidata skos:altLabel, pre-TOPS-numre,
+/// byggerbetegnelser, kaldenavne) — bærer navneskema-vælgeren (F5.6/U3) og gør
+/// søgningen alias-komplet (D6700, "Tractor" og "Class 37" finder samme klasse).
+model ClassAlias {
+  id          Int             @id @default(autoincrement())
+  class       LocomotiveClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId     Int
+  alias       String // "D6700", "English Electric Type 3", "Tractor"
+  scheme      AliasScheme
+  sourceUrl   String?
+  retrievedAt DateTime?
+
+  @@unique([classId, alias])
+  @@index([alias])
 }
 
 /// Fleksibelt spec-grid (Manufacturer, Designer, Power Output, Tractive Effort, Top Speed, ...)
