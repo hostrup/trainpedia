@@ -5,12 +5,16 @@
 		eras,
 		wheelArrangements,
 		selectedEraId = $bindable(null),
-		selectedWheelArrangement = $bindable(null)
+		selectedWheelArrangement = $bindable(null),
+		matchCount,
+		total
 	} = $props<{
 		eras: Era[];
 		wheelArrangements: string[];
 		selectedEraId: number | null;
 		selectedWheelArrangement: string | null;
+		matchCount: number;
+		total: number;
 	}>();
 
 	function resetFilters() {
@@ -32,7 +36,7 @@
 		>
 		<select
 			bind:value={selectedEraId}
-			aria-label="Filtrér efter æra"
+			aria-label="Filter by era"
 			class="cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold outline-none transition"
 			style="background: var(--map-zone); color: var(--map-ink); border-color: var(--map-zone);"
 		>
@@ -54,7 +58,7 @@
 		>
 		<select
 			bind:value={selectedWheelArrangement}
-			aria-label="Filtrér efter hjularrangement"
+			aria-label="Filter by wheel arrangement"
 			class="cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold outline-none transition"
 			style="background: var(--map-zone); color: var(--map-ink); border-color: var(--map-zone);"
 		>
@@ -64,6 +68,18 @@
 			{/each}
 		</select>
 	</div>
+
+	<!-- Match-optælling: kortet dæmper (viser aldrig et tomt lærred), så dette er
+	     brugerens eneste direkte "N af M matcher"-feedback ved filtrering. -->
+	{#if hasActiveFilters}
+		<span
+			class="text-[11px] font-semibold tabular-nums"
+			style="color: var(--map-ink-soft);"
+			aria-live="polite"
+		>
+			{matchCount} of {total} classes match
+		</span>
+	{/if}
 
 	<!-- Reset Button -->
 	{#if hasActiveFilters}

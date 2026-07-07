@@ -25,6 +25,17 @@
 			)
 		).sort() as string[]
 	);
+
+	// Kortet dæmper (opacity) i stedet for at fjerne stationer ved filtrering (se
+	// TubeMap.svelte), så optællingen her er den eneste plads brugeren ser "N af M
+	// klasser matcher" — afgørende feedback når en kombination rammer få/ingen.
+	const matchCount = $derived(
+		data.classes.filter(
+			(c: LocomotiveClass) =>
+				(selectedEraId === null || c.eraId === selectedEraId) &&
+				(selectedWheelArrangement === null || c.wheelArrangement === selectedWheelArrangement)
+		).length
+	);
 </script>
 
 <svelte:head>
@@ -41,6 +52,8 @@
 		{wheelArrangements}
 		bind:selectedEraId
 		bind:selectedWheelArrangement
+		{matchCount}
+		total={data.classes.length}
 	/>
 
 	<!-- Tube map -->

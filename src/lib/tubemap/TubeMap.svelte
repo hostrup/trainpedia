@@ -4,7 +4,7 @@
 	import type { Era, LocomotiveClass } from '$lib/types.js';
 	import { select } from 'd3-selection';
 	import { zoom as d3Zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom';
-	import { computeLayout, GEOMETRY, type Traction } from './layout.js';
+	import { computeLayout, GEOMETRY, type LayoutStation, type Traction } from './layout.js';
 	import { mapClassesToStations, type MappableClass } from './mapClasses.js';
 	import { lineColorVar, LINE_NAMES } from './colors.js';
 	import StationIcon from './StationIcon.svelte';
@@ -37,20 +37,17 @@
 	let transform = $state({ x: 20, y: 20, k: 0.5 });
 	let zoomBehavior = $state<ZoomBehavior<HTMLDivElement, unknown> | null>(null);
 
-	const filteredClasses = $derived(
-		classes.filter((c: LocomotiveClass) => {
-			if (selectedEraId !== null && c.eraId !== selectedEraId) return false;
-			if (selectedWheelArrangement !== null && c.wheelArrangement !== selectedWheelArrangement)
-				return false;
-			return true;
-		})
-	);
+	const CENTER_X = 600;
+	const CENTER_Y = 500;
 
 	const eraOrder = $derived([...eras].sort((a, b) => a.sortIndex - b.sortIndex).map((e) => e.slug));
 
-	// Compute Layout (maps Wikidata QIDs dynamically to static coords)
+	// Layoutet beregnes ALTID ud fra det FULDE datasæt — æra/hjul-filtre dæmper
+	// (opacity) i stedet for at fjerne stationer, så man aldrig rammer et tomt
+	// kort ved en snæver kombination (fx "Privatisation"-æraen). Genbruger samme
+	// dæmpnings-mekanik som tidslinje-slideren nedenfor (isStationVisible).
 	const layout = $derived.by(() => {
-		const stations = mapClassesToStations(filteredClasses, eras, displayName ?? ((c) => c.name));
+		const stations = mapClassesToStations(classes, eras, displayName ?? ((c) => c.name));
 		return computeLayout(stations, { eraOrder });
 	});
 
@@ -119,6 +116,27 @@
 				s.y <= viewBounds.bottom
 		)
 	);
+
+	// Datadrevne æra-ringe: radius for hver æra = den største afstand fra centrum
+	// blandt alle stationer introduceret i denne æra ELLER en tidligere æra
+	// (kumulativt, så ringene altid vokser monotont udad i kronologisk rækkefølge).
+	// Erstatter de tidligere hardcodede cirkler, hvis danske labels og årstal ikke
+	// matchede databasens reelle æra-grænser. Æraer uden nogen station (fx
+	// Pre-Grouping på et rent diesel-site) udelades helt.
+	const zoneRings = $derived.by(() => {
+		const sorted = [...eras].sort((a, b) => a.sortIndex - b.sortIndex);
+		let cumulativeRadius = 0;
+		const rings: { era: Era; radius: number }[] = [];
+		for (const era of sorted) {
+			const radii = layout.stations
+				.filter((s) => s.eraSlug === era.slug)
+				.map((s) => Math.hypot(s.x - CENTER_X, s.y - CENTER_Y));
+			if (radii.length === 0) continue;
+			cumulativeRadius = Math.max(cumulativeRadius, ...radii) + 45;
+			rings.push({ era, radius: cumulativeRadius });
+		}
+		return rings;
+	});
 
 	function handleMinimapNavigate(layoutX: number, layoutY: number) {
 		if (!zoomContainer || !zoomBehavior) return;
@@ -237,7 +255,20 @@
 		};
 	});
 
-	// Timeline Highlight checking
+	// Kombineret synligheds-tjek: en station er kun "fuldt synlig" (fuld opacity)
+	// hvis den matcher BÅDE FilterOverlay's æra/hjul-filtre OG tidslinje-sliderens
+	// aktive år. De to filtertyper holdes bevidst adskilt (matchesFieldFilters vs.
+	// isStationActive), så et snævert årstal ikke fejlagtigt tæller med i
+	// FilterOverlay's "N af M klasser matcher"-optælling.
+	function matchesFieldFilters(station: LayoutStation): boolean {
+		const cls = classById.get(station.id);
+		if (!cls) return false;
+		if (selectedEraId !== null && cls.eraId !== selectedEraId) return false;
+		if (selectedWheelArrangement !== null && cls.wheelArrangement !== selectedWheelArrangement)
+			return false;
+		return true;
+	}
+
 	function isStationActive(
 		station: { introYear: number; retiredYear: number | null },
 		year: number
@@ -247,15 +278,26 @@
 		);
 	}
 
-	function isPathActive(traction: Traction, year: number) {
-		return layout.stations.some((s) => s.traction === traction && isStationActive(s, year));
+	function isStationVisible(station: LayoutStation, year: number): boolean {
+		return matchesFieldFilters(station) && isStationActive(station, year);
 	}
 
-	// Scatterplot Helper: Parse Spec Values
+	function isPathVisible(traction: Traction, year: number) {
+		return layout.stations.some((s) => s.traction === traction && isStationVisible(s, year));
+	}
+
+	// Scatterplot Helper: Parse Spec Values. Spec-tekster indeholder ofte FLERE tal
+	// (fx "90 mph (145 km/h)" eller "Engine: 2,500 bhp (1,864 kW) At rail: 2,000 hp
+	// (1,491 kW)") — at strippe alt undtagen cifre/punktum og parse hele resten
+	// concatenerer tallene til meningsløse størrelser (fx "90 mph (145 km/h)" blev
+	// til 90145). Match i stedet det FØRSTE tal der reelt står lige før enheden.
 	function getSpecValue(c: LocomotiveClass, key: string): number | null {
 		const spec = c.specs.find((s) => s.key === key);
 		if (!spec) return null;
-		const parsed = parseFloat(spec.value.replace(/[^0-9.]/g, ''));
+		const unit = key === 'Top Speed' ? 'mph' : 'b?hp';
+		const match = spec.value.match(new RegExp(`(\\d[\\d,]*(?:\\.\\d+)?)\\s*${unit}\\b`, 'i'));
+		if (!match) return null;
+		const parsed = parseFloat(match[1].replace(/,/g, ''));
 		return Number.isNaN(parsed) ? null : parsed;
 	}
 
@@ -283,17 +325,19 @@
 		y: number;
 	} | null>(null);
 	function handleMouseOver(
-		e: MouseEvent,
+		e: MouseEvent | FocusEvent,
 		item: { class: LocomotiveClass; hp: number; speed: number }
 	) {
 		const rect = (e.currentTarget as SVGElement).ownerSVGElement?.getBoundingClientRect();
+		const clientX = 'clientX' in e ? e.clientX : rect ? rect.left + rect.width / 2 : 0;
+		const clientY = 'clientY' in e ? e.clientY : rect ? rect.top : 0;
 		if (!rect) return;
 		tooltipData = {
 			name: item.class.name,
 			hp: item.hp,
 			speed: item.speed,
-			x: e.clientX - rect.left + 15,
-			y: e.clientY - rect.top - 15
+			x: clientX - rect.left + 15,
+			y: clientY - rect.top - 15
 		};
 	}
 	function handleMouseOut() {
@@ -303,29 +347,36 @@
 
 <!-- View Selector Header inside component container -->
 <div
-	class="flex justify-between items-center border-b border-[var(--border-color)] px-6 py-3 bg-white"
+	class="flex items-center justify-between border-b px-6 py-3"
+	style="border-color: var(--map-zone); background: var(--map-bg);"
 >
 	<div class="flex gap-2">
 		<button
-			class="px-4 py-2 text-xs font-semibold rounded-md transition-all {activeTab === 'map'
-				? 'bg-[var(--tfl-blue)] text-white'
-				: 'bg-gray-100 text-gray-500 hover:bg-gray-200'}"
+			class="rounded-md px-4 py-2 text-xs font-semibold transition-all {activeTab === 'map'
+				? 'text-white'
+				: ''}"
+			style={activeTab === 'map'
+				? 'background: var(--tfl-blue);'
+				: 'background: var(--map-zone); color: var(--map-ink-soft);'}
 			onclick={() => (activeTab = 'map')}
 		>
-			🚇 Regionalt Metrokort
+			🚇 Regional Metro Map
 		</button>
 		<button
-			class="px-4 py-2 text-xs font-semibold rounded-md transition-all {activeTab === 'chart'
-				? 'bg-[var(--tfl-blue)] text-white'
-				: 'bg-gray-100 text-gray-500 hover:bg-gray-200'}"
+			class="rounded-md px-4 py-2 text-xs font-semibold transition-all {activeTab === 'chart'
+				? 'text-white'
+				: ''}"
+			style={activeTab === 'chart'
+				? 'background: var(--tfl-blue);'
+				: 'background: var(--map-zone); color: var(--map-ink-soft);'}
 			onclick={() => (activeTab = 'chart')}
 		>
-			📊 Hestekræfter vs. Fart
+			📊 Power vs. Speed
 		</button>
 	</div>
 </div>
 
-<div class="relative flex-1 flex flex-col min-h-0">
+<div class="relative flex flex-1 flex-col">
 	{#if activeTab === 'map'}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
 		<div
@@ -344,90 +395,27 @@
 				style="transform: translate3d({transform.x}px, {transform.y}px, 0) scale({transform.k}); width: {layout.width}px; height: {layout.height}px;"
 			>
 				<svg width={layout.width} height={layout.height} class="absolute inset-0">
-					<!-- Concentric Circles/Zones -->
-					<circle
-						cx="600"
-						cy="500"
-						r="100"
-						class="fill-none stroke-gray-300 stroke-[1.5px]"
-						stroke-dasharray="4 6"
-					/>
-					<text
-						x="600"
-						y="390"
-						class="pointer-events-none select-none text-[12px] font-bold fill-gray-400"
-						text-anchor="middle">ZONE 1: PIONERERNE (1948-1954)</text
-					>
-
-					<circle
-						cx="600"
-						cy="500"
-						r="200"
-						class="fill-none stroke-gray-300 stroke-[1.5px]"
-						stroke-dasharray="4 6"
-					/>
-					<text
-						x="600"
-						y="290"
-						class="pointer-events-none select-none text-[12px] font-bold fill-gray-400"
-						text-anchor="middle">ZONE 2: MODERNISERINGSPLANEN (1955-1967)</text
-					>
-
-					<circle
-						cx="600"
-						cy="500"
-						r="290"
-						class="fill-none stroke-gray-300 stroke-[1.5px]"
-						stroke-dasharray="4 6"
-					/>
-					<text
-						x="600"
-						y="200"
-						class="pointer-events-none select-none text-[12px] font-bold fill-gray-400"
-						text-anchor="middle">ZONE 3: TOPS-TRANSITIONEN (1968-1981)</text
-					>
-
-					<circle
-						cx="600"
-						cy="500"
-						r="370"
-						class="fill-none stroke-gray-300 stroke-[1.5px]"
-						stroke-dasharray="4 6"
-					/>
-					<text
-						x="600"
-						y="120"
-						class="pointer-events-none select-none text-[12px] font-bold fill-gray-400"
-						text-anchor="middle">ZONE 4: SEKTORISERINGEN (1982-1988)</text
-					>
-
-					<circle
-						cx="600"
-						cy="500"
-						r="440"
-						class="fill-none stroke-gray-300 stroke-[1.5px]"
-						stroke-dasharray="4 6"
-					/>
-					<text
-						x="600"
-						y="50"
-						class="pointer-events-none select-none text-[12px] font-bold fill-gray-400"
-						text-anchor="middle">ZONE 5: SENE BR-DAGE (1989-1994)</text
-					>
-
-					<circle
-						cx="600"
-						cy="500"
-						r="510"
-						class="fill-none stroke-gray-300 stroke-[1.5px]"
-						stroke-dasharray="2 4"
-					/>
-					<text
-						x="600"
-						y="-20"
-						class="pointer-events-none select-none text-[12px] font-bold fill-gray-400"
-						text-anchor="middle">ZONE 6: PRIVATISERING & NUTID (1995+)</text
-					>
+					<!-- Æra-ringe: radius og label er beregnet ud fra de faktiske stationer -->
+					{#each zoneRings as ring (ring.era.slug)}
+						<circle
+							cx={CENTER_X}
+							cy={CENTER_Y}
+							r={ring.radius}
+							class="fill-none"
+							stroke="var(--map-zone)"
+							stroke-width="1.5"
+							stroke-dasharray="4 6"
+						/>
+						<text
+							x={CENTER_X}
+							y={CENTER_Y - ring.radius - 10}
+							class="pointer-events-none font-bold select-none"
+							style="fill: var(--map-ink-soft); font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.04em;"
+							text-anchor="middle"
+							>{ring.era.name.toUpperCase()} ({ring.era.startYear}–{ring.era.endYear ??
+								'present'})</text
+						>
+					{/each}
 
 					<!-- Regional Lines paths -->
 					{#each layout.paths as path (path.traction)}
@@ -438,7 +426,7 @@
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							fill="none"
-							class="transition-opacity duration-300 {isPathActive(path.traction, selectedYear)
+							class="transition-opacity duration-300 {isPathVisible(path.traction, selectedYear)
 								? ''
 								: 'opacity-15'}"
 						/>
@@ -447,7 +435,7 @@
 					<!-- Stations nodes -->
 					{#each visibleStations as station (station.id)}
 						<g
-							class="transition-opacity duration-300 {isStationActive(station, selectedYear)
+							class="transition-opacity duration-300 {isStationVisible(station, selectedYear)
 								? ''
 								: 'opacity-15'}"
 						>
@@ -465,19 +453,21 @@
 
 			<!-- Legend -->
 			<div
-				class="absolute top-4 left-4 z-20 flex flex-col gap-1.5 rounded-lg px-4 py-3 shadow-md bg-white border border-gray-200"
-				style="font-family: var(--font-ui);"
+				class="absolute top-4 left-4 z-20 flex flex-col gap-1.5 rounded-lg border px-4 py-3 shadow-md"
+				style="font-family: var(--font-ui); background: var(--map-bg); border-color: var(--map-zone);"
 			>
 				{#each lineList as traction (traction)}
 					<div class="flex items-center gap-2">
 						<span class="h-1 w-6 rounded-full" style="background: {lineColorVar(traction)};"></span>
-						<span class="text-xs font-semibold text-gray-800">{LINE_NAMES[traction]}</span>
+						<span class="text-xs font-semibold" style="color: var(--map-ink);"
+							>{LINE_NAMES[traction]}</span
+						>
 					</div>
 				{/each}
 			</div>
 
 			<!-- Minimap -->
-			<div class="absolute bottom-4 right-4 z-20 shadow-md">
+			<div class="absolute right-4 bottom-4 z-20 shadow-md">
 				<Minimap
 					width={layout.width}
 					height={layout.height}
@@ -489,7 +479,8 @@
 
 			{#if dev}
 				<div
-					class="absolute top-4 right-4 z-20 flex flex-col gap-1 rounded-md px-3 py-2 font-mono text-[10px] tracking-wide shadow-md bg-white border border-gray-200 text-gray-400"
+					class="absolute top-4 right-4 z-20 flex flex-col gap-1 rounded-md border px-3 py-2 font-mono text-[10px] tracking-wide shadow-md"
+					style="background: var(--map-bg); border-color: var(--map-zone); color: var(--map-ink-soft);"
 				>
 					<div class="flex justify-between gap-4">
 						<span>FPS:</span>
@@ -503,7 +494,7 @@
 						<span class="font-semibold tabular-nums">{transform.k.toFixed(2)}x ({lod})</span>
 					</div>
 					<div class="flex justify-between gap-4">
-						<span>Stationer:</span>
+						<span>Stations:</span>
 						<span class="font-semibold tabular-nums"
 							>{visibleStations.length} / {layout.stations.length}</span
 						>
@@ -514,20 +505,25 @@
 
 		<!-- Time slider control bar -->
 		<div
-			class="flex items-center gap-6 border-t border-[var(--border-color)] px-6 py-4 bg-white z-50"
+			class="z-50 flex items-center gap-6 border-t px-6 py-4"
+			style="border-color: var(--map-zone); background: var(--map-bg);"
 		>
-			<div class="font-bold text-lg min-w-[140px] text-gray-800">
-				Aktivt år: <span class="text-[var(--tfl-blue)]">{selectedYear}</span>
+			<div class="min-w-[140px] text-lg font-bold" style="color: var(--map-ink);">
+				Active year: <span style="color: var(--tfl-blue);">{selectedYear}</span>
 			</div>
-			<div class="flex-1 flex flex-col relative">
+			<div class="relative flex flex-1 flex-col">
 				<input
 					type="range"
 					min="1948"
 					max="2026"
 					bind:value={selectedYear}
-					class="w-full h-1.5 rounded-full bg-gray-200 accent-[var(--tfl-blue)] outline-none cursor-pointer"
+					class="h-1.5 w-full cursor-pointer rounded-full outline-none"
+					style="background: var(--map-zone); accent-color: var(--tfl-blue);"
 				/>
-				<div class="flex justify-between w-full mt-2 text-[10px] font-semibold text-gray-400">
+				<div
+					class="mt-2 flex w-full justify-between text-[10px] font-semibold"
+					style="color: var(--map-ink-soft);"
+				>
 					<span>1948</span>
 					<span>1955</span>
 					<span>1968</span>
@@ -539,33 +535,34 @@
 		</div>
 	{:else}
 		<!-- Scatterplot Panel -->
-		<div class="flex-1 flex flex-col bg-gray-50 p-8 overflow-y-auto">
+		<div class="flex flex-1 flex-col overflow-y-auto p-8" style="background: var(--map-zone);">
 			<div class="mb-6">
-				<h2 class="text-xl font-bold text-gray-800">Hestekræfter vs. Tophastighed</h2>
-				<p class="text-xs text-gray-500 mt-1">
-					Sammenlign specifikationer på tværs af de 100 britiske dieselklasser i databasen.
+				<h2 class="text-xl font-bold" style="color: var(--map-ink);">Power vs. Top Speed</h2>
+				<p class="mt-1 text-xs" style="color: var(--map-ink-soft);">
+					Compare specifications across the {classes.length} British diesel classes in the database.
 				</p>
 			</div>
 			<div
-				class="relative flex-1 bg-white border border-gray-200 rounded-xl p-6 shadow-sm min-h-[400px]"
+				class="relative min-h-[400px] flex-1 rounded-xl border p-6 shadow-sm"
+				style="background: var(--map-bg); border-color: var(--map-zone);"
 			>
 				<!-- Chart Tooltip -->
 				{#if tooltipData}
 					<div
-						class="absolute bg-gray-900 text-white px-3 py-2 rounded-md text-xs pointer-events-none shadow-md z-[100] border border-gray-700"
-						style="left: {tooltipData.x}px; top: {tooltipData.y}px;"
+						class="pointer-events-none absolute z-[100] rounded-md border px-3 py-2 text-xs text-white shadow-md"
+						style="left: {tooltipData.x}px; top: {tooltipData.y}px; background: var(--map-ink); border-color: var(--map-ink);"
 					>
 						<strong>{tooltipData.name}</strong><br />
-						Effekt: {tooltipData.hp} hp<br />
-						Fart: {tooltipData.speed} mph
+						Power: {tooltipData.hp} hp<br />
+						Speed: {tooltipData.speed} mph
 					</div>
 				{/if}
 
 				<!-- Scatterplot SVG -->
-				<svg class="w-full h-full" viewBox="0 0 800 400">
+				<svg class="h-full w-full" viewBox="0 0 800 400">
 					<!-- Grid lines -->
-					<line x1="80" y1="350" x2="750" y2="350" class="stroke-gray-300 stroke-[1px]" />
-					<line x1="80" y1="50" x2="80" y2="350" class="stroke-gray-300 stroke-[1px]" />
+					<line x1="80" y1="350" x2="750" y2="350" stroke="var(--map-zone)" stroke-width="1" />
+					<line x1="80" y1="50" x2="80" y2="350" stroke="var(--map-zone)" stroke-width="1" />
 
 					<!-- X Axis Labels (0 to 150 mph) -->
 					{#each [0, 25, 50, 75, 100, 125, 150] as speed (speed)}
@@ -573,12 +570,15 @@
 						<text
 							x={cx}
 							y="370"
-							class="text-[10px] font-semibold fill-gray-400"
+							style="font-size: 10px; font-weight: 600; fill: var(--map-ink-soft);"
 							text-anchor="middle">{speed} mph</text
 						>
 					{/each}
-					<text x="415" y="390" class="text-xs font-bold fill-gray-500" text-anchor="middle"
-						>TOP HASTIGHED (MPH)</text
+					<text
+						x="415"
+						y="390"
+						style="font-size: 12px; font-weight: 700; fill: var(--map-ink-soft);"
+						text-anchor="middle">TOP SPEED (MPH)</text
 					>
 
 					<!-- Y Axis Labels (0 to 3500 hp) -->
@@ -587,38 +587,50 @@
 						<text
 							x="70"
 							y={cy + 4}
-							class="text-[10px] font-semibold fill-gray-400"
+							style="font-size: 10px; font-weight: 600; fill: var(--map-ink-soft);"
 							text-anchor="end">{hp} hp</text
 						>
 					{/each}
 					<text
 						x="25"
 						y="200"
-						class="text-xs font-bold fill-gray-500"
+						style="font-size: 12px; font-weight: 700; fill: var(--map-ink-soft);"
 						text-anchor="middle"
-						transform="rotate(-90 25 200)">HESTEKRÆFTER (HP)</text
+						transform="rotate(-90 25 200)">POWER OUTPUT (HP)</text
 					>
 
 					<!-- Dots for each class -->
 					{#each scatterplotData as item (item.class.id)}
 						{@const cx = 80 + (Math.min(150, item.speed) / 150) * 670}
 						{@const cy = 350 - (Math.min(3500, item.hp) / 3500) * 300}
-						<!-- Find primary region color -->
 						{@const layoutItem = dieselLayout.find((li) => li.qid === item.class.wikidataQid)}
-						{@const primaryRegion = layoutItem ? (layoutItem.regions[0] as Traction) : 'MIDLAND'}
+						{@const primaryRegion = (item.class.regions[0] ??
+							(layoutItem ? layoutItem.regions[0] : 'MIDLAND')) as Traction}
 
-						<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events a11y_mouse_events_have_key_events -->
 						<circle
 							{cx}
 							{cy}
 							r={item.class.isLandmark ? 8 : 6}
 							fill={lineColorVar(primaryRegion)}
-							class="stroke-gray-900 stroke-[1.5px] cursor-pointer fill-opacity-80 transition-all hover:r-[10px] hover:fill-opacity-100"
+							class="cursor-pointer fill-opacity-80 transition-all hover:fill-opacity-100"
+							style="stroke: var(--map-ink); stroke-width: 1.5px;"
+							role="button"
+							tabindex="0"
+							aria-label="{item.class.name} — {item.hp} hp, {item.speed} mph"
 							onmouseover={(e) => handleMouseOver(e, item)}
 							onmouseout={handleMouseOut}
+							onfocus={(e) => handleMouseOver(e, item)}
+							onblur={handleMouseOut}
 							onclick={() => {
 								selectStation(String(item.class.id));
 								activeTab = 'map';
+							}}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									selectStation(String(item.class.id));
+									activeTab = 'map';
+								}
 							}}
 						/>
 					{/each}

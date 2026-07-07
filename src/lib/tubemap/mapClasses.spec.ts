@@ -17,6 +17,7 @@ function loco(overrides: Partial<MappableClass> & { id: number }): MappableClass
 		serviceExit: null,
 		isLandmark: false,
 		eraId: 1,
+		regions: ['MIDLAND'],
 		...overrides
 	};
 }

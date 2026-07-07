@@ -21,14 +21,14 @@
 			</span>
 			<div class="mt-2 flex items-baseline justify-between gap-2">
 				<span
-					class="font-mono text-sm font-semibold tracking-wide break-all"
+					class="min-w-0 font-mono text-sm font-semibold tracking-wide break-words"
 					style="color: var(--map-ink);"
 				>
 					{spec.value}
 				</span>
 				{#if spec.unit}
 					<span
-						class="font-mono text-xs font-normal lowercase tracking-wide"
+						class="flex-shrink-0 font-mono text-xs font-normal lowercase tracking-wide"
 						style="color: var(--map-ink-soft);"
 					>
 						{spec.unit}

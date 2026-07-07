@@ -9,6 +9,7 @@ function testStation(overrides: Partial<StationInput> & { id: string }): Station
 		introYear: 1960,
 		retiredYear: null,
 		isLandmark: false,
+		regions: [],
 		eraSlug: 'br-transition',
 		interchangeWith: null,
 		...overrides
@@ -27,13 +28,25 @@ describe('computeLayout — 2D-mode (Region Metrokort)', () => {
 		expect(result.stations[0].x).not.toBe(600); // det er ikke midter-fallback
 	});
 
-	it('placerer ukendte stationer på fallback position', () => {
+	it('placerer ukendte stationer på en deterministisk fallback-position ud fra region+årstal (aldrig oven i centrum)', () => {
 		const result = computeLayout([
-			testStation({ id: '1', wikidataQid: 'Q_UNKNOWN_TEST', name: 'Unknown' })
+			testStation({ id: '1', wikidataQid: 'Q_UNKNOWN_TEST', name: 'Unknown', introYear: 1960 })
 		]);
 		expect(result.stations).toHaveLength(1);
-		expect(result.stations[0].x).toBe(600);
-		expect(result.stations[0].y).toBe(500);
+		// MIDLAND-fallback går lige op (270°) — x forbliver ~600, y flytter sig med årstallet.
+		expect(result.stations[0].x).toBeCloseTo(600, 5);
+		expect(result.stations[0].y).not.toBe(500);
+		expect(result.stations[0].y).toBeLessThan(500);
+	});
+
+	it('giver to ukendte stationer med forskelligt årstal forskellig fallback-position (ingen kollision)', () => {
+		const result = computeLayout([
+			testStation({ id: 'a', wikidataQid: 'Q_UNKNOWN_A', introYear: 1955 }),
+			testStation({ id: 'b', wikidataQid: 'Q_UNKNOWN_B', introYear: 2010 })
+		]);
+		const a = result.stations.find((s) => s.id === 'a')!;
+		const b = result.stations.find((s) => s.id === 'b')!;
+		expect(a.y).not.toBe(b.y);
 	});
 
 	it('genererer altid stier for alle 5 regioner', () => {
@@ -99,13 +112,21 @@ describe('computeLayout — 1D-mode (Stribekort til Linjediagram)', () => {
 
 describe('Beck-geometri — 45-graders path interpolation', () => {
 	it('genererer 45-graders segmenter i stier', () => {
-		const result = computeLayout([testStation({ id: '1', wikidataQid: 'Q1131502' })]);
+		// 3 kendte WESTERN-koordinater fra dieselLayout.ts, så linjen får >1 punkt at knække imellem.
+		const result = computeLayout([
+			testStation({ id: '1', wikidataQid: 'Q5515065', regions: ['WESTERN'] }),
+			testStation({ id: '2', wikidataQid: 'Q6459188', regions: ['WESTERN'] }),
+			testStation({ id: '3', wikidataQid: 'Q4970895', regions: ['WESTERN'] })
+		]);
+
+		const westernPath = result.paths.find((p) => p.traction === 'WESTERN')!;
+		expect(westernPath.d.startsWith('M')).toBe(true);
+		expect(westernPath.d).toContain('L');
 
 		// For stier der har knæk, vil d-strengen indeholde M og L kommandoer
 		for (const path of result.paths) {
 			if (path.d) {
 				expect(path.d.startsWith('M')).toBe(true);
-				expect(path.d).toContain('L');
 			}
 		}
 	});

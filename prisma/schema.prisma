@@ -63,6 +63,7 @@ model LocomotiveClass {
   totalBuilt       Int?
   narrative        String? // "hvorfor klassen betød noget" — citeret fra kilde
   isLandmark       Boolean         @default(false) // F5.5: ring-station på kortet (fx A3, Deltic, Class 37, APT)
+  regions          String[]        @default([]) // BR-region(er) (F5.4-pivot): "WESTERN"/"EASTERN"/"MIDLAND"/"SOUTHERN"/"SCOTTISH". Flere = interchange på kortet. Eneste kilde til linjefarve (tractionColor) og kort-tilhørsforhold — traction-feltet ovenfor er nu altid DIESEL og bærer INGEN linje-betydning.
   era              Era             @relation(fields: [eraId], references: [id])
   eraId            Int
   specs            Specification[]

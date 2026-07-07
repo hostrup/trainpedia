@@ -56,6 +56,7 @@ export interface LocomotiveClass {
 	eraId: number;
 	narrative: string | null;
 	isLandmark: boolean;
+	regions: string[];
 	specs: Specification[];
 	media: MediaAsset[];
 	aliases: ClassAlias[];

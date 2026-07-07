@@ -13,6 +13,8 @@ export interface MappableClass {
 	serviceExit: string | null; // ISO-dato eller null
 	isLandmark: boolean;
 	eraId: number;
+	/** BR-region(er), DB-felt (LocomotiveClass.regions) — eneste kilde til linje-tilhørsforhold. */
+	regions: string[];
 	/** Ikke brugt af selve layoutet — kun til stede så en displayName-callback (F5.6) kan læse aliasser. */
 	aliases?: { alias: string; scheme: string }[];
 }
@@ -63,6 +65,7 @@ export function mapClassesToStations(
 			introYear: year,
 			retiredYear: retiredYear(c),
 			isLandmark: c.isLandmark,
+			regions: c.regions,
 			eraSlug,
 			interchangeWith: null
 		});

@@ -22,14 +22,14 @@ const eras = [
 	},
 	{
 		slug: 'br-steam',
-		name: 'British Railways Steam Era',
+		name: 'The Pilot Scheme',
 		startYear: 1948,
 		endYear: 1968,
 		sortIndex: 3
 	},
 	{
 		slug: 'br-transition',
-		name: 'The Diesel & Electric Transition/Era',
+		name: 'The Diesel & Electric Transition Era',
 		startYear: 1968,
 		endYear: 1981,
 		sortIndex: 4
@@ -42,18 +42,11 @@ const eras = [
 		sortIndex: 5
 	},
 	{
-		slug: 'privatisation',
-		name: 'Privatisation',
-		startYear: 1994,
-		endYear: 1997,
-		sortIndex: 6
-	},
-	{
 		slug: 'modern',
-		name: 'Modern Post-Privatisation',
-		startYear: 1998,
+		name: 'Privatisation & the Modern Era',
+		startYear: 1994,
 		endYear: null,
-		sortIndex: 7
+		sortIndex: 6
 	}
 ];
 
@@ -172,8 +165,7 @@ function getEra(year: number, traction: string): string {
 	}
 	if (year >= 1969 && year <= 1981) return 'br-transition';
 	if (year >= 1982 && year <= 1993) return 'sectorisation';
-	if (year >= 1994 && year <= 1997) return 'privatisation';
-	if (year >= 1998) return 'modern';
+	if (year >= 1994) return 'modern';
 	return '';
 }
 

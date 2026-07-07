@@ -46,7 +46,7 @@
 	onkeydown={handleKeydown}
 	role="button"
 	tabindex="0"
-	aria-label="Minikort — klik for at navigere til et område af kortet"
+	aria-label="Minimap — click to navigate to an area of the map"
 >
 	<g transform="scale({scale})">
 		{#each paths as path (path.traction)}

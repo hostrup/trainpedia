@@ -7,7 +7,7 @@
 
 	let { data } = $props<{ data: PageData }>();
 	const loco = $derived(data.loco);
-	const lineColor = $derived(tractionColor(loco.class.traction));
+	const lineColor = $derived(tractionColor(loco.class.regions));
 
 	let activeLightboxMedia = $state<MediaAsset | null>(null);
 
@@ -44,7 +44,7 @@
 				class="rounded-full px-3 py-1 text-[10px] font-bold tracking-widest uppercase"
 				style="background: var(--line-color); color: white;"
 			>
-				{tractionLabel(loco.class.traction)}
+				{tractionLabel(loco.class.regions)}
 			</span>
 			<span
 				class="rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase"

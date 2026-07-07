@@ -7,8 +7,8 @@ export type NameScheme = (typeof NAME_SCHEMES)[number];
 
 export const NAME_SCHEME_LABELS: Record<NameScheme, string> = {
 	TOPS: 'TOPS',
-	HISTORICAL: 'Historiske',
-	BUILDER: 'Byggernavne'
+	HISTORICAL: 'Historical',
+	BUILDER: 'Builder names'
 };
 
 export const NAME_SCHEME_COOKIE = 'name_scheme';

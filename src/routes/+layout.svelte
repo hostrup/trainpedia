@@ -72,7 +72,7 @@
 			<label
 				for="name-scheme"
 				class="hidden text-[10px] tracking-widest uppercase sm:inline"
-				style="color: var(--map-ink-soft);">Vis navne som:</label
+				style="color: var(--map-ink-soft);">Show names as:</label
 			>
 			<select
 				id="name-scheme"

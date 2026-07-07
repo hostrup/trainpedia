@@ -1,6 +1,73 @@
 # Backlog — trainpedia (review 2026-07-07)
 
-Baseline: lint 0 fejl · check/tsc 0 fejl · tests 3/3 grønne (2 unit, 1 e2e)
+Baseline: lint 0 fejl · check/tsc 0 fejl · tests 27/27 grønne (25 unit, 2 e2e)
+
+## Fase F7 — UX-overhaling (Claude Sonnet 5, 2026-07-07)
+
+Ronni: "jeg føler jeg står med et halvt produkt der hverken sejrer i UI eller
+indhold" — konkret trigger: valgte "Privatisation"-æraen i kortfilteret og fandt
+stort set ingen lokomotiver. Løsningsarkitekt-gennemgang med 100% UX-fokus,
+udført uden mellemliggende check-in (godkendt af Ronni på forhånd).
+
+**Rodårsager fundet og rettet:**
+
+- **Æra-bug (den konkrete klage):** "Privatisation"-æraen dækkede kun 1994–1997,
+  og indeholdt netop ÉT lokomotiv — et norsk (NSB Di 8), lækket ind ved en
+  discovery-fejl. De reelle privatiseringsdrevne dieselklasser (66/67/68/70/800…)
+  ligger alle i 1998+ og landede i "Modern" i stedet. Merged de to æraer til
+  "Privatisation & the Modern Era (1994–present)"; fjernede NSB Di 8 (uden for
+  scope) og en ukildet spekulativ post ("New Enterprise Trains", årstal 2030,
+  intet sourceUrl — brud på strict-factuality-princippet). Omdøbt "British
+  Railways Steam Era" → "The Pilot Scheme", da bucket'en udelukkende indeholder
+  dieselklasser efter F6.5's 100%-diesel-scope-pivot.
+- **Linjefarve-regression:** `tractionColor()`/`tractionLabel()` sammenlignede
+  mod BR-region-navne, men fik altid strengen "DIESEL" (databasefeltet) —
+  ramte derfor ALDRIG, og alle klassekort/-sider på /classes, /class/[qid],
+  /loco/[nummer] viste samme blå standardfarve uanset region. F5.8-kravet om at
+  "linjefarven følger med" var reelt i stykker overalt uden for selve kortet.
+  Fix: `regions String[]` er nu et rigtigt Prisma-felt på LocomotiveClass
+  (migreret + backfilled fra den hidtil eneste kilde, dieselLayout.ts), og alle
+  sider læser regionen derfra.
+- **Filter-dødvande:** Æra/hjul-filtre FJERNEDE stationer fra kortet, så en
+  snæver kombination gav et tilsyneladende tomt/i-stykker kort. Unificeret til
+  samme dæmpnings-mekanik (opacity) som tidslinje-slideren allerede brugte:
+  kortet viser altid alle 98 klasser, matchende er fremhævet, resten dæmpet, og
+  en ny "N af M klasser matcher"-tæller i FilterOverlay giver eksplicit feedback.
+- **Zone-cirkler:** 6 hardcodede cirkler med DANSKE labels og årstal der ikke
+  matchede databasens reelle æra-grænser (fx "1948–1954" hvor databasen sagde
+  1948–1968) — ren pynt uden datasammenhæng. Erstattet af en loop over den
+  rigtige `eras`-prop med radius beregnet ud fra faktiske stationers afstand
+  til centrum.
+- **Scatterplot-databug:** Spec-tekster med flere tal (fx "90 mph (145 km/h)")
+  blev parset ved at strippe alt undtagen cifre/punktum og læse HELE resten som
+  ét tal (→ 90145) — næsten alle 98 klasser klumpede sammen på akse-grænserne.
+  Rettet til at matche tallet der reelt står foran enheden. Diagrammet viser nu
+  en meningsfuld spredning (rangerlokomotiver lavt til venstre, hovedbanetog
+  spredt 75-100 mph, HST-kraftvogne længst til højre).
+- **Sprogkonsistens:** Resterende danske brugervendte strenge (tidslinje-slider,
+  scatterplot-akser, navneskema-labels, to aria-labels) oversat til engelsk, så
+  hele sitet er konsekvent engelsksproget (kodekommentarer forbliver danske,
+  jf. husets vane).
+- **Dieselayout.json** (1202 linjer, aldrig importeret nogen steder, divergeret
+  fra den faktisk brugte dieselLayout.ts) — slettet som dødt/vildledende data.
+- **Defensiv fallback:** Klasser uden håndplaceret koordinat i dieselLayout.ts
+  kollapsede før på (600,500) — oven i Class 08's ikon. Erstattet af en
+  deterministisk region+årstal-baseret fallback-position, så fremtidig
+  databerigelse ikke rammer samme bug.
+
+**Verificeret:** Playwright-skærmbilleder af kort (default/zoomet/æra-filtreret),
+scatterplot, /classes og /class/[qid] — se selve sessionen for detaljer.
+`npm run check` (0 fejl), `npm run test` (27/27 grønne).
+
+**Nye scripts:** `scripts/seed/backfill-regions.ts`, `scripts/seed/fix-era-boundaries.ts`
+(begge engangsmigreringer, samme mønster som `clean-non-diesel.ts` — ikke del af
+`npm run seed`-kæden).
+
+**Udestår (opfølgning, ikke kritisk):** stationslabel-kollisioner ved høj
+stations-tæthed nær centrum er stadig kun delvist løst (LOD hjælper, men ingen
+egentlig kollisions-forskydning i 2D-tilstand); kun 1 zone-ring var synlig i
+default-viewport ved test (de øvrige ligger uden for startpositionen — ikke
+testet om brugeren naturligt opdager dem ved zoom/pan).
 
 ## Åben
 

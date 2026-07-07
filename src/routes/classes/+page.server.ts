@@ -6,7 +6,6 @@ import type { Prisma } from '@prisma/client';
 export const load: PageServerLoad = async ({ url }) => {
 	const q = url.searchParams.get('q')?.trim() ?? '';
 	const eraSlug = url.searchParams.get('era') ?? '';
-	const traction = url.searchParams.get('traction') ?? '';
 
 	const where: Prisma.LocomotiveClassWhereInput = {};
 	if (q) {
@@ -19,14 +18,6 @@ export const load: PageServerLoad = async ({ url }) => {
 		];
 	}
 	if (eraSlug) where.era = { slug: eraSlug };
-	if (
-		traction === 'STEAM' ||
-		traction === 'DIESEL' ||
-		traction === 'ELECTRIC' ||
-		traction === 'OTHER'
-	) {
-		where.traction = traction;
-	}
 
 	try {
 		const [eras, total, classes] = await Promise.all([
@@ -40,6 +31,7 @@ export const load: PageServerLoad = async ({ url }) => {
 					name: true,
 					nickname: true,
 					traction: true,
+					regions: true,
 					wheelArrangement: true,
 					buildStart: true,
 					buildEnd: true,
@@ -59,7 +51,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			classes,
 			eras: eras.map((e) => ({ slug: e.slug, name: e.name })),
 			total,
-			filters: { q, era: eraSlug, traction }
+			filters: { q, era: eraSlug }
 		};
 	} catch (err) {
 		console.error('Database query failed on /classes:', err);

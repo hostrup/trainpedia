@@ -1,26 +1,25 @@
 // Delte helpers for lokomotivklasse-præsentation (badges, farver, srcset).
-import { lineColorVar } from './tubemap/colors.js';
+import { lineColorVar, REGION_SHORT_NAMES } from './tubemap/colors.js';
 import type { Traction } from './tubemap/layout.js';
 
-// Samme farvekilde som kortet (U4 Option A) — ingen parallel palet.
-export function tractionColor(traction: string): string {
-	if (['WESTERN', 'EASTERN', 'MIDLAND', 'SOUTHERN', 'SCOTTISH'].includes(traction)) {
-		return lineColorVar(traction as Traction);
-	}
-	return 'var(--color-midland)';
+function isRegion(value: string): value is Traction {
+	return ['WESTERN', 'EASTERN', 'MIDLAND', 'SOUTHERN', 'SCOTTISH'].includes(value);
 }
 
-export function tractionLabel(traction: string): string {
-	switch (traction) {
-		case 'STEAM':
-			return 'Steam';
-		case 'DIESEL':
-			return 'Diesel';
-		case 'ELECTRIC':
-			return 'Electric';
-		default:
-			return 'Other';
-	}
+// Samme farvekilde som kortet (U4 Option A) — ingen parallel palet. `regions`
+// kommer fra LocomotiveClass.regions (DB); klassens `traction`-felt er altid
+// DIESEL siden F6.5-scope-pivoten og bærer ingen linje-betydning.
+export function tractionColor(regions: string[]): string {
+	const primary = regions[0];
+	return primary && isRegion(primary) ? lineColorVar(primary) : 'var(--tfl-blue)';
+}
+
+export function tractionLabel(regions: string[]): string {
+	const primary = regions[0];
+	if (!primary || !isRegion(primary)) return 'Unclassified';
+	return regions.length > 1
+		? `${REGION_SHORT_NAMES[primary]} (interchange)`
+		: REGION_SHORT_NAMES[primary];
 }
 
 // localPath peger på 960px-varianten; 480/1920 ligger ved siden af med samme hash.

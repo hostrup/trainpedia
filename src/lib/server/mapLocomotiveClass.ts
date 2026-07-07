@@ -18,6 +18,7 @@ export interface DbLocomotiveClassRow {
 	eraId: number;
 	narrative: string | null;
 	isLandmark: boolean;
+	regions: string[];
 	specs: { id: number; key: string; value: string; unit: string | null; sortIndex: number }[];
 	media: {
 		id: number;
@@ -53,6 +54,7 @@ export function mapLocomotiveClass(c: DbLocomotiveClassRow): LocomotiveClass {
 		eraId: c.eraId,
 		narrative: c.narrative,
 		isLandmark: c.isLandmark,
+		regions: c.regions,
 		aliases: c.aliases as LocomotiveClass['aliases'],
 		specs: c.specs.map((s) => ({
 			id: s.id,

@@ -71,7 +71,6 @@ function targetEraSlug(traction: Traction, year: number): string {
 	if (traction === 'STEAM') return 'br-steam';
 	if (year <= 1981) return 'br-transition';
 	if (year <= 1993) return 'sectorisation';
-	if (year <= 1997) return 'privatisation';
 	return 'modern';
 }
 

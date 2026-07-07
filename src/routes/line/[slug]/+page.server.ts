@@ -3,7 +3,6 @@ import type { PageServerLoad } from './$types.js';
 import { db } from '$lib/server/db.js';
 import { mapLocomotiveClass } from '$lib/server/mapLocomotiveClass.js';
 import type { Era } from '$lib/types.js';
-import { dieselLayout } from '$lib/tubemap/dieselLayout.js';
 
 const REGION_SLUGS = ['western', 'eastern', 'midland', 'southern', 'scottish'] as const;
 type RegionSlug = (typeof REGION_SLUGS)[number];
@@ -19,10 +18,6 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	const regionUpper = slug.toUpperCase();
-	// Find all wikidataQids matching this region in our layout
-	const matchingQids = dieselLayout
-		.filter((item) => (item.regions as readonly string[]).includes(regionUpper))
-		.map((item) => item.qid);
 
 	let dbEras;
 	let dbClasses;
@@ -31,9 +26,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			db.era.findMany({ orderBy: { sortIndex: 'asc' } }),
 			db.locomotiveClass.findMany({
 				where: {
-					wikidataQid: {
-						in: matchingQids
-					}
+					regions: { has: regionUpper }
 				},
 				include: {
 					specs: { orderBy: { sortIndex: 'asc' } },

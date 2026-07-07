@@ -9,6 +9,15 @@ export const LINE_NAMES: Record<Traction, string> = {
 	SCOTTISH: 'Scottish Region (Mixed / Highlands)'
 };
 
+/** Kort label til badges (klassesider, kort). */
+export const REGION_SHORT_NAMES: Record<Traction, string> = {
+	WESTERN: 'Western Region',
+	EASTERN: 'Eastern Region',
+	MIDLAND: 'Midland Region',
+	SOUTHERN: 'Southern Region',
+	SCOTTISH: 'Scottish Region'
+};
+
 /** TfL-homage bag hver linjefarve. */
 export const LINE_TFL_HOMAGE: Record<Traction, string> = {
 	WESTERN: 'District',

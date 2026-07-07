@@ -30,6 +30,7 @@ export interface StationInput {
 	introYear: number;
 	retiredYear: number | null;
 	isLandmark: boolean;
+	regions: string[]; // BR-region(er) — DB-felt, eneste kilde til linje-tilhørsforhold
 	eraSlug: string;
 	interchangeWith: string | null;
 }
@@ -202,16 +203,43 @@ export function computeLayout(input: StationInput[], options: LayoutOptions = {}
 		};
 	}
 
-	// 2D-mode: matches coordinates to static dieselLayout.ts config
+	const CENTER_X = 600;
+	const CENTER_Y = 500;
+
+	// Faste retninger pr. region (grader, skærm-konvention: 0=højre, 90=ned, 180=venstre,
+	// 270=op) — matcher den overordnede retning de hånd-placerede punkter i dieselLayout.ts
+	// allerede bevæger sig i. Bruges KUN som fallback for klasser uden håndplaceret punkt
+	// (fremtidig databerigelse), så de aldrig kollapser oven i centrum/Class 08 (var buggen:
+	// alt uden match endte på den faste konstant x:600,y:500).
+	const REGION_FALLBACK_ANGLE: Record<Traction, number> = {
+		MIDLAND: 270,
+		WESTERN: 225,
+		SOUTHERN: 180,
+		SCOTTISH: 45,
+		EASTERN: 0
+	};
+
+	function fallbackPosition(region: Traction, year: number): { x: number; y: number } {
+		const radius = 150 + Math.max(0, year - 1948) * 8;
+		const rad = (REGION_FALLBACK_ANGLE[region] * Math.PI) / 180;
+		return { x: CENTER_X + radius * Math.cos(rad), y: CENTER_Y + radius * Math.sin(rad) };
+	}
+
+	// 2D-mode: x/y/labelSide/isLandmark-override er rene layout-hints slået op i det
+	// hånd-tegnede dieselLayout.ts; region-tilhørsforhold kommer UDELUKKENDE fra DB-feltet
+	// (s.regions) — eneste kilde efter regions-migrationen (se backfill-regions.ts).
+	const stationMeta: { x: number; y: number; regions: string[] }[] = [];
+
 	for (const s of input) {
 		const layoutItem = dieselLayout.find((item) => item.qid === s.wikidataQid);
+		const regions = s.regions.length > 0 ? s.regions : ['MIDLAND'];
+		const primaryRegion = regions[0] as Traction;
 
-		const x = layoutItem ? layoutItem.x : 600;
-		const y = layoutItem ? layoutItem.y : 500;
+		const fallback = fallbackPosition(primaryRegion, s.introYear);
+		const x = layoutItem ? layoutItem.x : fallback.x;
+		const y = layoutItem ? layoutItem.y : fallback.y;
 		const isLandmark = layoutItem ? layoutItem.isLandmark : s.isLandmark;
 		const labelSide = layoutItem && layoutItem.labelSide === 'below' ? 'below' : 'above';
-		const regions = layoutItem ? layoutItem.regions : ['MIDLAND'];
-		const primaryRegion = regions[0] as Traction;
 
 		let stationType: StationType = 'tick';
 		if (s.retiredYear !== null) stationType = 'terminus';
@@ -234,29 +262,31 @@ export function computeLayout(input: StationInput[], options: LayoutOptions = {}
 			interchangeWith: regions.length > 1 ? (regions[1] as Traction) : null,
 			interchangeY: null
 		});
+		stationMeta.push({ x, y, regions });
 	}
 
-	// Generate lines (paths) based on dieselLayout
+	// Linjer tegnes ud fra de FAKTISK placerede stationer ovenfor (samme kilde som ikonerne),
+	// så en klasse uden håndplaceret punkt i dieselLayout.ts stadig indgår i sin linjes forløb.
+	// Alle 5 linjer emittes altid (selv uden matchende stationer) — kortets legende viser
+	// konstant 5 linjer, og filtrering må aldrig få en linje til at forsvinde helt.
 	for (const traction of LINE_ORDER) {
-		const regionStations = dieselLayout
-			.filter((item) => (item.regions as readonly string[]).includes(traction))
-			.map((item) => ({ x: item.x, y: item.y }));
+		const regionStations = stationMeta
+			.filter((m) => m.regions.includes(traction))
+			.map((m) => ({ x: m.x, y: m.y }));
 
-		// Sort by distance from center (600, 500) to ensure paths run straight outwards
+		// Sort by distance from center to ensure paths run straight outwards
 		regionStations.sort((a, b) => {
-			const distA = Math.hypot(a.x - 600, a.y - 500);
-			const distB = Math.hypot(b.x - 600, b.y - 500);
+			const distA = Math.hypot(a.x - CENTER_X, a.y - CENTER_Y);
+			const distB = Math.hypot(b.x - CENTER_X, b.y - CENTER_Y);
 			return distA - distB;
 		});
 
-		const d = buildBeckPath(regionStations);
-
 		paths.push({
 			traction,
-			y: 500, // Dummy baseY
+			y: CENTER_Y,
 			x0: 100,
 			x1: 1100,
-			d
+			d: buildBeckPath(regionStations)
 		});
 	}
 

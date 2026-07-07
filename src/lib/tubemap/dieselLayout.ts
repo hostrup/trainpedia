@@ -1,3 +1,7 @@
+// Hånd-tegnede kort-koordinater (x/y/labelSide) pr. wikidataQid. `regions` her er
+// HISTORISK seed-data for backfill-regions.ts — den egentlige kilde til region-
+// tilhørsforhold er nu LocomotiveClass.regions i databasen; layout.ts læser aldrig
+// dette felt for regions, kun x/y/labelSide/isLandmark som rene layout-hints.
 export const dieselLayout = [
 	{
 		qid: 'Q6459182',

@@ -8,14 +8,12 @@
 	let { data } = $props<{ data: PageData }>();
 
 	// Bygger et filter-link der bevarer de øvrige aktive parametre.
-	function filterHref(patch: { era?: string; traction?: string }): string {
+	function filterHref(patch: { era?: string }): string {
 		const params = new SvelteURLSearchParams();
 		const q = data.filters.q;
 		const era = patch.era !== undefined ? patch.era : data.filters.era;
-		const traction = patch.traction !== undefined ? patch.traction : data.filters.traction;
 		if (q) params.set('q', q);
 		if (era) params.set('era', era);
-		if (traction) params.set('traction', traction);
 		const qs = params.toString();
 		return qs ? `${resolve('/classes')}?${qs}` : resolve('/classes');
 	}
@@ -92,7 +90,7 @@
 					href={resolve('/class/[qid]', { qid: cls.wikidataQid })}
 					class="group flex flex-col overflow-hidden rounded-xl border transition-all duration-300 hover:-translate-y-0.5"
 					style="--line-color: {tractionColor(
-						cls.traction
+						cls.regions
 					)}; background: var(--map-bg); border-color: var(--map-zone); border-top: 3px solid var(--line-color); box-shadow: var(--shadow-subtle);"
 				>
 					<div class="relative aspect-[3/2] overflow-hidden" style="background: var(--map-zone);">
@@ -137,7 +135,7 @@
 							<span class="flex items-center gap-1.5">
 								<span class="h-1.5 w-1.5 rounded-full" style="background-color: var(--line-color);"
 								></span>
-								{tractionLabel(cls.traction)}
+								{tractionLabel(cls.regions)}
 							</span>
 						</div>
 					</div>

@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ params }) => {
 				OR: [{ currentNumber: params.number }, { identities: { some: { number: params.number } } }]
 			},
 			include: {
-				class: { select: { wikidataQid: true, name: true, traction: true } },
+				class: { select: { wikidataQid: true, name: true, traction: true, regions: true } },
 				identities: { orderBy: { sortIndex: 'asc' } }
 			}
 		});

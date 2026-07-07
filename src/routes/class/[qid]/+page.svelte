@@ -11,7 +11,7 @@
 	let { data } = $props<{ data: PageData }>();
 	const cls = $derived(data.cls);
 	const displayName = $derived(resolveDisplayName(cls.name, cls.aliases, data.nameScheme));
-	const lineColor = $derived(tractionColor(cls.traction));
+	const lineColor = $derived(tractionColor(cls.regions));
 
 	let activeLightboxMedia = $state<MediaAsset | null>(null);
 
@@ -78,7 +78,7 @@
 						class="flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold tracking-widest text-white uppercase backdrop-blur-sm"
 						style="background: var(--line-color);"
 					>
-						{tractionLabel(cls.traction)}
+						{tractionLabel(cls.regions)}
 					</span>
 					{#if cls.wheelArrangement}
 						<span

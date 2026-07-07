@@ -23,10 +23,12 @@ export const load: PageServerLoad = async ({ params }) => {
 		throw error(404, `No locomotive class found for ${params.qid}`);
 	}
 
+	// "Related" betyder her: samme æra OG mindst én fælles BR-region — traction er
+	// altid DIESEL efter F6.5-scope-pivoten og kan derfor ikke bruges til dette.
 	const related = await db.locomotiveClass.findMany({
 		where: {
 			eraId: cls.eraId,
-			traction: cls.traction,
+			regions: { hasSome: cls.regions },
 			NOT: { id: cls.id }
 		},
 		orderBy: [{ buildStart: { sort: 'asc', nulls: 'last' } }, { name: 'asc' }],
@@ -36,6 +38,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			name: true,
 			nickname: true,
 			traction: true,
+			regions: true,
 			buildStart: true,
 			buildEnd: true,
 			media: { orderBy: { sortIndex: 'asc' }, take: 1, select: { localPath: true, title: true } }
