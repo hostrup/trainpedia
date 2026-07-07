@@ -26,6 +26,13 @@
 	--line-electric: #0098d8; /* Victoria */
 	--line-other: #a0a5a9; /* Jubilee — Experimental Line */
 
+	/* BR Regioner (F5.4, POC colors) */
+	--color-western: #007d32; /* District Green */
+	--color-eastern: #e11b22; /* Central Red */
+	--color-midland: #0019a8; /* Piccadilly Blue */
+	--color-southern: #00a3e0; /* Victoria Light Blue */
+	--color-scottish: #e25c05; /* Orange / Bakerloo-ish */
+
 	/* Tema-mekanik (F5.8): sættes pr. side/komponent ud fra klassens traction via
 	   style="--line-color: var(--line-diesel)" på rodelementet. ALLE accenter
 	   (hero-bånd, badges, links, spec-kanter, status-farver) refererer KUN denne

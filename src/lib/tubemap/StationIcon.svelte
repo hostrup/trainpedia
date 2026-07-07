@@ -21,7 +21,24 @@
 	// LOD "ud": kun landmark-stationer vises (jf. spec §4). Alm. ticks/endestationer
 	// venter til "mellem". Landmark er altid synlig.
 	const visible = $derived(lod !== 'out' || station.stationType === 'landmark');
-	const labelY = $derived(station.labelSide === 'above' ? station.y - 14 : station.y + 24);
+
+	const labelX = $derived(
+		station.labelSide === 'left'
+			? station.x - 14
+			: station.labelSide === 'right'
+				? station.x + 14
+				: station.x
+	);
+	const labelY = $derived(
+		station.labelSide === 'above'
+			? station.y - 14
+			: station.labelSide === 'below'
+				? station.y + 24
+				: station.y + 4
+	);
+	const textAnchor = $derived(
+		station.labelSide === 'left' ? 'end' : station.labelSide === 'right' ? 'start' : 'middle'
+	);
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' || e.key === ' ') {
@@ -95,9 +112,9 @@
 	/>
 
 	<text
-		x={station.x}
+		x={labelX}
 		y={labelY}
-		text-anchor="middle"
+		text-anchor={textAnchor}
 		class="pointer-events-none select-none"
 		style="font-family: var(--font-map); font-size: 12px; fill: {isSelected
 			? 'var(--tfl-blue)'
@@ -107,9 +124,9 @@
 	</text>
 	{#if lod === 'in'}
 		<text
-			x={station.x}
+			x={labelX}
 			y={labelY + (station.labelSide === 'above' ? -13 : 13)}
-			text-anchor="middle"
+			text-anchor={textAnchor}
 			class="pointer-events-none tabular-nums select-none"
 			style="font-family: var(--font-ui); font-size: 10px; fill: var(--map-ink-soft);"
 		>

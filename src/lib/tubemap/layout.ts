@@ -57,7 +57,7 @@ export interface LayoutStation {
 	retiredYear: number | null;
 	isLandmark: boolean;
 	stationType: StationType;
-	labelSide: 'above' | 'below';
+	labelSide: 'above' | 'below' | 'left' | 'right';
 	eraSlug: string;
 	interchangeWith: Traction | null;
 	interchangeY: number | null;
@@ -241,6 +241,13 @@ export function computeLayout(input: StationInput[], options: LayoutOptions = {}
 		const regionStations = dieselLayout
 			.filter((item) => (item.regions as readonly string[]).includes(traction))
 			.map((item) => ({ x: item.x, y: item.y }));
+
+		// Sort by distance from center (600, 500) to ensure paths run straight outwards
+		regionStations.sort((a, b) => {
+			const distA = Math.hypot(a.x - 600, a.y - 500);
+			const distB = Math.hypot(b.x - 600, b.y - 500);
+			return distA - distB;
+		});
 
 		const d = buildBeckPath(regionStations);
 
