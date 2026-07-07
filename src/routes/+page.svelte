@@ -31,7 +31,7 @@
 	<title>The Tube Map — Trainpedia</title>
 </svelte:head>
 
-<div class="relative h-full w-full overflow-hidden" style="background: var(--map-bg);">
+<div class="flex h-full w-full flex-col overflow-hidden" style="background: var(--map-bg);">
 	<!-- Top Navigation Filters -->
 	<FilterOverlay
 		eras={data.eras}
@@ -41,7 +41,7 @@
 	/>
 
 	<!-- Tube map -->
-	<div class="h-full w-full">
+	<div class="flex flex-col flex-1 min-h-0 w-full">
 		<TubeMap
 			classes={data.classes}
 			eras={data.eras}

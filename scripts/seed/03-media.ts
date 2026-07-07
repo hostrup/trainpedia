@@ -162,7 +162,7 @@ async function main() {
 		if (!parseResult.success) {
 			console.error(
 				`${progress} Validation failed for enriched class "${rawClass.name || 'unknown'}":`,
-				parseResult.error.errors
+				parseResult.error
 			);
 			totalErrorsEncountered++;
 			continue;
@@ -277,6 +277,38 @@ async function main() {
 				continue;
 			}
 
+			// Try to get the main image from the Wikipedia Page Summary API as the absolute best candidate
+			let wikiMainFile: string | null = null;
+			if (cls.wikipediaTitle) {
+				try {
+					const summaryApiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cls.wikipediaTitle)}`;
+					const summaryRes = await fetchWithRetry(summaryApiUrl, {
+						headers: { 'User-Agent': USER_AGENT }
+					});
+					if (summaryRes.ok) {
+						const summaryData = (await summaryRes.json()) as any;
+						const originalSource = summaryData.originalimage?.source;
+						if (originalSource && originalSource.includes('/wikipedia/commons/')) {
+							let filenamePart = '';
+							if (originalSource.includes('/wikipedia/commons/thumb/')) {
+								const parts = originalSource.split('/');
+								filenamePart = decodeURIComponent(parts[parts.length - 2]);
+							} else {
+								filenamePart = decodeURIComponent(
+									originalSource.substring(originalSource.lastIndexOf('/') + 1)
+								);
+							}
+							wikiMainFile = `File:${filenamePart}`;
+							console.log(`  - Wikipedia Page Summary Main Image found: "${wikiMainFile}"`);
+						}
+					}
+				} catch (err) {
+					console.warn(
+						`  - Warning: Failed to fetch page summary for main image: ${err instanceof Error ? err.message : String(err)}`
+					);
+				}
+			}
+
 			// 4. Fetch list of candidates
 			let fileCandidates: string[] = [];
 			const candidateToLocoNumber = new Map<string, string>();
@@ -322,17 +354,64 @@ async function main() {
 						const searchData = (await searchRes.json()) as any;
 						const results = searchData.query?.search || [];
 						fileCandidates = results.map((r: any) => r.title);
-						console.log(`  - Search API: Found ${fileCandidates.length} files`);
+						console.log(`  - Search API (intitle): Found ${fileCandidates.length} files`);
 					} else {
 						console.warn(
 							`  - Warning: Search API returned HTTP ${searchRes.status} for "${searchQuery}"`
 						);
+					}
+
+					// Fallback 1: Fulltext quoted search (finds files mentioning the exact class in text/description)
+					if (fileCandidates.length === 0) {
+						console.log(
+							`  - Search API (intitle) returned 0. Trying fulltext search for "${searchQuery}"...`
+						);
+						const fulltextUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`"${searchQuery}"`)}&srnamespace=6&srlimit=10&format=json`;
+						const fulltextRes = await fetchWithRetry(fulltextUrl, {
+							headers: { 'User-Agent': USER_AGENT }
+						});
+						if (fulltextRes.ok) {
+							const fulltextData = (await fulltextRes.json()) as any;
+							const results = fulltextData.query?.search || [];
+							fileCandidates = results.map((r: any) => r.title);
+							console.log(`  - Search API (fulltext): Found ${fileCandidates.length} files`);
+						}
+					}
+
+					// Fallback 2: Short name search (e.g. "Class D2/10" or "Class D2 10")
+					if (fileCandidates.length === 0) {
+						const classMatch = cls.name.match(
+							/(?:British Railways? class|LNER class|LMS class) (.+)/i
+						);
+						if (classMatch) {
+							const shortName = `Class ${classMatch[1]}`;
+							console.log(`  - Trying short name search for "${shortName}"...`);
+							const shortUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`"${shortName}"`)}&srnamespace=6&srlimit=10&format=json`;
+							const shortRes = await fetchWithRetry(shortUrl, {
+								headers: { 'User-Agent': USER_AGENT }
+							});
+							if (shortRes.ok) {
+								const shortData = (await shortRes.json()) as any;
+								const results = shortData.query?.search || [];
+								fileCandidates = results.map((r: any) => r.title);
+								console.log(`  - Search API (short name): Found ${fileCandidates.length} files`);
+							}
+						}
 					}
 				} catch (err) {
 					console.warn(
 						`  - Warning: Search API fetch error for "${searchQuery}": ${err instanceof Error ? err.message : String(err)}`
 					);
 				}
+			}
+
+			// Prepend Wikipedia summary main image if found, to ensure we have a valid primary image
+			if (wikiMainFile) {
+				// Remove duplicates of the same file to avoid downloading it twice
+				fileCandidates = fileCandidates.filter(
+					(f) => f.toLowerCase() !== wikiMainFile!.toLowerCase()
+				);
+				fileCandidates.unshift(wikiMainFile);
 			}
 
 			// F6.4: Udvid med målrettet Commons-søgning pr. loco-nummer for kendte lokomotiver i DB
