@@ -1,5 +1,4 @@
 import { chromium } from 'playwright';
-import path from 'path';
 
 async function main() {
 	const browser = await chromium.launch();
@@ -11,32 +10,34 @@ async function main() {
 
 	console.log('Navigating to https://tog.hostrup.org...');
 	await page.goto('https://tog.hostrup.org/', { waitUntil: 'networkidle' });
-
 	await page.waitForTimeout(3000);
 
-	// Inspect DOM elements
-	const nodesData = await page.evaluate(() => {
-		const elts = Array.from(document.querySelectorAll('.timeline-node'));
-		return elts.map((el) => {
-			const rect = el.getBoundingClientRect();
-			return {
-				tag: el.tagName,
-				text: el.textContent?.trim(),
-				style: el.getAttribute('style'),
-				className: el.getAttribute('class'),
+	const traceData = await page.evaluate(() => {
+		const node = document.querySelector('.timeline-node');
+		if (!node) return 'No node found';
+		const path = [];
+		let current = node;
+		while (current) {
+			const rect = current.getBoundingClientRect();
+			path.push({
+				tag: current.tagName,
+				id: current.id,
+				className: current.className,
+				style: current.getAttribute('style'),
 				rect: {
 					x: rect.x,
 					y: rect.y,
 					width: rect.width,
 					height: rect.height
 				}
-			};
-		});
+			});
+			current = current.parentElement;
+		}
+		return path;
 	});
-	console.log('Nodes in DOM:', JSON.stringify(nodesData, null, 2));
 
-	const screenshotPath = path.resolve('static/screenshot-test.png');
-	await page.screenshot({ path: screenshotPath });
+	console.log('Parent Path Trace:', JSON.stringify(traceData, null, 2));
+
 	await browser.close();
 }
 
