@@ -29,6 +29,10 @@ Idempotente TypeScript-scripts (`tsx`), køres i rækkefølge. Al output valider
 - Per klasse: `skos:altLabel` (en) fra Wikidata + det eksisterende `nickname`-felt → `ClassAlias`-rækker klassificeret til `AliasScheme` (PRE_TOPS/BUILDER/NICKNAME/ORIGINAL) ud fra mønstre (selskabsprefiks = ORIGINAL, "British Rail(ways) class …" = PRE_TOPS, "D6700"-stil = PRE_TOPS, "X Type N" = BUILDER, ellers NICKNAME). TOPS-navnet i sig selv duplikeres ikke — det er allerede `LocomotiveClass.name`.
 - Idempotent (upsert på `[classId, alias]`) — genkør efter enhver ny klasse-seed.
 
+## 6. `07-landmarks.ts` — landmark-flag (F5.5/F5.9c)
+
+- Sætter `isLandmark=true` på de klasser, der er eksplicit nævnt som landmark i AGENT-BRIEF/BACKLOG/den kreative brief (A4 som A3-substitut, Deltic, Class 37, Class 47, APT). Redaktionel kuratering, ikke en kildebåret faktapåstand — ingen provenance-felter. Idempotent, kør efter enhver klasse-seed.
+
 ## Rapport (udestår)
 
 - `seed-report.md`: klasser/æra, assets/klasse-fordeling, specs-dækning, licens-fordeling, fejlliste → fremlægges for Ronni (ikke implementeret som separat script endnu, se BACKLOG)

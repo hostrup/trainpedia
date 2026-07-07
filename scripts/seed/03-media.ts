@@ -309,7 +309,11 @@ async function main() {
 				const searchQuery = cls.wikipediaTitle ? cls.wikipediaTitle.replace(/_/g, ' ') : cls.name;
 				console.log(`  - Category empty/missing. Searching Commons for "${searchQuery}"...`);
 				try {
-					const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchQuery)}&srnamespace=6&srlimit=50&format=json`;
+					// FA5/F5.9(a): en løs (unquoted) fritekst-søgning matcher ethvert dokument der
+					// nævner de enkelte ord ("class" er ekstremt generisk og gav falske hits som
+					// "The two Mr. Wetherbys; a middle-class comedy"). `intitle:"frase"` begrænser
+					// til filer hvis TITEL indeholder den nøjagtige frase — langt mere præcist.
+					const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`intitle:"${searchQuery}"`)}&srnamespace=6&srlimit=50&format=json`;
 					const searchRes = await fetchWithRetry(searchUrl, {
 						headers: { 'User-Agent': USER_AGENT }
 					});
