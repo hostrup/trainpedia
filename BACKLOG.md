@@ -5,9 +5,7 @@ Faseopdelt. Hver fase afsluttes med grøn test-suite + commit. Check-ins (C1–C
 ## Åben
 
 ### Fase 0 — Fundament
-- [ ] **F0.1** Scaffold SvelteKit 2 (TS, adapter-node, vitest, playwright, eslint+prettier) i denne mappe — bevar eksisterende filer (ARCHITECTURE, AGENT-BRIEF, Dockerfile, deploy.sh, prisma/)
-- [ ] **F0.2** Prisma-opsætning mod `postgresql://$TP_USER:$TP_PW@postgresql:5432/$TP_DB` (lokal dev: host `127.0.0.1:5432`); verificér forbindelse via `postgres-trainpedia` MCP
-- [ ] **F0.3 (C1)** Præsentér datamodellen for Ronni → derefter `prisma migrate dev --name init`
+* (Udført i commit 44b1f5b)
 
 ### Fase 1 — Seed-pipeline (strict factuality)
 - [ ] **F1.1** SPARQL-discovery af britiske lokomotivklasser (Wikidata) → kandidat-CSV per æra
@@ -37,4 +35,6 @@ Faseopdelt. Hver fase afsluttes med grøn test-suite + commit. Check-ins (C1–C
 - [ ] **U2** Skal discovery udvides ud over de 7 æraers "major classes" til ALT rullende materiel? (briefen siger "preferably all trains of all eras" — start m. ≥20/æra, udvid efter seed-rapport)
 
 ## Løst
-(flyttes hertil af /fix-backlog med commit-hash)
+- [x] **F0.1** Scaffold SvelteKit 2 (TS, adapter-node, vitest, playwright, eslint+prettier) (Commit: 44b1f5b)
+- [x] **F0.2** Prisma-opsætning og verifikation mod PostgreSQL (Commit: 44b1f5b)
+- [x] **F0.3 (C1)** Datamodel godkendt og synkroniseret via db push pga. manglende shadow-db privilegier (Commit: 44b1f5b)
