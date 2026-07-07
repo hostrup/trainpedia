@@ -68,6 +68,7 @@ model LocomotiveClass {
   specs            Specification[]
   media            MediaAsset[]
   aliases          ClassAlias[]
+  locomotives      Locomotive[]
   sourceUrl        String? // Wikipedia-artikel
   sourceRevision   String? // revisions-id for citatets version
   retrievedAt      DateTime?
@@ -91,6 +92,51 @@ model ClassAlias {
 
   @@unique([classId, alias])
   @@index([alias])
+}
+
+enum LocoStatus {
+  IN_SERVICE
+  STORED
+  PRESERVED
+  SCRAPPED
+  EXPORTED
+  UNKNOWN
+}
+
+/// Et individuelt bygget lokomotiv (F6 "Opslagsværket") — fx 37403 "Isle of Mull".
+model Locomotive {
+  id            Int                  @id @default(autoincrement())
+  class         LocomotiveClass      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId       Int
+  currentNumber String // "37403"
+  currentName   String? // "Isle of Mull"
+  nicknames     String[]             @default([])
+  status        LocoStatus           @default(UNKNOWN)
+  location      String? // bevaringssted/operatør hvis kendt
+  history       String? // individ-narrativ — citeret, strict factuality
+  identities    LocomotiveIdentity[]
+  sourceUrl     String?
+  retrievedAt   DateTime?
+
+  @@unique([classId, currentNumber])
+  @@index([status])
+}
+
+/// Omlitrerings-/navnehistorik pr. individ: D6607 -> 37307 -> 37403 "Isle of Mull".
+/// Søgning finder individet uanset hvilket historisk nummer man kender.
+model LocomotiveIdentity {
+  id          Int        @id @default(autoincrement())
+  loco        Locomotive @relation(fields: [locoId], references: [id], onDelete: Cascade)
+  locoId      Int
+  number      String
+  name        String?
+  fromYear    Int?
+  toYear      Int?
+  sortIndex   Int        @default(0)
+  sourceUrl   String?
+  retrievedAt DateTime?
+
+  @@index([number])
 }
 
 /// Fleksibelt spec-grid (Manufacturer, Designer, Power Output, Tractive Effort, Top Speed, ...)
