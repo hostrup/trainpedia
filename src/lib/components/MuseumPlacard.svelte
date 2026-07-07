@@ -1,6 +1,7 @@
 <script lang="ts">
-	import type { LocomotiveClass } from '$lib/types.js';
+	import type { LocomotiveClass, TractionType } from '$lib/types.js';
 	import { resolve } from '$app/paths';
+	import { lineColorVar, LINE_NAMES } from '$lib/tubemap/colors.js';
 
 	let { classData, onClose } = $props<{
 		classData: LocomotiveClass | null;
@@ -8,91 +9,95 @@
 	}>();
 
 	const isOpen = $derived(classData !== null);
-
-	function getTractionLabel(t: string): string {
-		switch (t) {
-			case 'STEAM':
-				return 'Steam 🚂';
-			case 'DIESEL':
-				return 'Diesel 🛢️';
-			case 'ELECTRIC':
-				return 'Electric ⚡';
-			default:
-				return 'Other ⚙️';
-		}
-	}
+	const lineColor = $derived(classData ? lineColorVar(classData.traction) : 'var(--tfl-blue)');
+	const lineLabel = $derived(classData ? LINE_NAMES[classData.traction as TractionType] : '');
 </script>
 
 <!-- Backdrop overlay (closes drawer when clicked) -->
 {#if isOpen}
 	<button
 		onclick={onClose}
-		class="absolute inset-0 z-30 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300"
+		class="absolute inset-0 z-30 bg-black/20 backdrop-blur-[2px] transition-opacity duration-300"
 		aria-label="Close panel"
 	></button>
 {/if}
 
 <!-- Sliding Placard Drawer -->
 <div
-	class="absolute top-0 right-0 h-full w-[450px] max-w-full z-40 shadow-2xl flex flex-col transition-transform duration-500 bg-slate-950/90 border-l border-white/10 backdrop-blur-md"
-	style="transition-timing-function: var(--transition-bezier-heavy);"
+	class="absolute top-0 right-0 z-40 flex h-full w-[450px] max-w-full flex-col shadow-2xl transition-transform duration-500"
+	style="--line-color: {lineColor}; transition-timing-function: var(--transition-bezier-heavy); background: var(--map-bg); border-left: 1px solid var(--map-zone);"
 	class:translate-x-full={!isOpen}
 	class:translate-x-0={isOpen}
 >
 	{#if classData}
 		<!-- Header (Image Thumbnail Banner) -->
 		<div
-			class="relative h-60 w-full bg-slate-900 overflow-hidden flex-shrink-0 border-b border-white/10"
+			class="relative h-60 w-full flex-shrink-0 overflow-hidden"
+			style="background: var(--map-zone); border-bottom: 3px solid var(--line-color);"
 		>
 			{#if classData.media && classData.media.length > 0}
 				<img
 					src="/{classData.media[0].localPath}"
 					alt={classData.name}
-					class="w-full h-full object-cover opacity-80"
+					class="h-full w-full object-cover"
 				/>
 				<div
-					class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"
+					class="absolute inset-0"
+					style="background: linear-gradient(to top, var(--map-bg), transparent 60%);"
 				></div>
 			{:else}
-				<div class="w-full h-full flex items-center justify-center text-zinc-600 bg-zinc-950">
-					<span class="text-xs uppercase font-mono tracking-wider">No Media Available</span>
+				<div
+					class="flex h-full w-full items-center justify-center"
+					style="color: var(--map-ink-soft);"
+				>
+					<span class="font-mono text-xs tracking-wider uppercase">No media available</span>
 				</div>
 			{/if}
 
 			<!-- Close Button -->
 			<button
 				onclick={onClose}
-				class="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white hover:bg-white hover:text-black transition cursor-pointer"
+				class="absolute top-4 left-4 flex h-9 w-9 items-center justify-center rounded-full shadow-md transition"
+				style="background: var(--map-bg); color: var(--map-ink);"
 				aria-label="Close"
 			>
 				✕
 			</button>
 
 			<!-- Quick Info overlay -->
-			<div class="absolute bottom-4 left-6 right-6">
+			<div class="absolute right-6 bottom-4 left-6">
 				<span
-					class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase bg-black/40 px-2 py-1 rounded border border-white/5"
+					class="rounded px-2 py-1 text-[10px] font-bold tracking-widest uppercase"
+					style="background: var(--map-bg); color: var(--line-color);"
 				>
-					{getTractionLabel(classData.traction)}
+					{lineLabel}
 				</span>
-				<h2 class="text-2xl font-bold mt-2 font-display text-white">{classData.name}</h2>
+				<h2
+					class="mt-2 text-2xl font-bold"
+					style="font-family: var(--font-map); color: var(--map-ink);"
+				>
+					{classData.name}
+				</h2>
 				{#if classData.nickname}
-					<p class="text-sm font-serif italic text-amber-400/90">"{classData.nickname}"</p>
+					<p class="font-serif text-sm italic" style="color: var(--map-ink-soft);">
+						"{classData.nickname}"
+					</p>
 				{/if}
 			</div>
 		</div>
 
 		<!-- Scrollable Narrative & Specifications -->
-		<div class="flex-1 overflow-y-auto p-6 space-y-6">
+		<div class="flex-1 space-y-6 overflow-y-auto p-6">
 			<!-- Narrative summary from Wikipedia -->
 			{#if classData.narrative}
 				<div class="space-y-2">
 					<h3
-						class="text-xs font-mono tracking-widest text-zinc-400 uppercase border-b border-white/5 pb-1"
+						class="border-b pb-1 font-mono text-xs tracking-widest uppercase"
+						style="color: var(--map-ink-soft); border-color: var(--map-zone);"
 					>
 						Historical Narrative
 					</h3>
-					<p class="text-sm leading-relaxed text-zinc-300 font-serif font-light">
+					<p class="font-serif text-sm leading-relaxed" style="color: var(--map-ink);">
 						{classData.narrative}
 					</p>
 				</div>
@@ -101,32 +106,42 @@
 			<!-- Specification Blueprint Checklist -->
 			<div class="space-y-3">
 				<h3
-					class="text-xs font-mono tracking-widest text-zinc-400 uppercase border-b border-white/5 pb-1"
+					class="border-b pb-1 font-mono text-xs tracking-widest uppercase"
+					style="color: var(--map-ink-soft); border-color: var(--map-zone);"
 				>
 					Quick Blueprint Specifications
 				</h3>
-				<div class="grid grid-cols-2 gap-2 text-xs font-mono">
+				<div class="grid grid-cols-2 gap-2 font-mono text-xs">
 					<div
-						class="bg-zinc-900/60 p-2.5 rounded border border-white/5 flex flex-col justify-between"
+						class="flex flex-col justify-between rounded p-2.5"
+						style="background: var(--map-zone);"
 					>
-						<span class="text-[10px] text-zinc-500 uppercase">Wheel Arrangement</span>
-						<span class="text-zinc-200 mt-1 font-semibold"
+						<span class="text-[10px] uppercase" style="color: var(--map-ink-soft);"
+							>Wheel Arrangement</span
+						>
+						<span class="mt-1 font-semibold" style="color: var(--map-ink);"
 							>{classData.wheelArrangement ?? 'Unknown'}</span
 						>
 					</div>
 					<div
-						class="bg-zinc-900/60 p-2.5 rounded border border-white/5 flex flex-col justify-between"
+						class="flex flex-col justify-between rounded p-2.5"
+						style="background: var(--map-zone);"
 					>
-						<span class="text-[10px] text-zinc-500 uppercase">Production Count</span>
-						<span class="text-zinc-200 mt-1 font-semibold tabular-nums"
+						<span class="text-[10px] uppercase" style="color: var(--map-ink-soft);"
+							>Production Count</span
+						>
+						<span class="mt-1 font-semibold tabular-nums" style="color: var(--map-ink);"
 							>{classData.totalBuilt ?? 'Unknown'} built</span
 						>
 					</div>
 					<div
-						class="bg-zinc-900/60 p-2.5 rounded border border-white/5 flex flex-col justify-between"
+						class="flex flex-col justify-between rounded p-2.5"
+						style="background: var(--map-zone);"
 					>
-						<span class="text-[10px] text-zinc-500 uppercase">Build Period</span>
-						<span class="text-zinc-200 mt-1 font-semibold tabular-nums">
+						<span class="text-[10px] uppercase" style="color: var(--map-ink-soft);"
+							>Build Period</span
+						>
+						<span class="mt-1 font-semibold tabular-nums" style="color: var(--map-ink);">
 							{classData.buildStart ?? '—'}
 							{#if classData.buildEnd}
 								– {classData.buildEnd}
@@ -136,14 +151,18 @@
 						</span>
 					</div>
 					<div
-						class="bg-zinc-900/60 p-2.5 rounded border border-white/5 flex flex-col justify-between"
+						class="flex flex-col justify-between rounded p-2.5"
+						style="background: var(--map-zone);"
 					>
-						<span class="text-[10px] text-zinc-500 uppercase">Wikidata ID</span>
+						<span class="text-[10px] uppercase" style="color: var(--map-ink-soft);"
+							>Wikidata ID</span
+						>
 						<a
 							href="https://www.wikidata.org/wiki/{classData.wikidataQid}"
 							target="_blank"
 							rel="noopener noreferrer"
-							class="text-amber-400 hover:underline mt-1 truncate"
+							class="mt-1 truncate hover:underline"
+							style="color: var(--line-color);"
 						>
 							{classData.wikidataQid}
 						</a>
@@ -152,14 +171,18 @@
 
 				<!-- Quick specifications overview from specs array -->
 				{#if classData.specs && classData.specs.length > 0}
-					<div class="bg-zinc-900/40 border border-white/5 rounded-lg p-3.5 space-y-2">
-						<span class="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-1"
-							>Key Metrics</span
+					<div class="space-y-2 rounded-lg p-3.5" style="background: var(--map-zone);">
+						<span
+							class="mb-1 block font-mono text-[10px] tracking-wider uppercase"
+							style="color: var(--map-ink-soft);">Key Metrics</span
 						>
 						{#each classData.specs.slice(0, 5) as spec (spec.id)}
-							<div class="flex justify-between items-center text-xs border-b border-white/5 pb-1">
-								<span class="text-zinc-400 font-mono">{spec.key}</span>
-								<span class="text-zinc-200 font-semibold tabular-nums">
+							<div
+								class="flex items-center justify-between border-b pb-1 text-xs"
+								style="border-color: var(--map-bg);"
+							>
+								<span class="font-mono" style="color: var(--map-ink-soft);">{spec.key}</span>
+								<span class="font-semibold tabular-nums" style="color: var(--map-ink);">
 									{spec.value}
 									{spec.unit ?? ''}
 								</span>
@@ -171,10 +194,14 @@
 		</div>
 
 		<!-- Footer actions (Sticky) -->
-		<div class="p-6 border-t border-white/10 bg-slate-950 flex flex-col gap-2 flex-shrink-0">
+		<div
+			class="flex flex-shrink-0 flex-col gap-2 p-6"
+			style="border-top: 1px solid var(--map-zone);"
+		>
 			<a
 				href={resolve('/class/[qid]', { qid: classData.wikidataQid })}
-				class="w-full py-3 px-4 rounded-lg bg-amber-500 text-black font-semibold text-sm hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/10 cursor-pointer flex items-center justify-center gap-2"
+				class="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold text-white shadow-lg transition-colors"
+				style="background: var(--line-color);"
 			>
 				<span>Open full chronicle</span>
 				<span class="text-xs">➔</span>

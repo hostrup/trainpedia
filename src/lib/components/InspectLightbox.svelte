@@ -59,9 +59,11 @@
 		<!-- Anecdote & Historical context -->
 		{#if media.anecdote}
 			<div class="space-y-1">
-				<span class="text-[9px] font-mono tracking-widest text-amber-400 uppercase"
-					>Historical Context</span
+				<span
+					class="text-[9px] font-mono tracking-widest uppercase"
+					style="color: var(--line-color);">Historical Context</span
 				>
+
 				<p class="text-sm text-zinc-200 leading-relaxed font-serif">
 					{media.anecdote}
 				</p>
@@ -97,7 +99,8 @@
 					href={media.commonsUrl}
 					target="_blank"
 					rel="external noopener noreferrer"
-					class="text-amber-400 hover:underline mt-1 truncate"
+					class="mt-1 truncate hover:underline"
+					style="color: var(--line-color);"
 				>
 					View Original Source ➔
 				</a>

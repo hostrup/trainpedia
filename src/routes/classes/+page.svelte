@@ -25,10 +25,12 @@
 	<title>Explore the fleet — Trainpedia</title>
 </svelte:head>
 
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6" style="background: var(--map-bg);">
 	<header class="mb-6">
-		<h1 class="font-display text-3xl font-semibold text-white">Explore the fleet</h1>
-		<p class="mt-1 text-sm text-[var(--color-text-muted)]">
+		<h1 class="text-3xl font-semibold" style="font-family: var(--font-map); color: var(--map-ink);">
+			Explore the fleet
+		</h1>
+		<p class="mt-1 text-sm" style="color: var(--map-ink-soft);">
 			{#if data.filters.q}
 				{data.classes.length} of {data.total} classes matching “{data.filters.q}”
 			{:else}
@@ -42,23 +44,23 @@
 	<div class="mb-8 flex flex-col gap-3">
 		<div class="flex flex-wrap items-center gap-1.5">
 			<span
-				class="mr-1 text-[10px] font-semibold tracking-widest text-[var(--color-text-muted)] uppercase"
-				>Era</span
+				class="mr-1 text-[10px] font-semibold tracking-widest uppercase"
+				style="color: var(--map-ink-soft);">Era</span
 			>
 			<a
 				href={filterHref({ era: '' })}
-				class="rounded-full border px-3 py-1 text-xs transition-colors {data.filters.era === ''
-					? 'border-white/40 bg-white/10 font-semibold text-white'
-					: 'border-white/10 text-[var(--color-text-secondary)] hover:border-white/25 hover:text-white'}"
-				>All</a
+				class="rounded-full border px-3 py-1 text-xs transition-colors"
+				style={data.filters.era === ''
+					? 'background: var(--tfl-blue); border-color: var(--tfl-blue); color: white; font-weight: 600;'
+					: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}>All</a
 			>
 			{#each data.eras as era (era.slug)}
 				<a
 					href={filterHref({ era: era.slug })}
-					class="rounded-full border px-3 py-1 text-xs transition-colors {data.filters.era ===
-					era.slug
-						? 'border-white/40 bg-white/10 font-semibold text-white'
-						: 'border-white/10 text-[var(--color-text-secondary)] hover:border-white/25 hover:text-white'}"
+					class="rounded-full border px-3 py-1 text-xs transition-colors"
+					style={data.filters.era === era.slug
+						? 'background: var(--tfl-blue); border-color: var(--tfl-blue); color: white; font-weight: 600;'
+						: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}
 				>
 					{era.name}
 				</a>
@@ -67,23 +69,23 @@
 
 		<div class="flex flex-wrap items-center gap-1.5">
 			<span
-				class="mr-1 text-[10px] font-semibold tracking-widest text-[var(--color-text-muted)] uppercase"
-				>Traction</span
+				class="mr-1 text-[10px] font-semibold tracking-widest uppercase"
+				style="color: var(--map-ink-soft);">Traction</span
 			>
 			<a
 				href={filterHref({ traction: '' })}
-				class="rounded-full border px-3 py-1 text-xs transition-colors {data.filters.traction === ''
-					? 'border-white/40 bg-white/10 font-semibold text-white'
-					: 'border-white/10 text-[var(--color-text-secondary)] hover:border-white/25 hover:text-white'}"
-				>All</a
+				class="rounded-full border px-3 py-1 text-xs transition-colors"
+				style={data.filters.traction === ''
+					? 'background: var(--tfl-blue); border-color: var(--tfl-blue); color: white; font-weight: 600;'
+					: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}>All</a
 			>
 			{#each TRACTIONS as traction (traction)}
 				<a
 					href={filterHref({ traction })}
-					class="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors {data
-						.filters.traction === traction
-						? 'border-white/40 bg-white/10 font-semibold text-white'
-						: 'border-white/10 text-[var(--color-text-secondary)] hover:border-white/25 hover:text-white'}"
+					class="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors"
+					style={data.filters.traction === traction
+						? `background: ${tractionColor(traction)}; border-color: ${tractionColor(traction)}; color: white; font-weight: 600;`
+						: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}
 				>
 					<span class="h-2 w-2 rounded-full" style="background-color: {tractionColor(traction)}"
 					></span>
@@ -96,13 +98,17 @@
 
 	{#if data.classes.length === 0}
 		<div
-			class="flex flex-col items-center rounded-2xl border border-dashed border-white/10 py-20 text-center"
+			class="flex flex-col items-center rounded-2xl border border-dashed py-20 text-center"
+			style="border-color: var(--map-zone);"
 		>
-			<p class="font-display text-lg text-[var(--color-text-secondary)]">No classes found</p>
-			<p class="mt-1 text-sm text-[var(--color-text-muted)]">
+			<p class="text-lg" style="font-family: var(--font-map); color: var(--map-ink);">
+				No classes found
+			</p>
+			<p class="mt-1 text-sm" style="color: var(--map-ink-soft);">
 				Try a different search term, or <a
 					href={resolve('/classes')}
-					class="text-amber-400 hover:underline">clear all filters</a
+					class="hover:underline"
+					style="color: var(--tfl-blue);">clear all filters</a
 				>.
 			</p>
 		</div>
@@ -111,10 +117,12 @@
 			{#each data.classes as cls (cls.wikidataQid)}
 				<a
 					href={resolve('/class/[qid]', { qid: cls.wikidataQid })}
-					class="group flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[var(--color-bg-surface)] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:shadow-[var(--shadow-subtle)]"
-					style="border-top: 3px solid {tractionColor(cls.traction)};"
+					class="group flex flex-col overflow-hidden rounded-xl border transition-all duration-300 hover:-translate-y-0.5"
+					style="--line-color: {tractionColor(
+						cls.traction
+					)}; background: var(--map-bg); border-color: var(--map-zone); border-top: 3px solid var(--line-color); box-shadow: var(--shadow-subtle);"
 				>
-					<div class="relative aspect-[3/2] overflow-hidden bg-black/40">
+					<div class="relative aspect-[3/2] overflow-hidden" style="background: var(--map-zone);">
 						{#if cls.media.length > 0}
 							{@const img = mediaSrcset(cls.media[0].localPath)}
 							<img
@@ -127,7 +135,8 @@
 							/>
 						{:else}
 							<div
-								class="flex h-full w-full items-center justify-center text-[10px] tracking-widest text-[var(--color-text-muted)] uppercase"
+								class="flex h-full w-full items-center justify-center text-[10px] tracking-widest uppercase"
+								style="color: var(--map-ink-soft);"
 							>
 								No imagery
 							</div>
@@ -135,21 +144,25 @@
 					</div>
 
 					<div class="flex flex-1 flex-col p-4">
-						<h2 class="font-display text-base leading-snug font-semibold text-white">
+						<h2
+							class="text-base leading-snug font-semibold"
+							style="font-family: var(--font-map); color: var(--map-ink);"
+						>
 							{resolveDisplayName(cls.name, cls.aliases, data.nameScheme)}
 						</h2>
 						{#if cls.nickname}
-							<p class="font-serif text-sm text-amber-400/90 italic">“{cls.nickname}”</p>
+							<p class="font-serif text-sm italic" style="color: var(--line-color);">
+								“{cls.nickname}”
+							</p>
 						{/if}
 
 						<div
-							class="mt-3 flex items-center justify-between border-t border-white/5 pt-3 text-xs text-[var(--color-text-secondary)]"
+							class="mt-3 flex items-center justify-between border-t pt-3 text-xs"
+							style="border-color: var(--map-zone); color: var(--map-ink-soft);"
 						>
 							<span class="tabular-nums">{buildPeriod(cls.buildStart, cls.buildEnd)}</span>
 							<span class="flex items-center gap-1.5">
-								<span
-									class="h-1.5 w-1.5 rounded-full"
-									style="background-color: {tractionColor(cls.traction)}"
+								<span class="h-1.5 w-1.5 rounded-full" style="background-color: var(--line-color);"
 								></span>
 								{tractionLabel(cls.traction)}
 							</span>

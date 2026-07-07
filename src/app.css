@@ -12,10 +12,8 @@
 	/* --- Typography --- */
 	--font-ui: 'Inter Variable', system-ui, -apple-system, sans-serif;
 
-	/* --- Tube map — det lyse TfL-univers (DESIGN-F5-TUBEMAP.md §2) ---
-	   U5-beslutning: HELE sitet migreres hertil i F5.8. Indtil da bruges disse
-	   tokens kun af TubeMap/LineDiagram; resten af sitet bruger stadig
-	   --color-*-tokens nedenfor. */
+	/* --- Det lyse TfL-univers (DESIGN-F5-TUBEMAP.md §2) — HELE sitet, ingen mørk
+	   toggle (U5-beslutning 2026-07-07). Eneste kilde til farve/overflade-tokens. --- */
 	--map-bg: #ffffff;
 	--map-zone: #f4f4f4;
 	--map-ink: #1c1c1e;
@@ -28,31 +26,12 @@
 	--line-electric: #0098d8; /* Victoria */
 	--line-other: #a0a5a9; /* Jubilee — Experimental Line */
 
-	/* --- Color Palette (Museum Dark Mode) --- */
-	--color-bg-base: hsl(210, 20%, 8%); /* Deep slate charcoal */
-	--color-bg-surface: hsl(210, 18%, 13%); /* Muted dark container */
-	--color-bg-elevated: hsl(210, 16%, 18%); /* High elevation panels */
-
-	--color-text-primary: hsl(210, 10%, 95%); /* Soft off-white */
-	--color-text-secondary: hsl(210, 10%, 75%); /* Muted silver */
-	--color-text-muted: hsl(210, 8%, 55%); /* Dark gray silver */
-
-	/* --- Era Highlights (Tactile Brass, Rust, and Electric Cyan) --- */
-	--color-accent-steam: hsl(38, 60%, 55%); /* Classic polished brass/gold */
-	--color-accent-steam-rgb: 217, 160, 64;
-
-	--color-accent-diesel: hsl(20, 75%, 55%); /* Warm rust / industrial orange */
-	--color-accent-diesel-rgb: 236, 108, 44;
-
-	--color-accent-electric: hsl(190, 85%, 50%); /* Electric blue / modernization cyan */
-	--color-accent-electric-rgb: 19, 206, 235;
-
-	--color-accent-other: hsl(280, 65%, 60%); /* Gasturbines, battery experimental purple */
-	--color-accent-other-rgb: 167, 87, 219;
-
-	/* --- Border & Divider Tokens --- */
-	--color-border-subtle: hsla(210, 10%, 100%, 0.08);
-	--color-border-glow: hsla(210, 10%, 100%, 0.15);
+	/* Tema-mekanik (F5.8): sættes pr. side/komponent ud fra klassens traction via
+	   style="--line-color: var(--line-diesel)" på rodelementet. ALLE accenter
+	   (hero-bånd, badges, links, spec-kanter, status-farver) refererer KUN denne
+	   variabel — aldrig traktionsfarver direkte. Default = tfl-blue (UI-krom uden
+	   traction-kontekst, fx generel navigation). */
+	--line-color: var(--tfl-blue);
 
 	/* --- Motion Timing --- */
 	--transition-bezier-heavy: cubic-bezier(0.25, 1, 0.5, 1); /* Custom elastic slide */
@@ -60,16 +39,13 @@
 	--transition-duration-normal: 350ms;
 	--transition-duration-fast: 200ms;
 
-	/* --- Shadows & Blur (Glassmorphism) --- */
-	--shadow-subtle: 0 4px 20px rgba(0, 0, 0, 0.5);
-	--shadow-museum: 0 20px 40px rgba(0, 0, 0, 0.75);
-	--glass-bg: rgba(22, 28, 34, 0.75);
-	--glass-blur: blur(16px);
+	--shadow-subtle: 0 1px 3px rgba(28, 28, 30, 0.08), 0 1px 2px rgba(28, 28, 30, 0.06);
+	--shadow-elevated: 0 10px 30px rgba(28, 28, 30, 0.12);
 }
 
 body {
-	background-color: var(--color-bg-base);
-	color: var(--color-text-primary);
+	background-color: var(--map-bg);
+	color: var(--map-ink);
 	font-family: var(--font-ui);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
@@ -94,12 +70,12 @@ h4 {
 	height: 6px;
 }
 ::-webkit-scrollbar-track {
-	background: var(--color-bg-base);
+	background: var(--map-bg);
 }
 ::-webkit-scrollbar-thumb {
-	background: var(--color-bg-elevated);
+	background: var(--map-zone);
 	border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-	background: var(--color-border-glow);
+	background: var(--map-ink-soft);
 }

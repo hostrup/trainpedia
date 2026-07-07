@@ -1,18 +1,9 @@
 // Delte helpers for lokomotivklasse-præsentation (badges, farver, srcset).
 import type { TractionType } from './types.js';
+import { lineColorVar } from './tubemap/colors.js';
 
-export function tractionColor(traction: string): string {
-	switch (traction) {
-		case 'STEAM':
-			return 'var(--color-accent-steam)';
-		case 'DIESEL':
-			return 'var(--color-accent-diesel)';
-		case 'ELECTRIC':
-			return 'var(--color-accent-electric)';
-		default:
-			return 'var(--color-accent-other)';
-	}
-}
+// Samme farvekilde som kortet (U4 Option A) — ingen parallel palet.
+export const tractionColor = lineColorVar;
 
 export function tractionLabel(traction: string): string {
 	switch (traction) {

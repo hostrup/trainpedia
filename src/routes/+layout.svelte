@@ -14,7 +14,7 @@
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	const navItems = [
-		{ href: resolve('/'), label: 'Timeline' },
+		{ href: resolve('/'), label: 'Map' },
 		{ href: resolve('/classes'), label: 'Explore' }
 	];
 
@@ -38,15 +38,19 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="flex h-screen flex-col">
+<div class="flex h-screen flex-col" style="background: var(--map-bg);">
 	<header
-		class="z-50 flex h-14 flex-shrink-0 items-center gap-6 border-b border-white/10 bg-[var(--color-bg-surface)]/80 px-4 backdrop-blur-md sm:px-6"
+		class="z-50 flex h-14 flex-shrink-0 items-center gap-6 px-4 sm:px-6"
+		style="background: var(--map-bg); border-bottom: 1px solid var(--map-zone);"
 	>
 		<a href={resolve('/')} class="flex items-baseline gap-2 select-none">
-			<span class="font-display text-lg font-semibold tracking-tight text-white">Trainpedia</span>
 			<span
-				class="hidden text-[10px] tracking-widest text-[var(--color-text-muted)] uppercase sm:inline"
-				>British Railway Chronicle</span
+				class="text-lg font-semibold tracking-tight"
+				style="font-family: var(--font-map); color: var(--map-ink);">Trainpedia</span
+			>
+			<span
+				class="hidden text-[10px] tracking-widest uppercase sm:inline"
+				style="color: var(--map-ink-soft);">British Railway Chronicle</span
 			>
 		</a>
 
@@ -54,10 +58,10 @@
 			{#each navItems as item (item.href)}
 				<a
 					href={item.href}
-					class="rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide uppercase transition-colors
-					{isActive(item.href)
-						? 'bg-white/10 text-white'
-						: 'text-[var(--color-text-secondary)] hover:bg-white/5 hover:text-white'}"
+					class="rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide uppercase transition-colors"
+					style={isActive(item.href)
+						? 'background: var(--tfl-blue); color: white;'
+						: 'color: var(--map-ink-soft);'}
 				>
 					{item.label}
 				</a>
@@ -67,14 +71,15 @@
 		<div class="ml-auto flex items-center gap-1.5">
 			<label
 				for="name-scheme"
-				class="hidden text-[10px] tracking-widest text-[var(--color-text-muted)] uppercase sm:inline"
-				>Vis navne som:</label
+				class="hidden text-[10px] tracking-widest uppercase sm:inline"
+				style="color: var(--map-ink-soft);">Vis navne som:</label
 			>
 			<select
 				id="name-scheme"
 				value={data.nameScheme}
 				onchange={handleNameSchemeChange}
-				class="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-xs text-white outline-none transition-all focus:border-white/30"
+				class="rounded-full border px-2.5 py-1 text-xs outline-none transition-all"
+				style="background: var(--map-zone); color: var(--map-ink); border-color: var(--map-zone);"
 			>
 				{#each NAME_SCHEMES as scheme (scheme)}
 					<option value={scheme}>{NAME_SCHEME_LABELS[scheme]}</option>
@@ -88,12 +93,13 @@
 				name="q"
 				placeholder="Find a class… e.g. Class 37"
 				aria-label="Search locomotive classes"
-				class="w-40 rounded-full border border-white/10 bg-black/30 px-4 py-1.5 text-sm text-white placeholder-[var(--color-text-muted)] transition-all outline-none focus:w-64 focus:border-white/30 sm:w-56"
+				class="w-40 rounded-full border px-4 py-1.5 text-sm transition-all outline-none focus:w-64"
+				style="background: var(--map-zone); color: var(--map-ink); border-color: var(--map-zone);"
 			/>
 		</form>
 	</header>
 
-	<main class="min-h-0 flex-1 overflow-y-auto">
+	<main class="min-h-0 flex-1 overflow-y-auto" style="background: var(--map-bg);">
 		{@render children()}
 	</main>
 </div>
