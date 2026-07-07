@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { dev } from '$app/environment';
 	import { untrack } from 'svelte';
+	import { resolve } from '$app/paths';
 	import type { Era, LocomotiveClass, TractionType } from '$lib/types.js';
 	import { select } from 'd3-selection';
 	import { zoom as d3Zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom';
@@ -226,12 +227,16 @@
 		style="background: var(--map-bg); border: 1px solid var(--map-zone); font-family: var(--font-ui);"
 	>
 		{#each lineList as traction (traction)}
-			<div class="flex items-center gap-2">
+			<a
+				href={resolve('/line/[slug]', { slug: traction.toLowerCase() })}
+				class="flex items-center gap-2 hover:opacity-70"
+				title="Open the {LINE_NAMES[traction]} line diagram"
+			>
 				<span class="h-1 w-6 rounded-full" style="background: {lineColorVar(traction)};"></span>
 				<span class="text-xs font-semibold" style="color: var(--map-ink);"
 					>{LINE_NAMES[traction]}</span
 				>
-			</div>
+			</a>
 		{/each}
 	</div>
 
