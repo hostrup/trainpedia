@@ -105,18 +105,19 @@ enum LocoStatus {
 
 /// Et individuelt bygget lokomotiv (F6 "Opslagsværket") — fx 37403 "Isle of Mull".
 model Locomotive {
-  id            Int                  @id @default(autoincrement())
-  class         LocomotiveClass      @relation(fields: [classId], references: [id], onDelete: Cascade)
-  classId       Int
-  currentNumber String // "37403"
-  currentName   String? // "Isle of Mull"
-  nicknames     String[]             @default([])
-  status        LocoStatus           @default(UNKNOWN)
-  location      String? // bevaringssted/operatør hvis kendt
-  history       String? // individ-narrativ — citeret, strict factuality
-  identities    LocomotiveIdentity[]
-  sourceUrl     String?
-  retrievedAt   DateTime?
+  id             Int                  @id @default(autoincrement())
+  class          LocomotiveClass      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId        Int
+  currentNumber  String // "37403"
+  currentName    String? // "Isle of Mull"
+  nicknames      String[]             @default([])
+  status         LocoStatus           @default(UNKNOWN)
+  location       String? // bevaringssted/operatør hvis kendt
+  history        String? // individ-narrativ — citeret, strict factuality
+  identities     LocomotiveIdentity[]
+  sourceUrl      String?
+  sourceRevision String? // revisions-id for citatets version
+  retrievedAt    DateTime?
 
   @@unique([classId, currentNumber])
   @@index([status])
@@ -125,16 +126,17 @@ model Locomotive {
 /// Omlitrerings-/navnehistorik pr. individ: D6607 -> 37307 -> 37403 "Isle of Mull".
 /// Søgning finder individet uanset hvilket historisk nummer man kender.
 model LocomotiveIdentity {
-  id          Int        @id @default(autoincrement())
-  loco        Locomotive @relation(fields: [locoId], references: [id], onDelete: Cascade)
-  locoId      Int
-  number      String
-  name        String?
-  fromYear    Int?
-  toYear      Int?
-  sortIndex   Int        @default(0)
-  sourceUrl   String?
-  retrievedAt DateTime?
+  id             Int        @id @default(autoincrement())
+  loco           Locomotive @relation(fields: [locoId], references: [id], onDelete: Cascade)
+  locoId         Int
+  number         String
+  name           String?
+  fromYear       Int?
+  toYear         Int?
+  sortIndex      Int        @default(0)
+  sourceUrl      String?
+  sourceRevision String? // revisions-id for citatets version
+  retrievedAt    DateTime?
 
   @@index([number])
 }

@@ -9,6 +9,30 @@ export type MediaKind = z.infer<typeof MediaKindSchema>;
 export const AliasSchemeSchema = z.enum(['TOPS', 'PRE_TOPS', 'BUILDER', 'NICKNAME', 'ORIGINAL']);
 export type AliasScheme = z.infer<typeof AliasSchemeSchema>;
 
+export const LocoStatusSchema = z.enum([
+	'IN_SERVICE',
+	'STORED',
+	'PRESERVED',
+	'SCRAPPED',
+	'EXPORTED',
+	'UNKNOWN'
+]);
+export type LocoStatusType = z.infer<typeof LocoStatusSchema>;
+
+// Individ-lokomotiv-kandidat fra en fleet-/statustabel (F6.2)
+export const FleetLocoCandidateSchema = z.object({
+	currentNumber: z.string().min(1),
+	currentName: z.string().nullable(),
+	nicknames: z.array(z.string()),
+	status: LocoStatusSchema,
+	history: z.string().nullable(),
+	// Omlitreringskæde i kronologisk rækkefølge, fx ["D6607", "37307", "37403"]
+	numberChain: z.array(z.string()).min(1),
+	sourceUrl: z.string(),
+	sourceRevision: z.string().nullable()
+});
+export type FleetLocoCandidate = z.infer<typeof FleetLocoCandidateSchema>;
+
 // Class alias contract (F5.2/U3) — alternative navne/numre for en klasse
 export const ClassAliasCandidateSchema = z.object({
 	classId: z.number().int(),

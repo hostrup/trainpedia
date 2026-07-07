@@ -29,7 +29,14 @@ Idempotente TypeScript-scripts (`tsx`), køres i rækkefølge. Al output valider
 - Per klasse: `skos:altLabel` (en) fra Wikidata + det eksisterende `nickname`-felt → `ClassAlias`-rækker klassificeret til `AliasScheme` (PRE_TOPS/BUILDER/NICKNAME/ORIGINAL) ud fra mønstre (selskabsprefiks = ORIGINAL, "British Rail(ways) class …" = PRE_TOPS, "D6700"-stil = PRE_TOPS, "X Type N" = BUILDER, ellers NICKNAME). TOPS-navnet i sig selv duplikeres ikke — det er allerede `LocomotiveClass.name`.
 - Idempotent (upsert på `[classId, alias]`) — genkør efter enhver ny klasse-seed.
 
-## 6. `07-landmarks.ts` — landmark-flag (F5.5/F5.9c)
+## 6. `06-fleet.ts` — individniveau-seed (F6.2, pilot Class 37/U6)
+
+- Henter Wikipedias "List of British Rail Class X locomotives" (én regelmæssig tabel: BTC/TOPS(1-3)/Post-TOPS(1-2)-omlitreringskæde, Names, Status, Notes) og seeder `Locomotive` + `LocomotiveIdentity`.
+- Navn↔nummer-korrespondance er IKKE 1:1 i kilden (navneskift sker uafhængigt af omlitreringer) — kun SIDSTE navn gemmes som `currentName`, øvrige lægges i `nicknames` uden gæt på hvilket nummer de hørte til. `LocomotiveIdentity` bærer udelukkende den verificerbare NUMMER-kæde.
+- Idempotent: `Locomotive` upsertes på `[classId, currentNumber]`; `LocomotiveIdentity`-rækker slettes og genskabes pr. individ (ingen separat unik-nøgle nødvendig).
+- Pilot-resultat (2026-07-07): 309/309 individer (dækning 100 %, matcher "Total Built"-specen), statusfordeling IN_SERVICE=40/STORED=21/PRESERVED=39/SCRAPPED=209. Eksempel: 37403 "Isle of Mull", identities D6607→37307→37403.
+
+## 7. `07-landmarks.ts` — landmark-flag (F5.5/F5.9c)
 
 - Sætter `isLandmark=true` på de klasser, der er eksplicit nævnt som landmark i AGENT-BRIEF/BACKLOG/den kreative brief (A4 som A3-substitut, Deltic, Class 37, Class 47, APT). Redaktionel kuratering, ikke en kildebåret faktapåstand — ingen provenance-felter. Idempotent, kør efter enhver klasse-seed.
 
