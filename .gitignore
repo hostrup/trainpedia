@@ -1,17 +1,25 @@
-# Secrets — repoet er OFFENTLIGT
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
 .env
 .env.*
 !.env.example
+!.env.test
 
-# Dependencies & build
-node_modules/
-build/
-.svelte-kit/
-
-# Seedede media-assets (gigabytes — bor på serveren, dækket af backup)
-data/media/
-scripts/seed/out/
-
-# Diverse
-*.log
-.DS_Store
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+# Playwright
+test-results

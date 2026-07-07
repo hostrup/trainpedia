@@ -1,26 +1,42 @@
-# 🚂 Trainpedia
+# sv
 
-Interaktiv digital krønike over britisk jernbanehistorie — zoombar æra-timeline, museums-placards og immersive lokomotiv-showcases. Kører på [tog.hostrup.org](https://tog.hostrup.org).
+Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
-**Data:** Udelukkende Wikipedia/Wikidata/Wikimedia Commons med fuld provenance — ingen AI-genererede fakta.
-**Stack:** SvelteKit 2 · Svelte 5 · PostgreSQL/Prisma · d3-zoom · GSAP (Flip) · selvhostede fonte.
+## Creating a project
 
-| Dokument | Formål |
-|----------|--------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Løsningsarkitektur og fastlagte teknologivalg |
-| [AGENT-BRIEF.md](AGENT-BRIEF.md) | Brief til implementerende agent (kreativ brief + husets standarder + check-ins) |
-| [BACKLOG.md](BACKLOG.md) | Faseopdelt implementeringsplan |
-| [prisma/schema.prisma](prisma/schema.prisma) | Datamodel-udkast (check-in C1) |
-| [scripts/seed/README.md](scripts/seed/README.md) | Seed-pipeline-spec (Wikidata/Wikipedia/Commons) |
+If you're seeing this, you've probably already done this step. Congrats!
 
-## Lokal udvikling
-```bash
-npm install
-cp .env.example .env   # udfyld DATABASE_URL (dev: 127.0.0.1:5432)
-npx prisma migrate dev
-npm run seed
-npm run dev
+```sh
+# create a new project
+npx sv create my-app
 ```
 
-## Udrulning
-Kun via `./deploy.sh "besked"` (kvalitets-gates → git push → docker rebuild). Se compose-blok i [docs/compose-snippet.yml](docs/compose-snippet.yml).
+To recreate this project with the same configuration:
+
+```sh
+# recreate this project
+npx sv@0.16.2 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" playwright sveltekit-adapter="adapter:node" --no-download-check --install npm ./
+```
+
+## Developing
+
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+
+```sh
+npm run dev
+
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
+```
+
+## Building
+
+To create a production version of your app:
+
+```sh
+npm run build
+```
+
+You can preview the production build with `npm run preview`.
+
+> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.

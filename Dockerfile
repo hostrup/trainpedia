@@ -36,5 +36,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
-# Migrations køres deklarativt ved opstart (deploy-mønster fra huset)
-CMD ["sh", "-c", "npx prisma migrate deploy && node build"]
+# Start den kompilerede applikation
+CMD ["node", "build"]
