@@ -76,6 +76,27 @@ body {
 	width: 100vw;
 }
 
+button {
+	background: transparent;
+	border: none;
+	padding: 0;
+	margin: 0;
+	font: inherit;
+	color: inherit;
+	text-align: inherit;
+	cursor: pointer;
+	outline: none;
+}
+
+.bg-amber-500 {
+	background-color: #fbbf24 !important;
+	color: #000000 !important;
+}
+.bg-amber-500:hover,
+.hover\:bg-amber-400:hover {
+	background-color: #fcd34d !important;
+}
+
 h1,
 h2,
 h3,

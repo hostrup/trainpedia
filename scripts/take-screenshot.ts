@@ -1,4 +1,6 @@
 import { chromium } from 'playwright';
+import path from 'path';
+import fs from 'fs';
 
 async function main() {
 	const browser = await chromium.launch();
@@ -10,34 +12,17 @@ async function main() {
 
 	console.log('Navigating to https://tog.hostrup.org...');
 	await page.goto('https://tog.hostrup.org/', { waitUntil: 'networkidle' });
-	await page.waitForTimeout(3000);
+	await page.waitForTimeout(5000); // 5 seconds wait to be absolutely sure GSAP is ready
 
-	const traceData = await page.evaluate(() => {
-		const node = document.querySelector('.timeline-node');
-		if (!node) return 'No node found';
-		const path = [];
-		let current = node;
-		while (current) {
-			const rect = current.getBoundingClientRect();
-			path.push({
-				tag: current.tagName,
-				id: current.id,
-				className: current.className,
-				style: current.getAttribute('style'),
-				rect: {
-					x: rect.x,
-					y: rect.y,
-					width: rect.width,
-					height: rect.height
-				}
-			});
-			current = current.parentElement;
-		}
-		return path;
-	});
+	const screenshotPath = path.resolve('static/screenshot-real.png');
+	if (fs.existsSync(screenshotPath)) {
+		fs.unlinkSync(screenshotPath);
+	}
 
-	console.log('Parent Path Trace:', JSON.stringify(traceData, null, 2));
+	console.log(`Taking screenshot and saving to ${screenshotPath}...`);
+	await page.screenshot({ path: screenshotPath });
 
+	console.log(`Saved screenshot successfully. File exists: ${fs.existsSync(screenshotPath)}`);
 	await browser.close();
 }
 
