@@ -215,6 +215,36 @@ function scoreCandidate(
 	const desc = extmetadata.ImageDescription?.value || '';
 	const combinedText = `${title} ${desc}`.toLowerCase();
 
+	// Ensure generic/noisy matches contain at least one rail keyword if not the main wiki file
+	const isWikiMain = wikiMainFile && title.toLowerCase() === wikiMainFile.toLowerCase();
+	if (!isWikiMain) {
+		const railKeywords = [
+			'locomotive',
+			'loco',
+			'train',
+			'railway',
+			'railroad',
+			'shunter',
+			'shunting',
+			'diesel',
+			'tops',
+			'station',
+			'depot',
+			'rail',
+			'lner',
+			'lms',
+			'gwr',
+			'sr',
+			'british railways',
+			'shed',
+			'livery'
+		];
+		const hasRailKeyword = railKeywords.some((kw) => combinedText.includes(kw));
+		if (!hasRailKeyword) {
+			return -800; // Filter out unrelated noise
+		}
+	}
+
 	for (const num of preservedLocoNumbers) {
 		if (combinedText.includes(num.toLowerCase())) {
 			score += 30;
