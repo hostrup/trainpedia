@@ -90,6 +90,73 @@
 			return s.numeric.toLocaleString('en-GB') + (s.unit ? ` ${s.unit}` : '');
 		return s.value;
 	}
+
+	// Axis options for chart lens
+	interface AxisOption {
+		id: string;
+		label: string;
+		specKey?: string;
+		isSpec: boolean;
+		getVal?: (c: (typeof data.classes)[number]) => number | null;
+	}
+
+	const axisOptions: AxisOption[] = [
+		{ id: 'speed', label: 'Top Speed (mph)', specKey: 'Top Speed', isSpec: true },
+		{ id: 'power', label: 'Power (hp)', specKey: 'Power Output', isSpec: true },
+		{ id: 'te', label: 'Tractive Effort (lbf)', specKey: 'Tractive Effort', isSpec: true },
+		{ id: 'built', label: 'Total Built', isSpec: false, getVal: (c) => c.totalBuilt },
+		{ id: 'year', label: 'Intro Year', isSpec: false, getVal: (c) => c.buildStart },
+		{
+			id: 'service',
+			label: 'Service Years',
+			isSpec: false,
+			getVal: (c) => {
+				if (!c.serviceEntry) return null;
+				const entry = new Date(c.serviceEntry).getFullYear();
+				const exit = c.serviceExit
+					? new Date(c.serviceExit).getFullYear()
+					: new Date().getFullYear();
+				return Math.max(0, exit - entry);
+			}
+		}
+	];
+
+	function getAxisValue(cls: (typeof data.classes)[number], axisId: string): number | null {
+		const opt = axisOptions.find((o) => o.id === axisId);
+		if (!opt) return null;
+		if (opt.isSpec) {
+			return cls.specs[opt.specKey!]?.numeric ?? null;
+		}
+		return opt.getVal ? opt.getVal(cls) : null;
+	}
+
+	function getAxisTicks(min: number, max: number, isYear: boolean) {
+		if (isYear) {
+			const start = Math.floor(min / 10) * 10;
+			const end = Math.ceil(max / 10) * 10;
+			const ticks = [];
+			for (let y = start; y <= end; y += 10) {
+				ticks.push(y);
+			}
+			return { min: start - 5, max: end + 5, ticks };
+		}
+		const range = max;
+		let step: number;
+		if (range <= 20) step = 2;
+		else if (range <= 50) step = 5;
+		else if (range <= 150) step = 20;
+		else if (range <= 500) step = 50;
+		else if (range <= 1500) step = 200;
+		else if (range <= 5000) step = 1000;
+		else step = Math.ceil(range / 5000) * 1000;
+
+		const end = Math.ceil(max / step) * step;
+		const ticks = [];
+		for (let v = 0; v <= end; v += step) {
+			ticks.push(v);
+		}
+		return { min: 0, max: end || 1, ticks };
+	}
 </script>
 
 <svelte:head>
@@ -576,13 +643,229 @@
 			</svg>
 		</div>
 
-		<!-- CHART LENS (placeholder — F11.4) -->
+		<!-- CHART LENS (F11.4) -->
+		<!-- CHART LENS (F11.4) -->
 	{:else if data.lens === 'chart'}
-		<div
-			class="flex items-center justify-center rounded-2xl border border-dashed py-20"
-			style="border-color: var(--map-zone);"
-		>
-			<p style="color: var(--map-ink-soft);">Chart lens — coming in F11.4</p>
+		{@const activeX = data.filters.x ?? 'speed'}
+		{@const activeY = data.filters.y ?? 'power'}
+		{@const xOpt = axisOptions.find((o) => o.id === activeX) || axisOptions[0]}
+		{@const yOpt = axisOptions.find((o) => o.id === activeY) || axisOptions[1]}
+
+		{@const chartData = data.classes
+			.map((c: (typeof data.classes)[number]) => ({
+				cls: c,
+				xVal: getAxisValue(c, activeX),
+				yVal: getAxisValue(c, activeY),
+				color: tractionColor(c.regions),
+				size: Math.max(4, Math.min(16, Math.sqrt(c.totalBuilt ?? 1) * 2))
+			}))
+			.filter(
+				(d: { xVal: number | null; yVal: number | null }) => d.xVal !== null && d.yVal !== null
+			)}
+
+		{@const minX =
+			chartData.length > 0
+				? Math.min(...chartData.map((d: { xVal: number | null }) => d.xVal!))
+				: 0}
+		{@const maxX =
+			chartData.length > 0
+				? Math.max(...chartData.map((d: { xVal: number | null }) => d.xVal!))
+				: 100}
+		{@const minY =
+			chartData.length > 0
+				? Math.min(...chartData.map((d: { yVal: number | null }) => d.yVal!))
+				: 0}
+		{@const maxY =
+			chartData.length > 0
+				? Math.max(...chartData.map((d: { yVal: number | null }) => d.yVal!))
+				: 100}
+
+		{@const xRangeInfo = getAxisTicks(minX, maxX, activeX === 'year')}
+		{@const yRangeInfo = getAxisTicks(minY, maxY, activeY === 'year')}
+
+		{@const CHART_W = 800}
+		{@const CHART_H = 500}
+		{@const PAD = { top: 30, right: 40, bottom: 50, left: 70 }}
+		{@const plotW = CHART_W - PAD.left - PAD.right}
+		{@const plotH = CHART_H - PAD.top - PAD.bottom}
+
+		<div class="overflow-x-auto rounded-lg border" style="border-color: var(--map-zone);">
+			<!-- Axis selectors and coverage note -->
+			<div
+				class="p-4 flex flex-wrap items-center justify-between gap-4 border-b"
+				style="border-color: var(--map-zone);"
+			>
+				<div class="flex items-center gap-4">
+					<div class="flex items-center gap-2">
+						<label
+							for="axis-x-select"
+							class="text-xs font-semibold tracking-wider uppercase"
+							style="color: var(--map-ink-soft);">X-Axis:</label
+						>
+						<select
+							id="axis-x-select"
+							value={activeX}
+							onchange={(e) => updateUrl({ x: e.currentTarget.value })}
+							class="rounded-lg border px-2.5 py-1 text-xs outline-none"
+							style="background: var(--map-zone); color: var(--map-ink); border-color: var(--map-zone);"
+						>
+							{#each axisOptions as opt (opt.id)}
+								<option value={opt.id}>{opt.label}</option>
+							{/each}
+						</select>
+					</div>
+
+					<div class="flex items-center gap-2">
+						<label
+							for="axis-y-select"
+							class="text-xs font-semibold tracking-wider uppercase"
+							style="color: var(--map-ink-soft);">Y-Axis:</label
+						>
+						<select
+							id="axis-y-select"
+							value={activeY}
+							onchange={(e) => updateUrl({ y: e.currentTarget.value })}
+							class="rounded-lg border px-2.5 py-1 text-xs outline-none"
+							style="background: var(--map-zone); color: var(--map-ink); border-color: var(--map-zone);"
+						>
+							{#each axisOptions as opt (opt.id)}
+								<option value={opt.id}>{opt.label}</option>
+							{/each}
+						</select>
+					</div>
+				</div>
+
+				<p class="text-xs" style="color: var(--map-ink-soft);">
+					Showing {chartData.length} of {data.classes.length} classes —
+					{#if data.classes.length - chartData.length > 0}
+						{data.classes.length - chartData.length} lack a sourced value for {xOpt.label.split(
+							' ('
+						)[0]} or {yOpt.label.split(' (')[0]}
+					{:else}
+						all classes plotted
+					{/if}
+					· bubble size = number built
+				</p>
+			</div>
+
+			<svg
+				width={CHART_W}
+				height={CHART_H}
+				viewBox="0 0 {CHART_W} {CHART_H}"
+				style="background: var(--map-bg); font-family: var(--font-ui);"
+				role="img"
+				aria-label="Scatterplot comparing British locomotive classes"
+			>
+				<!-- Dynamic X gridlines -->
+				{#each xRangeInfo.ticks as tickVal (tickVal)}
+					{@const x =
+						PAD.left + ((tickVal - xRangeInfo.min) / (xRangeInfo.max - xRangeInfo.min)) * plotW}
+					<line
+						x1={x}
+						y1={PAD.top}
+						x2={x}
+						y2={PAD.top + plotH}
+						stroke="var(--map-zone)"
+						stroke-width="0.5"
+					/>
+					<text
+						{x}
+						y={CHART_H - PAD.bottom + 18}
+						text-anchor="middle"
+						font-size="10"
+						fill="var(--map-ink-soft)">{tickVal}</text
+					>
+				{/each}
+
+				<!-- Dynamic Y gridlines -->
+				{#each yRangeInfo.ticks as tickVal (tickVal)}
+					{@const y =
+						PAD.top +
+						plotH -
+						((tickVal - yRangeInfo.min) / (yRangeInfo.max - yRangeInfo.min)) * plotH}
+					<line
+						x1={PAD.left}
+						y1={y}
+						x2={PAD.left + plotW}
+						y2={y}
+						stroke="var(--map-zone)"
+						stroke-width="0.5"
+					/>
+					<text
+						x={PAD.left - 8}
+						y={y + 4}
+						text-anchor="end"
+						font-size="10"
+						fill="var(--map-ink-soft)">{tickVal.toLocaleString('en-GB')}</text
+					>
+				{/each}
+
+				<!-- Axis labels -->
+				<text
+					x={PAD.left + plotW / 2}
+					y={CHART_H - 12}
+					text-anchor="middle"
+					font-size="11"
+					font-weight="600"
+					fill="var(--map-ink-soft)">{xOpt.label}</text
+				>
+				<text
+					x={18}
+					y={PAD.top + plotH / 2}
+					text-anchor="middle"
+					font-size="11"
+					font-weight="600"
+					fill="var(--map-ink-soft)"
+					transform="rotate(-90, 18, {PAD.top + plotH / 2})">{yOpt.label}</text
+				>
+
+				<!-- Data points -->
+				{#each chartData as d (d.cls.wikidataQid)}
+					{@const cx =
+						PAD.left +
+						(((d.xVal || 0) - xRangeInfo.min) / (xRangeInfo.max - xRangeInfo.min)) * plotW}
+					{@const cy =
+						PAD.top +
+						plotH -
+						(((d.yVal || 0) - yRangeInfo.min) / (yRangeInfo.max - yRangeInfo.min)) * plotH}
+					<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+					<g class="cursor-pointer" onclick={() => selectClass(d.cls.wikidataQid)}>
+						<circle
+							{cx}
+							{cy}
+							r={d.size}
+							fill={d.color}
+							opacity="0.7"
+							class="transition-opacity hover:opacity-100"
+						/>
+						<title
+							>{resolveDisplayName(d.cls.name, d.cls.aliases, data.nameScheme)} — {xOpt.label.split(
+								' ('
+							)[0]}: {d.xVal?.toLocaleString('en-GB')} · {yOpt.label.split(' (')[0]}: {d.yVal?.toLocaleString(
+								'en-GB'
+							)}{d.cls.totalBuilt ? ` · ${d.cls.totalBuilt} built` : ''}</title
+						>
+					</g>
+				{/each}
+
+				<!-- Axes -->
+				<line
+					x1={PAD.left}
+					y1={PAD.top}
+					x2={PAD.left}
+					y2={PAD.top + plotH}
+					stroke="var(--map-ink-soft)"
+					stroke-width="1"
+				/>
+				<line
+					x1={PAD.left}
+					y1={PAD.top + plotH}
+					x2={PAD.left + plotW}
+					y2={PAD.top + plotH}
+					stroke="var(--map-ink-soft)"
+					stroke-width="1"
+				/>
+			</svg>
 		</div>
 	{/if}
 

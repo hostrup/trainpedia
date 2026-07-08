@@ -16,7 +16,9 @@
 	const navItems = [
 		{ href: resolve('/'), label: 'Home' },
 		{ href: resolve('/browse'), label: 'Browse' },
-		{ href: resolve('/browse') + '?lens=timeline', label: 'Timeline' }
+		{ href: resolve('/browse') + '?lens=timeline', label: 'Timeline' },
+		{ href: resolve('/records'), label: 'Records' },
+		{ href: resolve('/survivors'), label: 'Survivors' }
 	];
 
 	function isActive(href: string): boolean {

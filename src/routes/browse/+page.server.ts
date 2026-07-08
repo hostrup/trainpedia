@@ -20,6 +20,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	const sort = url.searchParams.get('sort') ?? 'year';
 	const dir = (url.searchParams.get('dir') ?? 'asc') as 'asc' | 'desc';
 	const sel = url.searchParams.get('sel') ?? '';
+	const x = url.searchParams.get('x') ?? 'speed';
+	const y = url.searchParams.get('y') ?? 'power';
 
 	// Build Prisma where clause
 	const where: Prisma.LocomotiveClassWhereInput = {};
@@ -213,6 +215,21 @@ export const load: PageServerLoad = async ({ url }) => {
 			builders: allBuilders as string[],
 			decades: allDecades as number[]
 		},
-		filters: { q, era, region, type, wheel, builder, decade, surviving, group, sort, dir, sel }
+		filters: {
+			q,
+			era,
+			region,
+			type,
+			wheel,
+			builder,
+			decade,
+			surviving,
+			group,
+			sort,
+			dir,
+			sel,
+			x,
+			y
+		}
 	};
 };

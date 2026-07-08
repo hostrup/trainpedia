@@ -1,13 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-test('Home page loads without console errors and displays the tube map', async ({ page }) => {
+test('Home page (Great Hall) loads without console errors', async ({ page }) => {
 	const consoleErrors: string[] = [];
 	page.on('console', (msg) => {
 		if (msg.type() === 'error') {
 			consoleErrors.push(msg.text());
 			console.error(`Browser console error: ${msg.text()}`);
-		} else {
-			console.log(`Browser console ${msg.type()}: ${msg.text()}`);
 		}
 	});
 
@@ -16,26 +14,30 @@ test('Home page loads without console errors and displays the tube map', async (
 		console.error(`Browser page error: ${err.stack || err.message}`);
 	});
 
-	// Visit the home page
 	await page.goto('/');
-
-	// Wait for the page to load
 	await page.waitForLoadState('networkidle');
+	await page.waitForTimeout(1000);
 
-	// Wait a bit for potential async rendering/hydration
-	await page.waitForTimeout(2000);
-
-	// Take a screenshot of the page and save it
-	await page.screenshot({ path: 'playwright-screenshots/home-page.png', fullPage: true });
-
-	// Assert that there are no console errors during page load and hydration
+	// Assert no console errors
 	expect(consoleErrors).toEqual([]);
 
-	// Check if the tube map or main SVG is visible
-	const svg = page.locator('svg.absolute.inset-0');
-	await expect(svg).toBeVisible();
+	// Great Hall: hero heading
+	const heading = page.locator('h1');
+	await expect(heading).toContainText('Trainpedia');
 
-	// Check if we have visible stations (circles or text elements)
-	const circles = page.locator('svg circle');
-	expect(await circles.count()).toBeGreaterThan(0);
+	// Stat tiles present
+	const statTiles = page.locator('text=Classes');
+	expect(await statTiles.count()).toBeGreaterThan(0);
+
+	// Featured exhibits section
+	const featured = page.locator('text=Featured Exhibits');
+	expect(await featured.count()).toBeGreaterThan(0);
+
+	// Record Books section
+	const records = page.locator('text=The Record Books');
+	expect(await records.count()).toBeGreaterThan(0);
+
+	// Search input present
+	const searchInput = page.locator('input[aria-label="Search the collection"]');
+	await expect(searchInput).toBeVisible();
 });

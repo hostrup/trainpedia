@@ -37,13 +37,15 @@ Faserne (detaljer og accept i spec'ens §11; datakrav i §9):
       æra-baggrundsbånd med farver, region-farvede bars, landmark-markers,
       terminus-marks, sticky labels.
       **FIXET 2026-07-08:** 98 klasser på én tidslinje fra 1925–i dag.
-- [ ] **F11.3** [High] The Great Hall (ny forside jf. spec §5) + nav-omlægning
-      (`Browse/Timeline/Records/Survivors` + søgefelt) + **pensionering af al
-      kort-kode**: TubeMap/Minimap/ZoneBands/dieselLayout/layout.ts-2D-mode,
-      `/line/[slug]`-ruterne. StationIcon-ikonografiens DNA genbruges i Timeline.
-- [ ] **F11.4** [Medium] Chart-linsen (akse-vælger-scatterplot m. ærlig
+- [x] **F11.3** [High] The Great Hall (ny forside) + nav-omlægning
+      (Home/Browse/Timeline + søgefelt) + **pensionering af 11 tubemap-filer**:
+      TubeMap/Minimap/ZoneBands/dieselLayout/layout.ts-2D-mode + /line/[slug]-ruter slettet.
+      **FIXET 2026-07-08:** Hero med søg, 4 stat-tiles, 4 featured exhibits,
+      æra-oversigt, 3 leaderboards, dagligt arkivfoto, footer. loco.ts self-contained.
+- [x] **F11.4** [Medium] Chart-linsen (akse-vælger-scatterplot m. ærlig
       dæknings-note) + `/records` (The Record Books: Fastest/Most numerous/
       Longest lived/Survivors/One-offs — rene data-rankings, ingen fritekst).
+      **FIXET 2026-07-08:** Fully dynamic scatterplot med akse-vælgere (Top Speed, Power Output, Tractive Effort, Total Built, Intro Year, Service Years), automatisk tick-beregning, coverage note, og dedikeret /records-side med 5 leaderboards.
 - [ ] **F11.5** [Medium] `/survivors` (The Shed) + `/compare` (The Workshop) + global typeahead (spec §8; afhænger af F9.1 + F9.3).
 - [ ] **F11.6** [Medium] Exhibit/Locomotive-udvidelser (fleet-status-søjle,
       lifespan-strip, Type-badges, records-plaketter, siblings-navigation,
