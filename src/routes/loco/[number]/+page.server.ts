@@ -5,8 +5,6 @@ import { db } from '$lib/server/db.js';
 export const load: PageServerLoad = async ({ params }) => {
 	let loco;
 	try {
-		// Søgning finder individet på nuværende ELLER ethvert historisk nummer
-		// (D6607 finder samme individ som 37403) — samme princip som alias-søgning i F5.2.
 		loco = await db.locomotive.findFirst({
 			where: {
 				OR: [{ currentNumber: params.number }, { identities: { some: { number: params.number } } }]
@@ -25,13 +23,35 @@ export const load: PageServerLoad = async ({ params }) => {
 		throw error(404, `No locomotive found for number ${params.number}`);
 	}
 
-	// F6.4: kobler eksisterende MediaAsset-rækker (allerede downloadet klasse-medie) til
-	// individet, hvis Commons-metadata (03-media.ts) fangede et loco-nummer der matcher.
 	const allNumbers = [loco.currentNumber, ...loco.identities.map((i) => i.number)];
 	const media = await db.mediaAsset.findMany({
 		where: { classId: loco.classId, locoNumber: { in: allNumbers } },
 		orderBy: { sortIndex: 'asc' }
 	});
+
+	// Siblings navigation
+	const siblings = await db.locomotive.findMany({
+		where: { classId: loco.classId },
+		orderBy: { currentNumber: 'asc' },
+		select: { currentNumber: true }
+	});
+
+	const currentIndex = siblings.findIndex((s) => s.currentNumber === loco.currentNumber);
+	const prevLoco = currentIndex > 0 ? siblings[currentIndex - 1].currentNumber : null;
+	const nextLoco =
+		currentIndex < siblings.length - 1 ? siblings[currentIndex + 1].currentNumber : null;
+
+	// Fallback media if no individual media exists
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let fallbackMedia: any[] = [];
+	const hasIndividualMedia = media.length > 0;
+	if (!hasIndividualMedia) {
+		fallbackMedia = await db.mediaAsset.findMany({
+			where: { classId: loco.classId },
+			orderBy: { sortIndex: 'asc' },
+			take: 6
+		});
+	}
 
 	return {
 		loco: {
@@ -39,6 +59,10 @@ export const load: PageServerLoad = async ({ params }) => {
 			retrievedAt: loco.retrievedAt ? loco.retrievedAt.toISOString() : null,
 			identities: loco.identities.map((i) => ({ ...i, retrievedAt: null }))
 		},
-		media: media.map((m) => ({ ...m, retrievedAt: null }))
+		media: media.map((m) => ({ ...m, retrievedAt: null })),
+		fallbackMedia: fallbackMedia.map((m) => ({ ...m, retrievedAt: null })),
+		hasIndividualMedia,
+		prevLoco,
+		nextLoco
 	};
 };

@@ -23,6 +23,7 @@
 	const title = $derived(
 		loco.currentName ? `${loco.currentNumber} "${loco.currentName}"` : loco.currentNumber
 	);
+	const galleryItems = $derived(data.hasIndividualMedia ? data.media : data.fallbackMedia);
 </script>
 
 <svelte:head>
@@ -31,13 +32,57 @@
 
 <div style="--line-color: {lineColor};">
 	<div class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-		<nav class="mb-4 text-xs" style="color: var(--map-ink-soft);">
-			<a href={resolve('/classes')} class="hover:underline">Explore</a>
-			<span class="mx-1.5 opacity-50">/</span>
-			<a href={resolve('/class/[qid]', { qid: loco.class.wikidataQid })} class="hover:underline"
-				>{loco.class.name}</a
-			>
-		</nav>
+		<!-- Navigation and Siblings Pager -->
+		<div
+			class="mb-6 flex flex-wrap items-center justify-between gap-4 border-b pb-4"
+			style="border-color: var(--map-zone);"
+		>
+			<nav class="text-xs" style="color: var(--map-ink-soft);">
+				<a href={resolve('/classes')} class="hover:underline">Explore</a>
+				<span class="mx-1.5 opacity-50">/</span>
+				<a href={resolve('/class/[qid]', { qid: loco.class.wikidataQid })} class="hover:underline"
+					>{loco.class.name}</a
+				>
+			</nav>
+
+			<div class="flex items-center gap-2 text-xs">
+				{#if data.prevLoco}
+					<a
+						href={resolve('/loco/[number]', { number: data.prevLoco })}
+						class="rounded-lg border px-2.5 py-1 transition-colors font-mono hover:bg-[var(--map-zone)]"
+						style="border-color: var(--map-zone); color: var(--map-ink);"
+					>
+						&larr; {data.prevLoco}
+					</a>
+				{:else}
+					<span
+						class="rounded-lg border px-2.5 py-1 opacity-45 font-mono"
+						style="border-color: var(--map-zone); color: var(--map-ink-soft);"
+					>
+						&larr; Start
+					</span>
+				{/if}
+
+				<span class="font-semibold" style="color: var(--map-ink-soft);">Class Fleet</span>
+
+				{#if data.nextLoco}
+					<a
+						href={resolve('/loco/[number]', { number: data.nextLoco })}
+						class="rounded-lg border px-2.5 py-1 transition-colors font-mono hover:bg-[var(--map-zone)]"
+						style="border-color: var(--map-zone); color: var(--map-ink);"
+					>
+						{data.nextLoco} &rarr;
+					</a>
+				{:else}
+					<span
+						class="rounded-lg border px-2.5 py-1 opacity-45 font-mono"
+						style="border-color: var(--map-zone); color: var(--map-ink-soft);"
+					>
+						End &rarr;
+					</span>
+				{/if}
+			</div>
+		</div>
 
 		<header class="mb-8 flex flex-wrap items-center gap-3">
 			<span
@@ -65,7 +110,7 @@
 
 		<div class="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_280px]">
 			<div class="min-w-0 space-y-10">
-				<!-- Omlitrerings-tidslinje -->
+				<!-- Renumbering history -->
 				<section>
 					<h2
 						class="mb-4 text-[11px] font-bold tracking-widest uppercase"
@@ -123,17 +168,37 @@
 					</section>
 				{/if}
 
+				<!-- Gallery and Fallback Gallery -->
 				<section>
 					<h2
 						class="mb-4 text-[11px] font-bold tracking-widest uppercase"
 						style="color: var(--map-ink-soft);"
 					>
-						Gallery — {data.media.length}
-						{data.media.length === 1 ? 'asset' : 'assets'}
+						Gallery — {data.hasIndividualMedia ? data.media.length : data.fallbackMedia.length}
+						{(data.hasIndividualMedia ? data.media.length : data.fallbackMedia.length) === 1
+							? 'asset'
+							: 'assets'}
 					</h2>
-					{#if data.media.length > 0}
+
+					{#if !data.hasIndividualMedia && data.fallbackMedia.length > 0}
+						<div
+							class="mb-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4 text-xs"
+							style="color: var(--map-ink);"
+						>
+							<span class="font-bold">📷 Archive Fallback:</span> No individual photographs of
+							locomotive {loco.currentNumber} are currently catalogued. Showing representative media from
+							the
+							<a
+								href={resolve('/class/[qid]', { qid: loco.class.wikidataQid })}
+								class="underline font-semibold"
+								style="color: var(--line-color);">{loco.class.name}</a
+							> exhibit.
+						</div>
+					{/if}
+
+					{#if galleryItems.length > 0}
 						<div class="grid grid-cols-2 gap-4 md:grid-cols-3">
-							{#each data.media as media (media.id)}
+							{#each galleryItems as media (media.id)}
 								{@const img = mediaSrcset(media.localPath)}
 								<button
 									onclick={() => (activeLightboxMedia = media)}
@@ -158,12 +223,13 @@
 							class="rounded-xl border border-dashed py-12 text-center text-xs tracking-widest uppercase"
 							style="border-color: var(--map-zone); color: var(--map-ink-soft);"
 						>
-							No individual media recorded yet
+							No media assets recorded yet
 						</div>
 					{/if}
 				</section>
 			</div>
 
+			<!-- Side column key facts with links to survivors -->
 			<aside class="space-y-6 lg:sticky lg:top-6 lg:self-start">
 				<div
 					class="rounded-xl border p-5"
@@ -178,18 +244,50 @@
 					<dl class="space-y-3 text-sm">
 						<div class="flex justify-between gap-4">
 							<dt style="color: var(--map-ink-soft);">Class</dt>
-							<dd class="text-right" style="color: var(--map-ink);">{loco.class.name}</dd>
+							<dd class="text-right">
+								<a
+									href={resolve('/class/[qid]', { qid: loco.class.wikidataQid })}
+									class="hover:underline font-semibold"
+									style="color: var(--line-color);"
+								>
+									{loco.class.name}
+								</a>
+							</dd>
 						</div>
 						<div class="flex justify-between gap-4">
 							<dt style="color: var(--map-ink-soft);">Status</dt>
-							<dd class="text-right" style="color: var(--map-ink);">
-								{STATUS_LABELS[loco.status] ?? loco.status}
+							<dd class="text-right">
+								{#if loco.status === 'PRESERVED' || loco.status === 'IN_SERVICE'}
+									<a
+										href={resolve('/survivors')}
+										class="hover:underline font-semibold"
+										style="color: var(--tfl-blue);"
+									>
+										{STATUS_LABELS[loco.status] ?? loco.status} 🏆
+									</a>
+								{:else}
+									<span style="color: var(--map-ink);">
+										{STATUS_LABELS[loco.status] ?? loco.status}
+									</span>
+								{/if}
 							</dd>
 						</div>
 						{#if loco.location}
 							<div class="flex justify-between gap-4">
 								<dt style="color: var(--map-ink-soft);">Location</dt>
-								<dd class="text-right" style="color: var(--map-ink);">{loco.location}</dd>
+								<dd class="text-right">
+									{#if loco.status === 'PRESERVED' || loco.status === 'IN_SERVICE'}
+										<a
+											href="{resolve('/survivors')}?location={encodeURIComponent(loco.location)}"
+											class="hover:underline font-semibold"
+											style="color: var(--tfl-blue);"
+										>
+											{loco.location} &rarr;
+										</a>
+									{:else}
+										<span style="color: var(--map-ink);">{loco.location}</span>
+									{/if}
+								</dd>
 							</div>
 						{/if}
 					</dl>

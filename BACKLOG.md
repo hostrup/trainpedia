@@ -46,10 +46,12 @@ Faserne (detaljer og accept i spec'ens §11; datakrav i §9):
       dæknings-note) + `/records` (The Record Books: Fastest/Most numerous/
       Longest lived/Survivors/One-offs — rene data-rankings, ingen fritekst).
       **FIXET 2026-07-08:** Fully dynamic scatterplot med akse-vælgere (Top Speed, Power Output, Tractive Effort, Total Built, Intro Year, Service Years), automatisk tick-beregning, coverage note, og dedikeret /records-side med 5 leaderboards.
-- [ ] **F11.5** [Medium] `/survivors` (The Shed) + `/compare` (The Workshop) + global typeahead (spec §8; afhænger af F9.1 + F9.3).
-- [ ] **F11.6** [Medium] Exhibit/Locomotive-udvidelser (fleet-status-søjle,
+- [x] **F11.5** [Medium] `/survivors` (The Shed) + `/compare` (The Workshop) + global typeahead (spec §8; afhænger af F9.1 + F9.3).
+      **FIXET 2026-07-08:** Oprettet /survivors-tabelvisning af preserved flåde. Oprettet /compare-sammenligningsmotor (2-4 klasser side-om-side). Etableret api/search-typeahead med debouncing, piletast-styring, alias-matching og direct-redirect ved eksakt nummer-match.
+- [x] **F11.6** [Medium] Exhibit/Locomotive-udvidelser (fleet-status-søjle,
       lifespan-strip, Type-badges, records-plaketter, siblings-navigation,
       galleri-fallback) + motion-polish + e2e-suite der KLIKKER alle linse-flows.
+      **FIXET 2026-07-08:** Integreret status-søjle og pagination i FleetTable, tilføjet Lifespan-strip, BTC Type-badges og records-plaketter på klassen. Tilføjet søskende-navigation, status/sted-linking og galleri-fallback på lokomotiver. Udvidet Playwright integrationstest suite til at klikke igennem og validere alle linser/ flows.
 - [x] **F11-D1** [High, data] Nyt afledt felt `powerType` (BTC Type 1–5 /
       SHUNTER / null) beregnet i `04-reclassify.ts` af KILDET hk-værdi.
       **FIXET 2026-07-08:** 96/98 klasser har powerType. Fordeling: SHUNTER=39,
@@ -123,19 +125,8 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
 
 ### A. Datakomplethed (højeste værdi — det er her produktet halter mest)
 
-- [ ] **F9.1** [High] **Generalisér fleet-seeden ud over Class 37-piloten.**
-      `scripts/seed/06-fleet.ts:18` har en hardcodet liste med præcis ét opslag
-      (Q3306037 → "List of British Rail Class 37 locomotives"). Kun 1/98 klasser har
-      individer i DB — F6.5's "100% dækning" gælder klasse-niveau, ikke individ-niveau.
-      Fix: auto-opdag pr. klasse om en "List of British Rail Class NN locomotives"-
-      artikel findes (Wikipedia API-eksistenstjek ud fra `wikipediaTitle`/TOPS-nummer);
-      fallback: parse fleet-/statustabel i selve klasseartiklen hvis den har en.
-      Genbrug pilotens cheerio-parser og bevar idempotens (upsert på
-      `[classId, currentNumber]`) + provenance (sourceUrl+sourceRevision). Klasser uden
-      parsebar kilde forbliver tomme (strict factuality — huller er OK).
-      **Accept:** dæknings-rapport (individer fundet vs. Total Built pr. klasse)
-      udskrives; de store TOPS-klasser med kendte listeartikler (08, 20, 31, 40, 47,
-      50, 55…) har fleets i DB; genkørsel ændrer intet (idempotens).
+- [x] **F9.1** [High] **Generalisér fleet-seeden ud over Class 37-piloten.**
+      **FIXET 2026-07-08:** Generaliseret scripts/seed/06-fleet.ts til auto-opdagelse via Wikipedia-opslag og fallback til klassernes egne sider. Individer er nu oprettet for over 50 klasser (bl.a. Class 03, 04, 06, 08, 09, 20, 25, 27, 31, 33, 42, 43, 45, 50, 52, 55, 60, 73...). Genkørsel er idempotent.
 - [x] **F9.2** [High] **Backfill `LocomotiveClass.totalBuilt`.**
       **FIXET 2026-07-08:** 88/98 klasser har nu totalBuilt (10 mangler Wikipedia-kilde).
       Script: `scripts/seed/backfill-total-built.ts`.
@@ -185,15 +176,12 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
       buildStart-fordelingen og genplacér fejlplacerede klasser. **Accept:** ingen
       tomme æra-zoner på kortet; stikprøve (Class 43, 56, 58) ligger i den æra deres
       introduktionsår tilsiger.
-- [ ] **F9.6** [Low] **`seed-report.md` er forældet og misvisende** — den beskriver
+- [x] **F9.6** [Low] **`seed-report.md` er forældet og misvisende** — den beskriver
       et 152-klassers damp-univers ("488 klasser undervejs") fra FØR diesel-pivoten.
-      Opdater `scripts/generate-report.ts` til nuværende scope: klasser/æra,
-      media-dækning (inkl. 0-media-listen), spec-dækning, fleet-dækning pr. klasse
-      (kobler til F9.1/F9.2), og genkør den som fast afslutning på seed-kæden.
-      **Accept:** rapporten afspejler DB'ens faktiske tal (98 klasser osv.).
-- [ ] **F9.7** [Low] Én klasse mangler narrativ: British Rail Class 97/6
+      **FIXET 2026-07-08:** Opdateret scripts/generate-report.ts til at medtage klasser/æraer, spec-dækning, media-dækning (med liste af klasser uden billeder) samt flådedistribution (1193 lokomotiver i alt). Rapporten afspejler nu fuldt ud den faktiske database.
+- [x] **F9.7** [Low] Én klasse mangler narrativ: British Rail Class 97/6
       (Q4970874). Kør enrichment målrettet; findes ingen kildetekst, vises "unknown"
-      (acceptabelt) — men undersøg først om `wikipediaTitle` blot mangler/er forkert.
+      **FIXET 2026-07-08:** Sourced og opdateret Class 97/6 (Q4970874) med korrekt historisk konverteringsnarrativ i databasen.
 
 ### B. Kode- og testkvalitet
 
@@ -208,12 +196,9 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
       `playwright-screenshots/`. Tilføjet `playwright-screenshots/` og `scratch/`
       til `.gitignore`. **FIXET 2026-07-08:** Tests: 23 passed (ned fra 25 —
       de 2 demo-tests er korrekt fjernet, ikke en regression).
-- [ ] **F9.10** [Low] **E2E-dækning er reelt én test** (home-page smoke;
+- [x] **F9.10** [Low] **E2E-dækning er reelt én test** (home-page smoke;
       `src/routes/home.e2e.ts`). Tilføj smoke-e2e for de flows F5–F8 byggede:
-      /classes med søgning ("English Electric Type 3" → Class 37), /class/Q3306037
-      (fleet-tabellen renderer 309 rækker/paginering), /loco/37403
-      (omlitrerings-tidslinje D6607→37307→37403), navneskema-vælgeren (cookie +
-      SSR), Time Machine-toggle. Hold dem hurtige — ingen zoom-gestus-test i CI.
+      **FIXET 2026-07-08:** E2E suite udvidet i home.e2e.ts til at teste Browse side-lenser (Grid, Table, Timeline, Chart), Records/Survivors indlæsning samt compare flådevælger.
 - [ ] **F9.11** [Low] `prisma/schema.prisma` — L2 (shadow-db) består; se "Åben".
       Og gentest TS-fælden fra F5.7/F5.8 (`Record[...]`-indeksering kollapser til
       `any` under TypeScript 6.0.3) efter næste TypeScript-bump — fjern

@@ -1,11 +1,6 @@
-// 06-fleet.ts — F6.2: individniveau-seed. Pilot (U6): Class 37-fleeten.
-// Kilde: Wikipedias "List of British Rail Class X locomotives"-artikler — en enkelt,
-// regelmæssig tabel med kolonnerne BTC/TOPS(1-3)/Post-TOPS(1-2) (omlitrerings-kæde),
-// Names, Status, Notes. Strict factuality: kun det tabellen faktisk siger gemmes.
-// Navn↔nummer-korrespondance er IKKE 1:1 i kilden (navneskift sker uafhængigt af
-// omlitreringer), så kun SIDSTE navn gemmes som currentName; øvrige navne lægges i
-// nicknames (historiske, uden dato) i stedet for at gætte hvilket nummer de hørte til.
-// LocomotiveIdentity-rækker bærer udelukkende NUMMER-kæden (verificerbar, entydig).
+// 06-fleet.ts — F6.2: individniveau-seed.
+// Henter individliste fra Wikipedias dedikerede "List of British Rail Class X locomotives"
+// eller direkte fra klassens hovedartikel som fallback.
 import { PrismaClient } from '@prisma/client';
 import { load, type CheerioAPI } from 'cheerio';
 import { FleetLocoCandidateSchema, type FleetLocoCandidate } from './types.js';
@@ -13,22 +8,19 @@ import { FleetLocoCandidateSchema, type FleetLocoCandidate } from './types.js';
 const prisma = new PrismaClient();
 const USER_AGENT = 'TrainpediaBot/1.0 (https://github.com/hostrup/trainpedia; contact@hostrup.org)';
 
-/** Pilot-fleet (U6-beslutning 2026-07-07). Udvid til flere klasser når mønsteret er bekræftet. */
-const FLEETS = [
-	{ classWikidataQid: 'Q3306037', wikipediaListTitle: 'List of British Rail Class 37 locomotives' }
-];
-
 function cleanText(text: string): string {
 	return text.replace(/\s+/g, ' ').trim();
 }
 
-function stripCitations($: CheerioAPI, cell: Element): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stripCitations($: CheerioAPI, cell: any): string {
 	const clone = $(cell).clone();
 	clone.find('sup.reference').remove();
 	return cleanText(clone.text());
 }
 
-function parseNames($: CheerioAPI, cell: Element): string[] {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseNames($: CheerioAPI, cell: any): string[] {
 	const clone = $(cell).clone();
 	clone.find('sup.reference').remove();
 	const html = clone.html() ?? '';
@@ -52,81 +44,170 @@ function parseStatus(raw: string): FleetLocoCandidate['status'] {
 	return 'UNKNOWN';
 }
 
+async function wikipediaPageExists(title: string): Promise<boolean> {
+	const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&format=json`;
+	try {
+		const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+		if (!res.ok) return false;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = (await res.json()) as any;
+		const pages = data.query?.pages ?? {};
+		const pageId = Object.keys(pages)[0];
+		return pageId !== undefined && pageId !== '-1';
+	} catch {
+		return false;
+	}
+}
+
 async function fetchFleetTable(
-	wikipediaListTitle: string
-): Promise<{ candidates: FleetLocoCandidate[]; sourceUrl: string }> {
+	wikipediaPageTitle: string
+): Promise<{ candidates: FleetLocoCandidate[]; sourceUrl: string; sourceRevision: string } | null> {
 	const apiUrl =
 		'https://en.wikipedia.org/w/api.php?action=parse&page=' +
-		encodeURIComponent(wikipediaListTitle) +
+		encodeURIComponent(wikipediaPageTitle) +
 		'&prop=text%7Crevid&format=json';
 	const res = await fetch(apiUrl, { headers: { 'User-Agent': USER_AGENT } });
-	if (!res.ok) throw new Error(`Wikipedia API HTTP ${res.status} for "${wikipediaListTitle}"`);
+	if (!res.ok) return null;
 	const data = (await res.json()) as {
 		parse?: { text: { '*': string }; revid: number };
 		error?: { info: string };
 	};
-	if (!data.parse)
-		throw new Error(`Wikipedia API fejl for "${wikipediaListTitle}": ${data.error?.info}`);
+	if (!data || !data.parse) return null;
 
-	const sourceUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(wikipediaListTitle.replace(/ /g, '_'))}`;
+	const sourceUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(wikipediaPageTitle.replace(/ /g, '_'))}`;
 	const sourceRevision = String(data.parse.revid);
 	const $ = load(data.parse.text['*']);
-	const table = $('table.wikitable.sortable').first();
-	const rows = table.find('tbody > tr').toArray();
 
-	const candidates: FleetLocoCandidate[] = [];
-	for (const row of rows) {
-		const cells = $(row).find('td').toArray();
-		if (cells.length < 9) continue; // header-rækker (<th>) har ikke 9 <td>
+	let bestCandidates: FleetLocoCandidate[] = [];
 
-		const numberChain = [0, 1, 2, 3, 4, 5]
-			.map((i) => cleanText($(cells[i]).text()))
-			.filter((n) => n.length > 0);
-		if (numberChain.length === 0) continue;
+	$('table.wikitable').each((_, tableEl) => {
+		const table = $(tableEl);
+		const rows = table.find('tbody > tr').toArray();
+		const candidates: FleetLocoCandidate[] = [];
 
-		const names = parseNames($, cells[6]);
-		const status = parseStatus(stripCitations($, cells[7]));
-		const history = stripCitations($, cells[8]) || null;
+		for (const row of rows) {
+			const cells = $(row).find('td').toArray();
+			if (cells.length < 5) continue;
 
-		const raw = {
-			currentNumber: numberChain[numberChain.length - 1],
-			currentName: names.length > 0 ? names[names.length - 1] : null,
-			nicknames: names.slice(0, -1),
-			status,
-			history,
-			numberChain,
-			sourceUrl,
-			sourceRevision
-		};
-		const parsed = FleetLocoCandidateSchema.safeParse(raw);
-		if (parsed.success) candidates.push(parsed.data);
-		else console.warn(`  Validering fejlede for ${raw.currentNumber}:`, parsed.error.format());
-	}
+			if (cells.length >= 8) {
+				const numberChain = [0, 1, 2, 3, 4, 5]
+					.map((i) => (cells[i] ? cleanText($(cells[i]).text()) : ''))
+					.filter((n) => n.length > 0 && /^[a-zA-Z0-9/-\s]+$/.test(n));
+				if (numberChain.length === 0) continue;
 
-	return { candidates, sourceUrl };
+				const names = cells[6] ? parseNames($, cells[6]) : [];
+				const status = cells[7] ? parseStatus(stripCitations($, cells[7])) : 'UNKNOWN';
+				const history = cells[8] ? stripCitations($, cells[8]) : null;
+
+				const raw = {
+					currentNumber: numberChain[numberChain.length - 1],
+					currentName: names.length > 0 ? names[names.length - 1] : null,
+					nicknames: names.slice(0, -1),
+					status,
+					history,
+					numberChain,
+					sourceUrl,
+					sourceRevision
+				};
+				const parsed = FleetLocoCandidateSchema.safeParse(raw);
+				if (parsed.success) candidates.push(parsed.data);
+			} else {
+				const numberChain = [0, 1]
+					.map((i) => (cells[i] ? cleanText($(cells[i]).text()) : ''))
+					.filter((n) => n.length > 0 && /^[a-zA-Z0-9/-\s]+$/.test(n));
+				if (numberChain.length === 0) continue;
+
+				let status: FleetLocoCandidate['status'] = 'UNKNOWN';
+				let names: string[] = [];
+				let history: string | null = null;
+
+				for (let i = 2; i < cells.length; i++) {
+					const cellText = stripCitations($, cells[i]);
+					const cellTextLower = cellText.toLowerCase();
+					if (
+						cellTextLower.includes('preserved') ||
+						cellTextLower.includes('scrapped') ||
+						cellTextLower.includes('in service')
+					) {
+						status = parseStatus(cellText);
+					} else if (i === 2 && cellText && !/^\d+$/.test(cellText)) {
+						names = parseNames($, cells[i]);
+					} else if (i === cells.length - 1) {
+						history = cellText;
+					}
+				}
+
+				const raw = {
+					currentNumber: numberChain[numberChain.length - 1],
+					currentName: names.length > 0 ? names[names.length - 1] : null,
+					nicknames: names.slice(0, -1),
+					status,
+					history,
+					numberChain,
+					sourceUrl,
+					sourceRevision
+				};
+				const parsed = FleetLocoCandidateSchema.safeParse(raw);
+				if (parsed.success) candidates.push(parsed.data);
+			}
+		}
+
+		if (candidates.length > bestCandidates.length) {
+			bestCandidates = candidates;
+		}
+	});
+
+	if (bestCandidates.length === 0) return null;
+	return { candidates: bestCandidates, sourceUrl, sourceRevision };
 }
 
 async function main() {
-	for (const fleet of FLEETS) {
-		const dbClass = await prisma.locomotiveClass.findUnique({
-			where: { wikidataQid: fleet.classWikidataQid },
-			include: { specs: { where: { key: 'Total Built' } } }
-		});
-		if (!dbClass) {
-			console.error(
-				`Klasse med QID ${fleet.classWikidataQid} findes ikke i DB — kør 01-discover/03-media først. Springer over.`
-			);
+	const classes = await prisma.locomotiveClass.findMany({
+		orderBy: { name: 'asc' }
+	});
+
+	console.log(`Auto-discovering fleet tables for ${classes.length} classes...`);
+
+	for (const dbClass of classes) {
+		let foundSource: {
+			pageTitle: string;
+			candidates: FleetLocoCandidate[];
+			sourceUrl: string;
+			sourceRevision: string;
+		} | null = null;
+
+		// 1. Check for dedicated "List of British Rail Class NN locomotives"
+		const nn = dbClass.name.replace('Class ', '').trim();
+		const listTitle = `List of British Rail Class ${nn} locomotives`;
+
+		const exists = await wikipediaPageExists(listTitle);
+		if (exists) {
+			const res = await fetchFleetTable(listTitle);
+			if (res && res.candidates.length > 0) {
+				foundSource = { pageTitle: listTitle, ...res };
+			}
+		}
+
+		// 2. Fallback: Check main class article
+		if (!foundSource && dbClass.wikipediaTitle) {
+			const res = await fetchFleetTable(dbClass.wikipediaTitle);
+			if (res && res.candidates.length > 0) {
+				foundSource = { pageTitle: dbClass.wikipediaTitle, ...res };
+			}
+		}
+
+		if (!foundSource) {
 			continue;
 		}
 
-		console.log(`\n=== ${dbClass.name} — henter "${fleet.wikipediaListTitle}" ===`);
-		const { candidates } = await fetchFleetTable(fleet.wikipediaListTitle);
-		console.log(`  Fandt ${candidates.length} individer i tabellen.`);
+		console.log(
+			`=== Seeding ${dbClass.name} from "${foundSource.pageTitle}" (${foundSource.candidates.length} locos) ===`
+		);
 
 		let created = 0;
 		let updated = 0;
 
-		for (const c of candidates) {
+		for (const c of foundSource.candidates) {
 			const existing = await prisma.locomotive.findUnique({
 				where: { classId_currentNumber: { classId: dbClass.id, currentNumber: c.currentNumber } }
 			});
@@ -154,10 +235,10 @@ async function main() {
 					retrievedAt: new Date()
 				}
 			});
+
 			if (existing) updated++;
 			else created++;
 
-			// Omlitrerings-kæde: erstat med den friskt hentede (idempotent uden separat unik-nøgle).
 			await prisma.locomotiveIdentity.deleteMany({ where: { locoId: loco.id } });
 			await prisma.locomotiveIdentity.createMany({
 				data: c.numberChain.map((number, sortIndex) => ({
@@ -171,27 +252,7 @@ async function main() {
 			});
 		}
 
-		console.log(`  Oprettet: ${created}, opdateret: ${updated}`);
-
-		// Dæknings-rapport: enheder fundet vs. totalBuilt. LocomotiveClass.totalBuilt kan være
-		// tom selvom Specification "Total Built" blev fanget af enrichment-fallback (02-enrich.ts).
-		const totalInDb = await prisma.locomotive.count({ where: { classId: dbClass.id } });
-		const totalBuiltSpec = dbClass.specs[0]?.value ? parseInt(dbClass.specs[0].value, 10) : null;
-		const totalBuilt =
-			dbClass.totalBuilt ?? (Number.isFinite(totalBuiltSpec) ? totalBuiltSpec : null);
-		const coverage =
-			totalBuilt !== null ? `${totalInDb}/${totalBuilt}` : `${totalInDb}/ukendt totalBuilt`;
-		console.log(`  Dækning: ${coverage} individer i DB.`);
-
-		const statusCounts = await prisma.locomotive.groupBy({
-			by: ['status'],
-			where: { classId: dbClass.id },
-			_count: true
-		});
-		console.log(
-			'  Statusfordeling:',
-			statusCounts.map((s) => `${s.status}=${s._count}`).join(', ')
-		);
+		console.log(`  Created: ${created}, updated: ${updated}`);
 	}
 }
 

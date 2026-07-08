@@ -23,9 +23,28 @@
 		>
 			Preserved Survivors
 		</h1>
-		<p class="mt-2 text-sm" style="color: var(--map-ink-soft);">
+		<p class="mt-2 text-sm mb-4" style="color: var(--map-ink-soft);">
 			Locomotives preserved in heritage railways, museums, or active main-line operations.
 		</p>
+
+		{#if data.locationFilter}
+			<div
+				class="flex items-center justify-between rounded-xl border p-3 bg-amber-50/50"
+				style="border-color: #fde68a;"
+			>
+				<div class="text-xs font-semibold" style="color: #b45309;">
+					Showing survivors located at: <span class="font-bold underline"
+						>{data.locationFilter}</span
+					>
+				</div>
+				<a
+					href={resolve('/survivors')}
+					class="rounded-full border bg-white px-2.5 py-1 text-[10px] font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+				>
+					Clear filter ✕
+				</a>
+			</div>
+		{/if}
 	</header>
 
 	<div class="overflow-x-auto rounded-lg border" style="border-color: var(--map-zone);">

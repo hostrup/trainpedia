@@ -8,7 +8,7 @@
 	import { tractionColor, tractionLabel, buildPeriod, mediaSrcset } from '$lib/loco.js';
 	import { resolveDisplayName } from '$lib/nameScheme.js';
 
-	let { data } = $props<{ data: PageData }>();
+	let { data } = $props<{ data: PageData & { nameScheme: string } }>();
 	const cls = $derived(data.cls);
 	const displayName = $derived(resolveDisplayName(cls.name, cls.aliases, data.nameScheme));
 	const lineColor = $derived(tractionColor(cls.regions));
@@ -17,7 +17,6 @@
 
 	const heroMedia = $derived(cls.media.length > 0 ? cls.media[0] : null);
 
-	// Wikidata-feltet totalBuilt er ofte tomt, mens infobox-spec'en har tallet.
 	const totalBuilt = $derived(
 		cls.totalBuilt ??
 			cls.specs.find((s: { key: string }) => s.key === 'Total Built')?.value ??
@@ -30,6 +29,26 @@
 		if (entry === null) return '—';
 		return exit ? `${entry}–${exit}` : `${entry}–present`;
 	}
+
+	function typeQuery(pt: string): string {
+		if (pt === 'SHUNTER') return 'shunter';
+		if (pt.startsWith('TYPE_')) return pt.slice(5);
+		return '';
+	}
+
+	const minYear = $derived(
+		Math.min(...data.eras.map((e: (typeof data.eras)[number]) => e.startYear))
+	);
+	const maxYear = $derived(new Date().getFullYear());
+	const yearRange = $derived(maxYear - minYear);
+	const startYear = $derived(
+		cls.serviceEntry ? new Date(cls.serviceEntry).getUTCFullYear() : (cls.buildStart ?? minYear)
+	);
+	const endYear = $derived(
+		cls.serviceExit ? new Date(cls.serviceExit).getUTCFullYear() : (cls.buildEnd ?? maxYear)
+	);
+	const barLeft = $derived(((startYear - minYear) / yearRange) * 100);
+	const barWidth = $derived(((endYear - startYear) / yearRange) * 100);
 </script>
 
 <svelte:head>
@@ -39,8 +58,6 @@
 	{/if}
 </svelte:head>
 
-<!-- --line-color sat her følger med ind i ALLE accenter nedenfor (hero, badges, links,
-     spec-kanter) — jf. F5.8-kravet om at linjefarven tematiserer hele undersektionen. -->
 <div style="--line-color: {lineColor};">
 	<!-- Hero -->
 	<div
@@ -87,6 +104,14 @@
 							{cls.wheelArrangement}
 						</span>
 					{/if}
+					{#if cls.powerType}
+						<a
+							href="{resolve('/browse')}?type={typeQuery(cls.powerType)}"
+							class="rounded-full border border-white/30 bg-black/40 px-3 py-1 text-[10px] font-bold tracking-widest text-white uppercase backdrop-blur-sm hover:underline"
+						>
+							{cls.powerType.startsWith('TYPE_') ? `Type ${cls.powerType.slice(5)}` : 'Shunter'}
+						</a>
+					{/if}
 				</div>
 				<h1
 					class="mt-2 text-3xl font-semibold text-white drop-shadow-lg sm:text-5xl"
@@ -98,6 +123,31 @@
 					<p class="font-serif mt-1 text-lg text-white/90 italic drop-shadow">
 						“{cls.nickname}”
 					</p>
+				{/if}
+
+				<!-- Records Held plaque -->
+				{#if data.recordsHeld && data.recordsHeld.length > 0}
+					<div class="mt-3 flex flex-wrap gap-2">
+						{#each data.recordsHeld as record (record.label)}
+							<a
+								href={resolve('/records')}
+								class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1 text-xs font-semibold shadow-sm transition-colors hover:bg-amber-100"
+								style="background: #fffbeb; border-color: #fde68a; color: #b45309;"
+							>
+								<span>🏆</span>
+								<span>
+									{#if record.rank === 1}
+										First
+									{:else if record.rank === 2}
+										Second
+									{:else if record.rank === 3}
+										Third
+									{/if}
+									{record.label}
+								</span>
+							</a>
+						{/each}
+					</div>
 				{/if}
 			</div>
 		</div>
@@ -209,6 +259,61 @@
 
 			<!-- Sidespalte: nøglefakta -->
 			<aside class="space-y-6 lg:sticky lg:top-6 lg:self-start">
+				<!-- Lifespan Strip -->
+				<div
+					class="rounded-xl border p-5"
+					style="background: var(--map-zone); border-color: var(--map-zone);"
+				>
+					<h2
+						class="mb-3 text-[11px] font-bold tracking-widest uppercase"
+						style="color: var(--map-ink-soft);"
+					>
+						Historical Lifespan
+					</h2>
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a
+						href="{resolve('/browse')}?lens=timeline&sel={cls.wikidataQid}"
+						class="block group relative overflow-hidden rounded-lg border p-3 transition-all hover:shadow-sm"
+						style="background: var(--map-bg); border-color: var(--map-zone);"
+					>
+						<div class="h-6 w-full relative rounded overflow-hidden bg-[var(--map-zone)]">
+							<!-- Era bands -->
+							{#each data.eras as era (era.slug)}
+								{@const eraEnd = era.endYear ?? maxYear}
+								{@const leftPct = ((era.startYear - minYear) / yearRange) * 100}
+								{@const widthPct = ((eraEnd - era.startYear) / yearRange) * 100}
+								<div
+									class="absolute top-0 bottom-0 border-r"
+									style="left: {leftPct}%; width: {widthPct}%; background: color-mix(in srgb, var(--tfl-blue) {25 -
+										data.eras.indexOf(era) *
+											3}%, var(--map-zone)); border-color: var(--map-zone); opacity: 0.2;"
+									title={era.name}
+								></div>
+							{/each}
+
+							<!-- Class lifespan bar -->
+							<div
+								class="absolute top-1.5 bottom-1.5 rounded-full flex items-center justify-center transition-transform group-hover:scale-y-110"
+								style="left: {barLeft}%; width: {Math.max(
+									3,
+									barWidth
+								)}%; background: var(--line-color);"
+							></div>
+						</div>
+
+						<div class="flex justify-between items-center mt-2 text-[10px]">
+							<span style="color: var(--map-ink-soft);">
+								Active: <strong style="color: var(--map-ink);"
+									>{startYear} – {cls.serviceExit ? endYear : 'present'}</strong
+								>
+							</span>
+							<span class="font-semibold text-[var(--tfl-blue)] group-hover:underline">
+								Timeline &rarr;
+							</span>
+						</div>
+					</a>
+				</div>
+
 				<div
 					class="rounded-xl border p-5"
 					style="background: var(--map-zone); border-color: var(--map-zone);"
