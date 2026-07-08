@@ -1,5 +1,11 @@
 # DESIGN-SPEC F5/F6 — "The Tube Map" & "Opslagsværket"
 
+> ⚠️ **AFLØST 2026-07-08 af [SPEC-F11-MUSEUM-UI.md](SPEC-F11-MUSEUM-UI.md).**
+> Ronni pensionerede metrokort-metaforen som bærende UI ("det er mig som holder
+> fast i min tanke... jeg kan se at det giver store problemer"). Tokens/§2 og
+> ikonografiens DNA lever videre i F11; geometri-reglerne (§3) og
+> kort-arkitekturen er historiske. Implementér IKKE efter dette dokument.
+
 > C4-checkin-materiale, fremlagt for Ronni 2026-07-07. Moodboard: se C4-artifact
 > (chat) — kortprøve, palet-options, ikonografi og tema-mocks.
 > Status for beslutninger står i BACKLOG.md under "Kræver brugerbeslutning".

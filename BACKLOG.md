@@ -6,6 +6,61 @@ DB-fakta: 98 klasser (100% DIESEL) · 309 individer (kun 1/98 klasser har fleet-
 · 353 media-assets (13 klasser har 0) · 853 identities · `totalBuilt` er NULL på
 ALLE 98 klasser.
 
+## Fase F11 — "The Working Museum": UI-pivot væk fra metrokortet (Ronnis direktiv 2026-07-08)
+
+**Ronni 2026-07-08:** _"Jeg kan mærke at det er mig som holder fast i min tanke
+om at togene skulle visualiseres via et underground map. Men jeg kan se at det
+giver store problemer... I sidste ende er det jo netop data som det handler om...
+data skal kunne grupperes og sorteres og visualiseres på flere måder — som alt
+sammen giver den her museumsoplevelse og nørde-tilgang. Lad første prioritet
+være at du REELT skaber en brugergrænseflade som er worldclass — spec den
+fuldstændig komplet."_
+
+**Den komplette spec er skrevet: [docs/SPEC-F11-MUSEUM-UI.md](docs/SPEC-F11-MUSEUM-UI.md)**
+— den AFLØSER DESIGN-F5-TUBEMAP.md som bærende UI-dokument og skal læses i sin
+helhed før implementering. Kerneidéen: metrokortet pensioneres som UI (metaforen
+fejlede — hver pixel skal kunne forsvares med en database-række); det lyse
+TfL-designsprog bevares. Ét datasæt ses gennem FIRE linser (Grid/Table/Timeline/
+Chart) med fælles URL-båret filter/gruppering/sortering — dét er "overblikket".
+Ny IA: The Great Hall (forside-hub) · /browse (The Roster) · /records ·
+/survivors · /compare · bevarede /class- og /loco-sider. Kronologi vises
+fremover KUN lineært (levetids-tidslinje) — aldrig ordinalt/radialt.
+
+Faserne (detaljer og accept i spec'ens §11; datakrav i §9):
+
+- [ ] **F11.1** [High] `/browse` med kontrolbjælke + Grid- & Table-linse;
+      URL-state (`lens/q/era/region/type/wheel/builder/decade/surviving/group/sort/sel`);
+      `/classes` → 301-redirect; MuseumPlacard genbrugt som quick-view-drawer.
+      Kør F9.15 + F9.2 FØRST eller parallelt (Table-linsens talkolonner kræver dem).
+- [ ] **F11.2** [High] Timeline-linsen (levetids-barer på LINEÆR tidsakse, æra-bånd
+      med sande årstalsgrænser) + æra-farveskala + F9.5-æra-hygiejnen indarbejdet.
+- [ ] **F11.3** [High] The Great Hall (ny forside jf. spec §5) + nav-omlægning
+      (`Browse/Timeline/Records/Survivors` + søgefelt) + **pensionering af al
+      kort-kode**: TubeMap/Minimap/ZoneBands/dieselLayout/layout.ts-2D-mode,
+      `/line/[slug]`-ruterne. StationIcon-ikonografiens DNA genbruges i Timeline.
+- [ ] **F11.4** [Medium] Chart-linsen (akse-vælger-scatterplot m. ærlig
+      dæknings-note) + `/records` (The Record Books: Fastest/Most numerous/
+      Longest lived/Survivors/One-offs — rene data-rankings, ingen fritekst).
+- [ ] **F11.5** [Medium] `/survivors` (The Shed) + `/compare` (The Workshop) + global typeahead (spec §8; afhænger af F9.1 + F9.3).
+- [ ] **F11.6** [Medium] Exhibit/Locomotive-udvidelser (fleet-status-søjle,
+      lifespan-strip, Type-badges, records-plaketter, siblings-navigation,
+      galleri-fallback) + motion-polish + e2e-suite der KLIKKER alle linse-flows.
+- [ ] **F11-D1** [High, data] Nyt afledt felt `powerType` (BTC Type 1–5 /
+      SHUNTER / null) beregnet i `04-reclassify.ts` af KILDET hk-værdi efter
+      BTC's historiske klassifikation (spec §9) — nørdernes egen taksonomi.
+      Afhænger af F9.15 (valueNumeric).
+- [ ] **F11-D2** [Medium, data] Builder-facet: normaliseret fabrikant-nøgle
+      fra Specification "Manufacturer" (alias-tabel i kode, rå streng bevares).
+
+**Konsekvenser for eksisterende backlog (re-statusering 2026-07-08):**
+F9.0b, F9.12, F9.13 og F10.3 BORTFALDER (kort-koden pensioneres i F11.3);
+F9.0a hot-fixes kun hvis F11.3 ikke er deployet inden for få dage (live-sitet
+har en død CTA indtil da). F10.1→F11.6, F10.2→F11.5, F10.4→F11.5 (/compare),
+F10.5→F11.5 (/survivors), F10.6→F11.6 — F10 består kun som selvstændige punkter
+for F10.7 (OG-metadata) og F10.8 (Random class). U8 (mobil) er LUKKET af spec
+§10 (responsive linser). F9-datasporet (A+D-sektionerne) er UÆNDRET og nu endnu
+mere kritisk: linserne er kun så gode som tallene bag dem.
+
 ## Fase F9 — Opslagsværkets komplethed + oprydning (analyse 2026-07-07, Claude Fable 5)
 
 **Analysens hovedkonklusion:** F5–F8 har leveret et sammenhængende TfL-univers med
@@ -25,11 +80,13 @@ lige under er der lokomotiver fra 80'erne. OG når man har valgt et tog på
 forsiden, kan man ikke komme videre til selve siden med info." Begge dele er
 reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
 
-- [ ] **F9.0a** [Blocker] **Placard-CTA'en er død — kortets bund-bar opsnapper
+- [ ] **F9.0a** [Blocker] **(F11-note 2026-07-08: bortfalder når F11.3
+      pensionerer kortet — hot-fix kun hvis F11.3 ikke deployes inden for få
+      dage.)** **Placard-CTA'en er død — kortets bund-bar opsnapper
       klikket.** Reproduceret med Playwright mod tog.hostrup.org: "Open full
       chronicle"-linket ER i DOM og synligt, men klik rammer aldrig — fejllog
       siger ordret `<div class="z-50 border-t px-6 py-3"> ... intercepts pointer
-    events`. Rodårsag: Time Machine-baren (`TubeMap.svelte:584`) fik `z-50` i
+events`. Rodårsag: Time Machine-baren (`TubeMap.svelte:584`) fik `z-50` i
       F8, mens placard-draweren (`MuseumPlacard.svelte:31`) er `z-40` — baren
       spænder hele kortets bredde i bunden og ligger derfor OVER placardens
       footer, præcis hvor CTA-knappen sidder. Fix (én linje + disciplin): sænk
@@ -39,7 +96,11 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
       navigerer faktisk til `/class/[qid]` — tilføj det som e2e-test (F9.10
       dækker flowet fremover). Regression fra F8; screenshot-verifikationen dér
       SÅ kun på pixels, aldrig på klikbarhed — endnu et argument for F9.13.
-- [ ] **F9.0b** [Blocker] **Æra-ringene er visuelt usande — radius har INGEN
+- [x] **F9.0b** [Blocker] **BORTFALDET 2026-07-08 (F11):** metrokortet
+      pensioneres helt, jf. SPEC-F11-MUSEUM-UI.md — ringene forsvinder med det,
+      og Timeline-linsen (F11.2) viser kronologien sandt på en lineær akse.
+      Analysen bevares herunder som begrundelse for pivoten.
+      **Æra-ringene er visuelt usande — radius har INGEN
       sammenhæng med æra.** Målt mod DB + `dieselLayout.ts` (centrum 600,500):
       Pilot Scheme-stationer spænder radius 0–1103, Privatisation & Modern
       60–820; Class 66 (1998!) ligger ved r=60 — næsten i centrum, dybt inde i
@@ -152,12 +213,12 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
 
 ### C. UX-udeståender (arvet fra F7/F8 — kræver browser-verifikation)
 
-- [ ] **F9.12** [Medium] Labelkollision nær centrum ved mellemzoom er kun delvist
+- [x] **F9.12** [Medium] **BORTFALDET 2026-07-08 (F11.3 pensionerer kortet).** Labelkollision nær centrum ved mellemzoom er kun delvist
       løst (F7-udestående): LOD skjuler labels udzoomet, men i mellemzoom kan tætte
       stationer stadig overlappe. Implementér kollisions-forskydning (labelSide-flip
       eller y-nudge ud fra målte tekstbredder) i `TubeMap.svelte`/`StationIcon.svelte`.
       Verificér med Playwright-screenshots på 2-3 zoom-niveauer.
-- [ ] **F9.13** [Low] Interaktiv browser-verifikation af zoom-følelsen (LOD-
+- [x] **F9.13** [Low] **BORTFALDET 2026-07-08 (F11.3 pensionerer kortet).** Læren består dog: F11's e2e-suite (F11.6) skal KLIKKE flows, ikke kun screenshotte. Interaktiv browser-verifikation af zoom-følelsen (LOD-
       overgange k<0.5/k<2, zone-ringes opdagelighed ved pan, 60 FPS-budgettet) har
       aldrig fået øjne på sig — F5.4/F5.8 noterede det eksplicit. Kør med
       Chrome-værktøjet mod dev-serveren eller tog.hostrup.org og notér fund som
@@ -231,7 +292,7 @@ en oplevelse. Punkterne er designet så de genbruger eksisterende byggeklodser
 (linjefarve-tokens, FleetTable, layout-motoren) frem for at introducere nye
 subsystemer. F10.1–F10.3 kan startes uden brugerbeslutninger; resten er mærket.
 
-- [ ] **F10.1** [High] **Fleet-status-søjle på klassesiden** — klassens
+- [x] **F10.1** [High] **INDARBEJDET i F11.6** (spec §6). **Fleet-status-søjle på klassesiden** — klassens
       "overlevelseshistorie" i ét blik. Oven over FleetTable på `/class/[qid]`:
       én vandret stacked bar med statusfordelingen (In service → Stored →
       Preserved → Scrapped → Exported/Unknown) i linjefarve-afledte nuancer
@@ -242,7 +303,7 @@ subsystemer. F10.1–F10.3 kan startes uden brugerbeslutninger; resten er mærke
       bygget) kræver paginering/virtualisering når F9.1 lander; byg det ind her.
       **Accept:** Playwright-screenshot af Class 37-siden med søjlen; tabel med >500 rækker scroller uden jank. **Afhængighed:** giver først bred værdi
       efter F9.1, men kan bygges og verificeres mod Class 37 nu.
-- [ ] **F10.2** [High] **Søge-typeahead i headeren.** I dag er søgning en fuld
+- [x] **F10.2** [High] **INDARBEJDET i F11.5** (spec §8). **Søge-typeahead i headeren.** I dag er søgning en fuld
       sideindlæsning til /classes uden feedback undervejs. Fix: debounced
       dropdown under header-feltet med grupperede resultater — "Classes"
       (navn/alias-match, viser linjefarve-prik + æra) og "Individuals"
@@ -253,7 +314,7 @@ subsystemer. F10.1–F10.3 kan startes uden brugerbeslutninger; resten er mærke
       /classes) bevares som fallback uden JS. **Accept:** at taste "37403"
       viser individet uden sideskift; "Deltic" viser Class 55; Escape lukker;
       e2e-smoke dækker begge. **Afhængighed:** F9.3.
-- [ ] **F10.3** [Medium] **Genopliv de forældreløse linjediagrammer.**
+- [x] **F10.3** [Medium] **BORTFALDET 2026-07-08:** /line-ruterne pensioneres med kortet (F11.3); Timeline-linsen (F11.2) overtager rollen som den forståelige kronologi-indgang. **Genopliv de forældreløse linjediagrammer.**
       `/line/[slug]` blev korrekt migreret til region-linjer i F7
       (`western/eastern/midland/southern/scottish`), men INTET i UI'et linker
       til dem længere — legenden i TubeMap.svelte viser kun farve+navn som død
@@ -264,7 +325,7 @@ subsystemer. F10.1–F10.3 kan startes uden brugerbeslutninger; resten er mærke
       mobil-/begynder-indgang (vandret scroll, ingen zoom) — det fortjener
       synlighed frem for udfasning. **Accept:** alle 5 region-sider kan nås med
       klik fra forsiden; intet dødt UI tilbage.
-- [ ] **F10.4** [Medium] **Klasse-sammenligning ("Compare").** Vælg 2-3 klasser
+- [x] **F10.4** [Medium] **INDARBEJDET i F11.5** (/compare, spec §2). **Klasse-sammenligning ("Compare").** Vælg 2-3 klasser
       (checkbox på /classes-kort + "Compare"-knap i placarden) → `/compare?a=…&b=…`
       med side-om-side spec-grid (rækker alignet på spec-nøgle, tal fra
       F9.15's `valueNumeric` så "1.750 hp" og "2,580 hp" faktisk kan
@@ -272,7 +333,7 @@ subsystemer. F10.1–F10.3 kan startes uden brugerbeslutninger; resten er mærke
       badges i hver klasses linjefarve. Museums-metaforen holder: det er
       "Top Trumps med kildehenvisninger". **Accept:** delbar URL; tom/1-klasse-
       tilstand degraderer pænt. **Afhængighed:** F9.15 (tal), F10.1 (søjler).
-- [ ] **F10.5** [Medium] **"Where can I see one today?" — bevarings-oversigt.**
+- [x] **F10.5** [Medium] **INDARBEJDET i F11.5** (/survivors, spec §2). **"Where can I see one today?" — bevarings-oversigt.**
       Efter F9.1 findes `location` for bevarede individer på tværs af klasser.
       Ny rute `/preserved`: grupperet efter bevaringssted (Severn Valley Railway,
       NRM York …) med antal, klasse-chips i linjefarver og links til individerne
@@ -282,7 +343,7 @@ subsystemer. F10.1–F10.3 kan startes uden brugerbeslutninger; resten er mærke
       **Accept:** siden findes med reelle grupperinger; steder normaliseres let
       (trim/case) men gættes ALDRIG (strict factuality — "Unknown location" er
       en gyldig gruppe). **Afhængighed:** F9.1 (ellers er siden Class 37-only).
-- [ ] **F10.6** [Medium] **Individ-sidens galleri-fallback.** `/loco/[number]`
+- [x] **F10.6** [Medium] **INDARBEJDET i F11.6** (spec §7). **Individ-sidens galleri-fallback.** `/loco/[number]`
       viser i dag kun billeder hvis `locoNumber`-metadata matcher — det giver 0
       billeder for langt de fleste individer (223 af 353 assets har loco-nummer,
       fordelt på få klasser). Fix: fald tilbage til klassens galleri med tydelig,
@@ -488,7 +549,7 @@ testet om brugeren naturligt opdager dem ved zoom/pan).
 - [ ] **U1** Authelia-politik (arkitekt-forslag: bypass) — C3. Blokerer intet i F9, men skal afklares før sitet regnes som "færdigt lanceret".
 - [x] **U2** ~~Skal discovery udvides ud over de 7 æraers "major classes" til ALT rullende materiel? — OG omvendt: skal ikke-lokomotiver UD?~~ **Overhalet af F6.5-pivoten 2026-07-07:** datasættet er nu 100% britiske diesel-LOKOMOTIVER (98 klasser; godsvogne/ikke-lokomotiver blev renset ud af `clean-non-diesel.ts`). Spørgsmålet genopstår som U7.
 - [ ] **U7** Skal damp- og el-æraerne genindføres i datasættet, og i givet fald hvornår? (Briefen siger "all trains of all eras"; diesel-scope var en bevidst kompletheds-prioritering. Genudvidelse rører æra-strukturen (F9.5a), kort-layoutet (dieselLayout.ts er diesel-specifik) og fleet-seeden.) **Anbefaling: udskyd til F9's datakomplethed er lukket for diesel — ellers gentages "halvt produkt"-problemet fra F7 i tre traktioner på én gang.**
-- [ ] **U8** **Mobil-strategi.** Tubemappet er designet desktop-først (Ronnis 4K-krav i F5-amendmentet); på en telefon er pan/zoom-SVG med 98 stationer en dårlig oplevelse. Valg: (a) **anbefalet:** små skærme får linjediagrammerne (F10.3) og /classes som primær indgang — kortet vises med en "best on a larger screen"-note; (b) dedikeret mobil-tilpasning af selve kortet (dyrt, tvivlsom gevinst); (c) mobil ignoreres bevidst. Berører navigation, så beslut FØR F10.3 poleres færdig.
+- [x] **U8** ✅ LUKKET 2026-07-08 af SPEC-F11-MUSEUM-UI.md §10: alle fire linser er responsive borgere (Table→kortliste, Timeline→vandret scroll, filter-bottom-sheet) — ingen separat mobilstrategi nødvendig, fordi kortet (mobil-problemets kilde) pensioneres. **Mobil-strategi.** Tubemappet er designet desktop-først (Ronnis 4K-krav i F5-amendmentet); på en telefon er pan/zoom-SVG med 98 stationer en dårlig oplevelse. Valg: (a) **anbefalet:** små skærme får linjediagrammerne (F10.3) og /classes som primær indgang — kortet vises med en "best on a larger screen"-note; (b) dedikeret mobil-tilpasning af selve kortet (dyrt, tvivlsom gevinst); (c) mobil ignoreres bevidst. Berører navigation, så beslut FØR F10.3 poleres færdig.
 - [ ] **U9** **Kuraterede fortællinger/ture** ("The Deltic story", "Pilot Scheme-fiaskoerne" — en sekvens af eksisterende klasse-/individsider med korte overgangstekster). Det ville give sitet en redaktionel stemme, men overgangstekster er PR DEFINITION ikke-citeret indhold — en bevidst undtagelse fra strict factuality-princippet, som kun Ronni kan give. Alternativ inden for princippet: ture uden fritekst, kun kuraterede sekvenser med kilde-citerede uddrag.
 - [x] **U3** ✅ BESLUTTET 2026-07-07: Navneskema-vælger med default TOPS ("Class 37"); søgning matcher alle aliasser (D6700, English Electric Type 3, "Tractor"). → implementeres i F5.2 + F5.6.
 - [x] **U4** ✅ BESLUTTET 2026-07-07: **Option A** — Steam = Metropolitan-magenta `#9B0058`, Diesel = District-grøn `#007D32`, Electric = Victoria-lyseblå `#0098D8`, Experimental/Other = Jubilee-grå `#A0A5A9`.
