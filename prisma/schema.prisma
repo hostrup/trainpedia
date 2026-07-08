@@ -22,6 +22,7 @@ enum MediaKind {
   BLUEPRINT
   DIAGRAM
   DOCUMENT
+  VIDEO
 }
 
 /// Navneskema for en klasses aliasser (F5.2/F5.6/U3) — styrer visning + søgning.
@@ -73,6 +74,8 @@ model LocomotiveClass {
   media            MediaAsset[]
   aliases          ClassAlias[]
   locomotives      Locomotive[]
+  narratives       NarrativeSection[]
+  videos           VideoLink[]
   sourceUrl        String? // Wikipedia-artikel
   sourceRevision   String? // revisions-id for citatets version
   retrievedAt      DateTime?
@@ -91,6 +94,8 @@ model ClassAlias {
   classId     Int
   alias       String // "D6700", "English Electric Type 3", "Tractor"
   scheme      AliasScheme
+  fromYear    Int?
+  toYear      Int?
   sourceUrl   String?
   retrievedAt DateTime?
 
@@ -181,4 +186,33 @@ model MediaAsset {
   retrievedAt DateTime
 
   @@index([classId, kind])
+}
+
+/// Sektioneret narrativ til dybdegående museumsviden (F12.3)
+model NarrativeSection {
+  id           Int             @id @default(autoincrement())
+  class        LocomotiveClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId      Int
+  title        String // f.eks. "Design & construction", "Operations", "Withdrawal", "Preservation"
+  content      String // sektionens markdown-indhold
+  sortIndex    Int             @default(0)
+  sourceUrl    String?
+  retrievedAt  DateTime?
+
+  @@unique([classId, title])
+}
+
+/// Eksterne eller interne videolinks for en klasse (F12.5)
+model VideoLink {
+  id           Int             @id @default(autoincrement())
+  class        LocomotiveClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId      Int
+  title        String // f.eks. "Class 55 Deltic at Doncaster"
+  youtubeId    String // YouTube video ID eller Commons video URL / id
+  duration     String? // f.eks. "10:15"
+  sortIndex    Int             @default(0)
+  sourceUrl    String?
+  retrievedAt  DateTime?
+
+  @@unique([classId, youtubeId])
 }

@@ -49,6 +49,35 @@
 	);
 	const barLeft = $derived(((startYear - minYear) / yearRange) * 100);
 	const barWidth = $derived(((endYear - startYear) / yearRange) * 100);
+
+	const sortedAliases = $derived(
+		(cls.aliases ?? [])
+			.slice()
+			.sort(
+				(a: { fromYear: number | null }, b: { fromYear: number | null }) =>
+					(a.fromYear ?? 9999) - (b.fromYear ?? 9999)
+			)
+	);
+
+	function parseMarkdownLinks(
+		text: string
+	): { type: 'text' | 'link'; content: string; url?: string }[] {
+		const result: { type: 'text' | 'link'; content: string; url?: string }[] = [];
+		const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+		let lastIdx = 0;
+		let match;
+		while ((match = regex.exec(text)) !== null) {
+			if (match.index > lastIdx) {
+				result.push({ type: 'text', content: text.substring(lastIdx, match.index) });
+			}
+			result.push({ type: 'link', content: match[1], url: match[2] });
+			lastIdx = regex.lastIndex;
+		}
+		if (lastIdx < text.length) {
+			result.push({ type: 'text', content: text.substring(lastIdx) });
+		}
+		return result;
+	}
 </script>
 
 <svelte:head>
@@ -166,6 +195,55 @@
 		</div>
 	</div>
 
+	<!-- Names through history timeline chain -->
+	{#if cls.aliases && cls.aliases.length > 0}
+		<div class="border-b" style="background: var(--map-zone); border-color: var(--map-zone);">
+			<div class="mx-auto max-w-7xl px-4 py-4 sm:px-6">
+				<h3
+					class="text-[10px] font-bold uppercase tracking-wider mb-2"
+					style="color: var(--map-ink-soft);"
+				>
+					Names & classifications through history
+				</h3>
+				<div class="flex flex-wrap items-center gap-2">
+					{#each sortedAliases as alias, idx (alias.alias)}
+						<div
+							class="inline-flex items-center gap-1.5 bg-[var(--map-bg)] border rounded-lg px-2.5 py-1 text-xs transition-colors hover:bg-white/40"
+							style="border-color: var(--map-zone);"
+						>
+							<span class="font-semibold" style="color: var(--map-ink);">{alias.alias}</span>
+							{#if alias.fromYear || alias.toYear}
+								<span class="text-[10px] opacity-75 font-mono">
+									({alias.fromYear ?? ''}–{alias.toYear ?? ''})
+								</span>
+							{/if}
+							<span
+								class="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--map-zone)] font-semibold"
+								style="color: var(--map-ink-soft);"
+							>
+								{alias.scheme.replace('_', ' ')}
+							</span>
+							{#if alias.sourceUrl}
+								<a
+									href={alias.sourceUrl}
+									target="_blank"
+									rel="external noopener noreferrer"
+									class="text-[10px] hover:scale-110 ml-0.5"
+									title="Source citation"
+								>
+									🔗
+								</a>
+							{/if}
+						</div>
+						{#if idx < cls.aliases.length - 1}
+							<span class="text-sm opacity-40">➔</span>
+						{/if}
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
+
 	<div class="mx-auto max-w-7xl px-4 py-10 sm:px-6">
 		<div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">
 			<!-- Hovedspalte: narrativ + specs + galleri -->
@@ -201,6 +279,52 @@
 							</p>
 						{/if}
 					</section>
+				{/if}
+
+				<!-- Narrative sections (Design, Operations, Withdrawal, Preservation) -->
+				{#if cls.narratives && cls.narratives.length > 0}
+					<div class="space-y-12">
+						{#each cls.narratives as section (section.id)}
+							<section class="border-t pt-8" style="border-color: var(--map-zone);">
+								<h2
+									class="mb-4 text-[11px] font-bold tracking-widest uppercase"
+									style="color: var(--map-ink-soft);"
+								>
+									{section.title}
+								</h2>
+								<p
+									class="font-serif max-w-prose text-lg leading-relaxed whitespace-pre-line"
+									style="color: var(--map-ink);"
+								>
+									{#each parseMarkdownLinks(section.content) as segment, segIdx (segIdx)}
+										{#if segment.type === 'link'}
+											<a
+												href={segment.url}
+												target="_blank"
+												rel="external noopener noreferrer"
+												class="underline hover:text-[var(--line-color)]"
+												style="color: var(--line-color);">{segment.content}</a
+											>
+										{:else}
+											{segment.content}
+										{/if}
+									{/each}
+								</p>
+								{#if section.sourceUrl}
+									<p class="mt-3 text-[11px] font-mono" style="color: var(--map-ink-soft);">
+										Source:
+										<a
+											href={section.sourceUrl}
+											target="_blank"
+											rel="external noopener noreferrer"
+											class="hover:underline"
+											style="color: var(--line-color);">Wikipedia</a
+										>
+									</p>
+								{/if}
+							</section>
+						{/each}
+					</div>
 				{/if}
 
 				<section>

@@ -62,10 +62,7 @@ function mapKeyToLabel(key: string): string | null {
 	}
 	if (
 		normalized === 'wheel arrangement' ||
-		normalized.includes('uic class') ||
-		normalized.includes('uic classification') ||
 		normalized.includes('aar wheel arr') ||
-		normalized === 'uic' ||
 		normalized === 'aar'
 	) {
 		return 'Wheel Arrangement';
@@ -87,8 +84,101 @@ function mapKeyToLabel(key: string): string | null {
 	) {
 		return 'Total Built';
 	}
+	if (normalized === 'engine' || normalized === 'prime mover') {
+		return 'Engine';
+	}
+	if (normalized === 'transmission' || normalized === 'transmission type') {
+		return 'Transmission';
+	}
+	if (normalized === 'brakes' || normalized === 'braking' || normalized === 'brake type') {
+		return 'Brakes';
+	}
+	if (normalized === 'train heating' || normalized === 'heating') {
+		return 'Train heating';
+	}
+	if (normalized === 'route availability' || normalized === 'ra' || normalized === 'ra rating') {
+		return 'Route availability';
+	}
+	if (
+		normalized.includes('uic class') ||
+		normalized.includes('uic classification') ||
+		normalized === 'uic'
+	) {
+		return 'UIC classification';
+	}
+	if (normalized === 'fuel capacity' || normalized.includes('fuel tank')) {
+		return 'Fuel capacity';
+	}
 	return null;
 }
+
+function scrapeNarrativeSections($: CheerioAPI, wikiUrl: string | null): NarrativeSection[] {
+	const targets = [
+		{
+			key: 'Design & construction',
+			patterns: [/design\s*(?:&|and)\s*construction/i, /design\s*and\s*development/i, /design/i]
+		},
+		{
+			key: 'Operations',
+			patterns: [/operations/i, /operational\s*history/i, /service/i, /career/i]
+		},
+		{ key: 'Withdrawal', patterns: [/withdrawal/i, /retirement/i, /scrapping/i] },
+		{ key: 'Preservation', patterns: [/preservation/i, /preserved\s*locomotives/i] }
+	];
+
+	const sections: NarrativeSection[] = [];
+
+	$('h2').each((_, h2El) => {
+		const h2 = $(h2El);
+		const titleText = h2.text().trim();
+
+		const target = targets.find((t) => t.patterns.some((p) => p.test(titleText)));
+		if (!target) return;
+		if (sections.some((s) => s.title === target.key)) return;
+
+		const contentElements: string[] = [];
+		let next = h2.next();
+		while (next.length > 0) {
+			const tagName = next.get(0)?.tagName?.toLowerCase() ?? '';
+			if (tagName === 'h2') break;
+
+			const clone = next.clone();
+			clone.find('style').remove();
+			clone.find('script').remove();
+			clone.find('sup.reference').remove();
+
+			if (tagName === 'p' || tagName === 'ul' || tagName === 'ol') {
+				clone.find('a').each((_, aEl) => {
+					const a = $(aEl);
+					const href = a.attr('href');
+					const label = a.text().trim();
+					if (href && label) {
+						let fullHref = href;
+						if (href.startsWith('./')) {
+							fullHref = `https://en.wikipedia.org/wiki/${href.substring(2)}`;
+						}
+						a.replaceWith(`[${label}](${fullHref})`);
+					}
+				});
+				contentElements.push(clone.text().replace(/\s+/g, ' ').trim());
+			}
+			next = next.next();
+		}
+
+		const content = contentElements.filter(Boolean).join('\n\n');
+		if (content) {
+			sections.push({
+				title: target.key,
+				content,
+				sortIndex: targets.indexOf(target),
+				sourceUrl: wikiUrl
+			});
+		}
+	});
+
+	return sections;
+}
+import { NarrativeSection, type EnrichedClass } from './types.js';
 
 function parseUnit(value: string): string | null {
 	const match = value.match(/\b(mph|km\/h|hp|kW|bhp|MW|lbf|kN)\b/i);
@@ -134,7 +224,9 @@ async function main() {
 				narrative: null,
 				sourceRevision: null,
 				specs: [],
-				media: []
+				media: [],
+				narratives: [],
+				videos: []
 			};
 			// Validate schema
 			const parseResult = EnrichedClassSchema.safeParse(enriched);
@@ -151,6 +243,7 @@ async function main() {
 		let narrative: string | null = null;
 		let sourceRevision: string | null = null;
 		const specs: Specification[] = [];
+		let narrativeSections: NarrativeSection[] = [];
 		const wikiUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(wikiTitle)}`;
 
 		// 1. Fetch Summary
@@ -237,6 +330,10 @@ async function main() {
 					totalSpecsParsed += parsedSpecs.length;
 				}
 				console.log(`  - Specs: Found ${parsedSpecs.length} specification(s)`);
+
+				// Scrape narrative sections (Design, Operations, Withdrawal, Preservation)
+				narrativeSections = scrapeNarrativeSections($, wikiUrl);
+				console.log(`  - Narratives: Scraped ${narrativeSections.length} section(s)`);
 			} else {
 				console.log(`  - Specs: Failed (${htmlRes.status} ${htmlRes.statusText})`);
 			}
@@ -250,7 +347,9 @@ async function main() {
 			narrative,
 			sourceRevision,
 			specs,
-			media: []
+			media: [],
+			narratives: narrativeSections,
+			videos: []
 		};
 
 		// Validate schema

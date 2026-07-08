@@ -11,7 +11,17 @@ export const load: PageServerLoad = async ({ params }) => {
 				era: true,
 				specs: { orderBy: { sortIndex: 'asc' } },
 				media: { orderBy: { sortIndex: 'asc' } },
-				aliases: { select: { alias: true, scheme: true } }
+				aliases: {
+					select: {
+						alias: true,
+						scheme: true,
+						fromYear: true,
+						toYear: true,
+						sourceUrl: true
+					}
+				},
+				narratives: { orderBy: { sortIndex: 'asc' } },
+				videos: { orderBy: { sortIndex: 'asc' } }
 			}
 		});
 	} catch (err) {
@@ -143,7 +153,10 @@ export const load: PageServerLoad = async ({ params }) => {
 			retrievedAt: cls.retrievedAt ? cls.retrievedAt.toISOString() : null,
 			era: { ...cls.era, retrievedAt: null },
 			specs: cls.specs.map((s) => ({ ...s, retrievedAt: null })),
-			media: cls.media.map((m) => ({ ...m, retrievedAt: null }))
+			media: cls.media.map((m) => ({ ...m, retrievedAt: null })),
+			aliases: cls.aliases,
+			narratives: cls.narratives.map((n) => ({ ...n, retrievedAt: null })),
+			videos: cls.videos.map((v) => ({ ...v, retrievedAt: null }))
 		},
 		related,
 		fleet,

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const TractionSchema = z.enum(['STEAM', 'DIESEL', 'ELECTRIC', 'OTHER']);
 export type Traction = z.infer<typeof TractionSchema>;
 
-export const MediaKindSchema = z.enum(['PHOTO', 'BLUEPRINT', 'DIAGRAM', 'DOCUMENT']);
+export const MediaKindSchema = z.enum(['PHOTO', 'BLUEPRINT', 'DIAGRAM', 'DOCUMENT', 'VIDEO']);
 export type MediaKind = z.infer<typeof MediaKindSchema>;
 
 export const AliasSchemeSchema = z.enum(['TOPS', 'PRE_TOPS', 'BUILDER', 'NICKNAME', 'ORIGINAL']);
@@ -38,6 +38,8 @@ export const ClassAliasCandidateSchema = z.object({
 	classId: z.number().int(),
 	alias: z.string().min(1),
 	scheme: AliasSchemeSchema,
+	fromYear: z.number().int().nullable().optional(),
+	toYear: z.number().int().nullable().optional(),
 	sourceUrl: z.string().nullable()
 });
 export type ClassAliasCandidate = z.infer<typeof ClassAliasCandidateSchema>;
@@ -51,7 +53,6 @@ export const SpecificationSchema = z.object({
 });
 export type Specification = z.infer<typeof SpecificationSchema>;
 
-// Media Asset contract
 export const MediaAssetSchema = z.object({
 	commonsUrl: z.string().url(),
 	kind: MediaKindSchema,
@@ -67,6 +68,23 @@ export const MediaAssetSchema = z.object({
 	sortIndex: z.number().int().default(0)
 });
 export type MediaAsset = z.infer<typeof MediaAssetSchema>;
+
+export const NarrativeSectionSchema = z.object({
+	title: z.string(),
+	content: z.string(),
+	sortIndex: z.number().int().default(0),
+	sourceUrl: z.string().nullable()
+});
+export type NarrativeSection = z.infer<typeof NarrativeSectionSchema>;
+
+export const VideoLinkSchema = z.object({
+	title: z.string(),
+	youtubeId: z.string(),
+	duration: z.string().nullable().optional(),
+	sortIndex: z.number().int().default(0),
+	sourceUrl: z.string().nullable()
+});
+export type VideoLink = z.infer<typeof VideoLinkSchema>;
 
 // Candidate class from discovery step
 export const CandidateClassSchema = z.object({
@@ -95,6 +113,8 @@ export const EnrichedClassSchema = CandidateClassSchema.extend({
 	sourceRevision: z.string().nullable(),
 	commonsCategory: z.string().nullable(), // Wikimedia Commons category (P373)
 	specs: z.array(SpecificationSchema),
-	media: z.array(MediaAssetSchema).default([])
+	media: z.array(MediaAssetSchema).default([]),
+	narratives: z.array(NarrativeSectionSchema).default([]),
+	videos: z.array(VideoLinkSchema).default([])
 });
 export type EnrichedClass = z.infer<typeof EnrichedClassSchema>;

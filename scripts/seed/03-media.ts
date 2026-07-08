@@ -258,6 +258,36 @@ async function main() {
 				console.log(`  - Upserted ${cls.specs.length} specifications`);
 			}
 
+			// 3. Upsert Narrative Sections (F12.3)
+			if (cls.narratives && cls.narratives.length > 0) {
+				const narrativePromises = cls.narratives.map((ns) =>
+					prisma.narrativeSection.upsert({
+						where: {
+							classId_title: {
+								classId: dbClass.id,
+								title: ns.title
+							}
+						},
+						update: {
+							content: ns.content,
+							sortIndex: ns.sortIndex,
+							sourceUrl: ns.sourceUrl,
+							retrievedAt: new Date()
+						},
+						create: {
+							classId: dbClass.id,
+							title: ns.title,
+							content: ns.content,
+							sortIndex: ns.sortIndex,
+							sourceUrl: ns.sourceUrl,
+							retrievedAt: new Date()
+						}
+					})
+				);
+				await prisma.$transaction(narrativePromises);
+				console.log(`  - Upserted ${cls.narratives.length} narrative sections`);
+			}
+
 			// 3. Determine media limit
 			const isFeatured = dbClass.isLandmark || FEATURED_QIDS.has(cls.wikidataQid);
 			const maxImages = isFeatured ? 40 : 5;

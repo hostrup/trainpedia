@@ -9,7 +9,13 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Spec keys that should have numeric values
-const NUMERIC_KEYS = new Set(['Power Output', 'Tractive Effort', 'Top Speed', 'Total Built']);
+const NUMERIC_KEYS = new Set([
+	'Power Output',
+	'Tractive Effort',
+	'Top Speed',
+	'Total Built',
+	'Fuel capacity'
+]);
 
 /**
  * Parse the first meaningful numeric value from a spec string.
@@ -59,7 +65,8 @@ function parseNumericValue(value: string, key: string): { numeric: number; unit:
 
 	// For other numeric specs: find the FIRST number followed by a known unit
 	// Pattern: optional leading text, then digits (with commas/dots), then optional space, then unit
-	const unitPattern = /(\d[\d,.']*)\s*(mph|km\/h|hp|bhp|kW|MW|lbf|kN|kg|lb|tons?|tonnes?)/i;
+	const unitPattern =
+		/(\d[\d,.']*)\s*(mph|km\/h|hp|bhp|kW|MW|lbf|kN|kg|lb|tons?|tonnes?|gal|l|litres?|liters?)/i;
 	const m = value.match(unitPattern);
 	if (!m) return null;
 
@@ -82,7 +89,10 @@ function parseNumericValue(value: string, key: string): { numeric: number; unit:
 	if (unit === 'kw') unit = 'kW';
 	else if (unit === 'mw') unit = 'MW';
 	else if (unit === 'kn') unit = 'kN';
-	else if (unit === 'bhp') unit = 'hp'; // treat bhp as hp
+	else if (unit === 'bhp')
+		unit = 'hp'; // treat bhp as hp
+	else if (unit === 'l' || unit.startsWith('liter') || unit.startsWith('litre')) unit = 'l';
+	else if (unit === 'gal') unit = 'gal';
 
 	return { numeric: n, unit };
 }

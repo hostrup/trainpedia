@@ -83,7 +83,15 @@ async function fetchAltLabels(qids: string[], attempt = 1): Promise<Map<string, 
 
 async function main() {
 	const classes = await prisma.locomotiveClass.findMany({
-		select: { id: true, wikidataQid: true, name: true, nickname: true, sourceUrl: true }
+		select: {
+			id: true,
+			wikidataQid: true,
+			name: true,
+			nickname: true,
+			sourceUrl: true,
+			buildStart: true,
+			serviceEntry: true
+		}
 	});
 	console.log(`Henter aliasser for ${classes.length} klasser...`);
 
@@ -106,7 +114,64 @@ async function main() {
 		const seen = new Set<string>([c.name.toLowerCase()]);
 		const wikidataUrl = `https://www.wikidata.org/wiki/${c.wikidataQid}`;
 
-		// Kaldenavn fra discovery-trinnet (P1449) — allerede på LocomotiveClass.
+		// 1. Fetch locomotives and identities for this class to build pre-TOPS aggregated alias
+		const locos = await prisma.locomotive.findMany({
+			where: { classId: c.id },
+			include: { identities: true }
+		});
+
+		const dNumbers: {
+			number: string;
+			numVal: number;
+			fromYear: number | null;
+			toYear: number | null;
+		}[] = [];
+		for (const loco of locos) {
+			for (const ident of loco.identities) {
+				const match = ident.number.trim().match(/^D(\d+)$/i);
+				if (match) {
+					dNumbers.push({
+						number: ident.number.trim().toUpperCase(),
+						numVal: parseInt(match[1], 10),
+						fromYear: ident.fromYear,
+						toYear: ident.toYear
+					});
+				}
+			}
+		}
+
+		if (dNumbers.length > 0) {
+			dNumbers.sort((a, b) => a.numVal - b.numVal);
+			const minD = dNumbers[0];
+			const maxD = dNumbers[dNumbers.length - 1];
+
+			const aliasString =
+				minD.numVal === maxD.numVal ? minD.number : `${minD.number}–${maxD.number}`;
+			const fromYears = dNumbers.map((d) => d.fromYear).filter((y): y is number => y !== null);
+			const toYears = dNumbers.map((d) => d.toYear).filter((y): y is number => y !== null);
+
+			let fromYear = fromYears.length > 0 ? Math.min(...fromYears) : c.buildStart;
+			if (!fromYear && c.serviceEntry) {
+				fromYear = new Date(c.serviceEntry).getFullYear();
+			}
+			const toYear = toYears.length > 0 ? Math.max(...toYears) : 1974;
+
+			if (!seen.has(aliasString.toLowerCase())) {
+				seen.add(aliasString.toLowerCase());
+				const raw = {
+					classId: c.id,
+					alias: aliasString,
+					scheme: 'PRE_TOPS' as const,
+					fromYear,
+					toYear,
+					sourceUrl: c.sourceUrl
+				};
+				const parsed = ClassAliasCandidateSchema.safeParse(raw);
+				if (parsed.success) candidates.push(parsed.data);
+			}
+		}
+
+		// 2. Kaldenavn fra discovery-trinnet (P1449) — allerede på LocomotiveClass.
 		if (c.nickname && !seen.has(c.nickname.toLowerCase())) {
 			seen.add(c.nickname.toLowerCase());
 			const raw = {
@@ -119,7 +184,7 @@ async function main() {
 			if (parsed.success) candidates.push(parsed.data);
 		}
 
-		// Wikidata skos:altLabel — klassificeret heuristisk.
+		// 3. Wikidata skos:altLabel — klassificeret heuristisk.
 		const altLabels = altLabelsByQid.get(c.wikidataQid) ?? new Set();
 		for (const label of altLabels) {
 			const key = label.toLowerCase();
@@ -145,11 +210,19 @@ async function main() {
 	for (const alias of candidates) {
 		await prisma.classAlias.upsert({
 			where: { classId_alias: { classId: alias.classId, alias: alias.alias } },
-			update: { scheme: alias.scheme, sourceUrl: alias.sourceUrl, retrievedAt: new Date() },
+			update: {
+				scheme: alias.scheme,
+				fromYear: alias.fromYear,
+				toYear: alias.toYear,
+				sourceUrl: alias.sourceUrl,
+				retrievedAt: new Date()
+			},
 			create: {
 				classId: alias.classId,
 				alias: alias.alias,
 				scheme: alias.scheme,
+				fromYear: alias.fromYear,
+				toYear: alias.toYear,
 				sourceUrl: alias.sourceUrl,
 				retrievedAt: new Date()
 			}
