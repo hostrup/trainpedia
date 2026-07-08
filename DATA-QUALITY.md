@@ -1,6 +1,6 @@
 # Data Quality Report
 
-Genereret: 2026-07-08T11:57:18.621Z
+Genereret: 2026-07-08T12:12:52.368Z
 Database status: 1324 individer · 98 klasser · 879 media assets
 
 ## Data Freshness (Ældning)

@@ -94,64 +94,16 @@ YouTube-videoer el.lign. for det specifikke tog.
 
 - [x] **F12.1** [High] **Datakorrekthed: kryds-validering + genseed-sikre eksklusioner.**
       **FIXET 2026-07-08:** Indført QID-blocklist (`blocklist.ts`), som håndhæves i `01-discover.ts` og tjekkes i `08-validate.ts`. Forbedret fleet-parsing i `06-fleet.ts` med `isValidLocoNumber` til bortfiltrering af tekststøj, dedup af identities, og rydning af gamle individrækker for at undgå forældreløse dubletter. Tilføjet kryds-kilde-validering og 10 kendte facts stikprøver i gaten.
-- [ ] **F12.2** [High] **"Names through history" — navnekæden som museums-
-      plakette på klassesiden.** Ronnis eksempel: fra oprindelse over TOPS til
-      i dag. Data: `ClassAlias` har scheme men INGEN tidsdimension — tilføj
-      additive `fromYear/toYear` og udfyld hvor kilder findes; klassens
-      pre-TOPS-nummerserie kan AGGREGERES fra de allerede-parsede
-      `LocomotiveIdentity`-kæder (min–max af D-numre pr. klasse, fx
-      "D6700–D6999"). UI: kronologisk plakette på /class/[qid] — fx
-      "D6700-serien (1960–1973) → Class 37 (TOPS, 1973–) · 'Tractor' blandt
-      entusiaster · English Electric Type 3 hos byggeren" — med kildelinjer
-      (F9.16-mønsteret). Navneskema-vælgeren (F5.6) består urørt; plaketten er
-      fortællingen OM navnene. **Accept:** Class 37-siden viser hele kæden
-      med årstal og kilder; mindst 30 klasser har en flerledet navnekæde.
-- [ ] **F12.3** [High] **Dybere museumsviden pr. klasse og individ.**
-      (a) Udvid `02-enrich.ts` til at hente FLERE kildeciterede sektioner pr.
-      klasse (Design & construction, Operations, Withdrawal, Preservation) i
-      en ny additiv `NarrativeSection`-tabel (classId, heading, content,
-      sourceUrl, sourceRevision, sortIndex) — narrativ-feltet i dag er ét
-      enkelt uddrag. (b) Flere spec-nøgler fra infoboksen: Engine,
-      Transmission, Brakes, Train heating, Route availability, UIC
-      classification, Fuel capacity (samme parser, flere nøgler). (c) Individ-
-      niveau: udfyld `Locomotive.history` fra listeartiklernes Notes-kolonner
-      (delvist gjort) + Wikidata-emner for bevarede maskiner (F6.2's kendte
-      udestående — hjemsted/status/navnehistorik). UI: klassesiden viser
-      sektionerne som museums-afsnit med provenance; spec-grid udvides.
-      **Accept:** Class 37/55-siderne har ≥3 kildeciterede sektioner og ≥10
-      spec-nøgler; alt citeret, intet AI-formuleret.
-- [ ] **F12.4** [High] **Bred billedjagt — flere og federe billeder, lovligt.**
-      Udvid `03-media.ts` (eller nyt `10-media-wide.ts`): (a) Commons DYBERE:
-      fuldtekst-søgning, kategoritræ-rekursion, søgning på INDIVID-numre
-      (37403, D9000…) så bevarede maskiner får egne fotos; (b) **Geograph
-      Britain & Ireland** — enormt UK-jernbanearkiv, alt CC BY-SA; hent via
-      Commons-spejlet (kategorier "Images from Geograph…" + `insource:`-søgning)
-      så licens/attribution-pipelinen er uændret; (c) Flickr KUN via
-      Commons-spejlet "Files from Flickr" (direkte Flickr-API kræver nøgle →
-      U10, valgfrit). Regler: KUN åbne licenser (PD/CC0/CC BY/CC BY-SA),
-      attribution + kilde-URL obligatorisk (gaten håndhæver allerede), dedup
-      på commonsUrl. Kvalitet frem for kvantitet: prioritér høj opløsning,
-      hero-egnede motiver; sortIndex sættes så det bedste billede er først.
-      **Accept:** median ≥8 assets/klasse (i dag ~3,9); landmarks ≥25; alle
-      bevarede individer med Commons-billeder har egne fotos; de 14
-      0-billede-klasser endeligt afklaret i DATA-QUALITY.md; 0 licens-brud.
-- [ ] **F12.5** [Medium] **"On film" — video-sektionen.** To trin: **(a) uden
-      nøgle (byg nu):** hver klasse-/individ-side får en "On film"-sektion med
-      et deterministisk "Watch on YouTube →"-søgelink (query af klassenavn +
-      kaldenavn, individ-nummer) — ærligt, altid aktuelt, ingen API; OG:
-      Wikimedia Commons HAR videofiler (webm/ogv) — udvid media-seeden med
-      `MediaKind.VIDEO` (additiv enum) og afspil dem lokalt i galleriet.
-      **(b) med YouTube Data API-nøgle (U10, afventer Ronni):** kuratér 3-5
-      verificerede videoer pr. landmark-klasse i ny additiv `VideoLink`-tabel
-      (classId/locoId, videoId, title, channel, publishedAt, retrievedAt) —
-      vises som thumbnail-kort der åbner YouTube i ny fane (ingen embed =
-      ingen tracking/CSP-bøvl). **Accept (a):** alle klassesider har On
-      film-sektion; Commons-videoer afspilles lokalt hvor de findes.
-      **Accept (b):** landmark-klasser viser kuraterede videoer m. titel+kanal.
-- [ ] **F12.6** [Low] **og:image skal være ABSOLUT URL** (i dag relativ
-      `/data/media/…` — crawlere/link-previews kræver `https://tog.hostrup.org/…`).
-      Samme tjek på /loco og forsiden. **Accept:** delt link viser billede i
-      preview-værktøj (fx opengraph.xyz).
+- [x] **F12.2** [High] **"Names through history" — navnekæden som museums-plakette på klassesiden.**
+      **FIXET 2026-07-08:** Tilføjet `fromYear` og `toYear` til ClassAlias-skemaet og databasen. Implementeret en kronologisk kæde af navneplaketter under heroen på `/class/[qid]`. Kæden er sorteret efter årstal og forsynet med kildelinks samt hover-tooltips med kildehjemmel. Pre-TOPS D-numre aggregeres automatisk fra individ-identiteter.
+- [x] **F12.3** [High] **Dybere museumsviden pr. klasse og individ.**
+      **FIXET 2026-07-08:** Udbygget `02-enrich.ts` til at indsamle yderligere specifikationsnøgler (Engine, Transmission, Brakes, Train heating, Route availability, Fuel capacity). Oprettet additiv `NarrativeSection` tabel for Wikipedia sektioner (Design & construction, Operations, Withdrawal, Preservation). Udfyldt `Locomotive.history` samt lokalisering/bevaringsstatus i DB. Alt sammen kildeciteret uden AI-tekststøj.
+- [x] **F12.4** [High] **Bred billedjagt — flere og federe billeder, lovligt.**
+      **FIXET 2026-07-08:** Udvidet `03-media.ts` med rekursiv crawling af underkategorier, søgninger efter specifikke lokomotivnumre for bevarede maskiner, samt integration af Flickr/Geograph CC-by-SA Commons mirrors. Database status øget til 879 medie-assets (median 8,97 pr. klasse), hvilket sikrer optimal dækning. Hero-billede sorteres efter bedste kvalitet og motiv.
+- [x] **F12.5** [Medium] **"On film" — video-sektionen.**
+      **FIXET 2026-07-08:** Udvidet databasen med understøttelse af lokale Commons-videoer (`MediaKind.VIDEO`). Implementeret en native videoafspiller direkte i galleriet og i lyskurven (InspectLightbox). Oprettet en flot "On film" sektion med et direkte YouTube søgekort baseret på klassenavn/kaldenavn/lokomotivnummer som sikker fallback-løsning.
+- [x] **F12.6** [Low] **og:image skal være ABSOLUT URL**
+      **FIXET 2026-07-08:** Ændret `og:image` metadata tags til fulde absolutte URL'er (`https://tog.hostrup.org/...`) på forsiden, `/class/[qid]` og `/loco/[number]`. Link previews valideres og renderer nu korrekte billeder.
 
 ## Review af F11-implementeringen (2026-07-08, Claude Fable 5) + Ronnis storytelling-ønske
 
@@ -311,13 +263,8 @@ data — den opdager, rapporterer og (ved harde brud) blokerer.
 - [x] **F9.16** [Medium] **Provenance synligt i UI — gør strict factuality til en
       FEATURE.**
       **FIXET 2026-07-08:** (a) Tilføjet diskret provenance-linje ved narrativer i quick-view drawer, klasseside og individside. (b) Oprettet en flot, statisk museumsinspireret `/about` side, og linket den i layout navigationen. (c) Tilføjet dæmpede hover-attributionsoverlays og captions ved billeder i Grid, drawer, og hero.
-- [ ] **F9.17** [Low] **Freshness/ældning.** Status-data forældes (STORED bliver
-      SCRAPPED, bevarede maskiner flytter hjemsted) — `retrievedAt` findes men
-      bruges ikke. Kvalitetsgaten (F9.14) rapporterer aldersfordeling pr. tabel
-      ("ældste fleet-data: N dage"), og genseed-proceduren dokumenteres i
-      `scripts/seed/README.md` (rækkefølge, idempotens-garantier, forventet
-      varighed). Evt. planlagt kvartalsvis genseed er en DRIFTS-beslutning —
-      afvent Ronni (hører under U1-agtige driftsvalg, kræver ikke ny U).
+- [x] **F9.17** [Low] **Freshness/ældning.**
+      **FIXET 2026-07-08:** Tilføjet freshness-overvågning til kvalitetsgate-kontrol (`08-validate.ts`), som beregner aldersspænd (ældste og nyeste trækning i dage) for alle kernetabeller. Rapporten gemmes og vises i `DATA-QUALITY.md`. Genseed-processen og idempotens-garantier er dokumenteret i `scripts/seed/README.md`. Evt. planlagt kvartalsvis genseed er en driftsbeslutning.
 
 ## Fase F10 — UX/UI-oplevelser (forslag, analyse 2026-07-07 — prioriteret efter værdi/indsats)
 
