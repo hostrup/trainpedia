@@ -5,6 +5,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { QID_BLOCKLIST } from './blocklist.js';
 
 const prisma = new PrismaClient();
 
@@ -45,6 +46,111 @@ async function main() {
 	// ----------------------------------------------------
 	// HARD RULES (Exit 1 if violated)
 	// ----------------------------------------------------
+
+	// (0a) Blocklist check: No blocklisted QIDs should exist in the database
+	for (const entry of QID_BLOCKLIST) {
+		const exists = classes.some((c) => c.wikidataQid === entry.qid);
+		if (exists) {
+			hardErrors.push(`Blocklisted QID found in database: ${entry.qid} (${entry.reason})`);
+		}
+	}
+
+	// (0b) 10 Known Facts Verification
+	// Fact 1: Class 55 QID Q796898 exists and has an alias containing 'Deltic'
+	const class55 = classes.find((c) => c.wikidataQid === 'Q796898');
+	if (!class55) {
+		hardErrors.push('Fact 1 Check: Class 55 (Q796898) is missing from the database.');
+	} else {
+		const hasDelticAlias = class55.aliases.some((a) => a.alias.includes('Deltic'));
+		if (!hasDelticAlias) {
+			hardErrors.push(
+				"Fact 1 Check: Class 55 is expected to have an alias containing 'Deltic', but found none."
+			);
+		}
+	}
+
+	// Fact 2: Class 55 QID Q796898 has powerType 'TYPE_5'
+	if (class55 && class55.powerType !== 'TYPE_5') {
+		hardErrors.push(
+			`Fact 2 Check: Class 55 powerType is expected to be 'TYPE_5', but is '${class55.powerType}'.`
+		);
+	}
+
+	// Fact 3: Class 43 QID Q1080162 (HST) serviceEntry starts with 1976
+	const class43 = classes.find((c) => c.wikidataQid === 'Q1080162');
+	if (!class43) {
+		hardErrors.push('Fact 3 Check: Class 43 (Q1080162) is missing from the database.');
+	} else if (!class43.serviceEntry || class43.serviceEntry.getUTCFullYear() !== 1976) {
+		hardErrors.push(
+			`Fact 3 Check: Class 43 service entry year is expected to be 1976, but is '${class43.serviceEntry?.getUTCFullYear()}'.`
+		);
+	}
+
+	// Fact 4: Class 08 QID Q12053606 has powerType 'SHUNTER'
+	const class08 = classes.find((c) => c.wikidataQid === 'Q12053606');
+	if (!class08) {
+		hardErrors.push('Fact 4 Check: Class 08 (Q12053606) is missing from the database.');
+	} else if (class08.powerType !== 'SHUNTER') {
+		hardErrors.push(
+			`Fact 4 Check: Class 08 powerType is expected to be 'SHUNTER', but is '${class08.powerType}'.`
+		);
+	}
+
+	// Fact 5: There exists a class named 'British Rail Class 37'
+	const class37 = classes.find((c) => c.wikidataQid === 'Q3306037');
+	if (!class37) {
+		hardErrors.push('Fact 5 Check: Class 37 (Q3306037) is missing from the database.');
+	} else if (class37.name !== 'British Rail Class 37') {
+		hardErrors.push(
+			`Fact 5 Check: Class 37 name is expected to be 'British Rail Class 37', but is '${class37.name}'.`
+		);
+	}
+
+	// Fact 6: The Era table has at least 5 eras
+	const erasCount = await prisma.era.count();
+	if (erasCount < 5) {
+		hardErrors.push(
+			`Fact 6 Check: Expected at least 5 eras in the database, but found ${erasCount}.`
+		);
+	}
+
+	// Fact 7: Class 47 QID Q3246420 has totalBuilt >= 500
+	const class47 = classes.find((c) => c.wikidataQid === 'Q3246420');
+	if (!class47) {
+		hardErrors.push('Fact 7 Check: Class 47 (Q3246420) is missing from the database.');
+	} else if (!class47.totalBuilt || class47.totalBuilt < 500) {
+		hardErrors.push(
+			`Fact 7 Check: Class 47 totalBuilt is expected to be >= 500, but is '${class47.totalBuilt}'.`
+		);
+	}
+
+	// Fact 8: Class 09 QID Q4970692 has powerType 'SHUNTER'
+	const class09 = classes.find((c) => c.wikidataQid === 'Q4970692');
+	if (!class09) {
+		hardErrors.push('Fact 8 Check: Class 09 (Q4970692) is missing from the database.');
+	} else if (class09.powerType !== 'SHUNTER') {
+		hardErrors.push(
+			`Fact 8 Check: Class 09 powerType is expected to be 'SHUNTER', but is '${class09.powerType}'.`
+		);
+	}
+
+	// Fact 9: Class 11 QID Q4970709 is in the 'big-four' era
+	const class11 = classes.find((c) => c.wikidataQid === 'Q4970709');
+	if (!class11) {
+		hardErrors.push('Fact 9 Check: Class 11 (Q4970709) is missing from the database.');
+	} else if (class11.era.slug !== 'big-four') {
+		hardErrors.push(
+			`Fact 9 Check: Class 11 era is expected to be 'big-four', but is '${class11.era.slug}'.`
+		);
+	}
+
+	// Fact 10: The total number of classes in the database is exactly 98
+	const totalClassesCount = classes.length;
+	if (totalClassesCount !== 98) {
+		hardErrors.push(
+			`Fact 10 Check: Expected exactly 98 classes in the database, but found ${totalClassesCount}.`
+		);
+	}
 
 	// (1) Alle MediaAssets med CC-BY/CC-BY-SA licens SKAL have attribution
 	const mediaAssets = await prisma.mediaAsset.findMany();
@@ -202,6 +308,49 @@ async function main() {
 				softWarnings.push(
 					`Alias-støj: Klasse ${cls.name} (${cls.wikidataQid}) har alias '${alias.alias}' identisk med klassens eget navn.`
 				);
+			}
+		}
+	}
+
+	// (6) Cross-source consistency validations (soft warnings)
+	for (const cls of classes) {
+		// totalBuilt vs counted locomotives vs Total Built specification
+		const totalBuiltSpec = cls.specs.find((s) => s.key === 'Total Built');
+		let specBuiltVal: number | null = null;
+		if (totalBuiltSpec) {
+			const parsed = parseInt(totalBuiltSpec.value.replace(/,/g, ''), 10);
+			if (!isNaN(parsed)) specBuiltVal = parsed;
+		}
+
+		if (cls.totalBuilt !== null && specBuiltVal !== null && cls.totalBuilt !== specBuiltVal) {
+			softWarnings.push(
+				`Total Built cross-source mismatch for ${cls.name} (${cls.wikidataQid}): Wikidata totalBuilt is ${cls.totalBuilt}, but Wikipedia 'Total Built' spec says '${totalBuiltSpec.value}' (parsed: ${specBuiltVal}).`
+			);
+		}
+
+		// buildStart vs serviceEntry year
+		if (cls.buildStart && cls.serviceEntry) {
+			const entryYear = cls.serviceEntry.getUTCFullYear();
+			if (cls.buildStart > entryYear) {
+				softWarnings.push(
+					`Year inconsistency for ${cls.name} (${cls.wikidataQid}): buildStart (${cls.buildStart}) is after serviceEntry year (${entryYear}).`
+				);
+			}
+		}
+
+		// powerType vs Top Speed heuristics: a SHUNTER with speed >= 100 mph is a mistake!
+		if (cls.powerType === 'SHUNTER') {
+			const topSpeedSpec = cls.specs.find((s) => s.key === 'Top Speed');
+			if (topSpeedSpec) {
+				const match = topSpeedSpec.value.match(/(\d+)\s*mph/i);
+				if (match) {
+					const speed = parseInt(match[1], 10);
+					if (speed >= 100) {
+						softWarnings.push(
+							`Shunter speed heuristic failure for ${cls.name} (${cls.wikidataQid}): powerType is SHUNTER, but Top Speed spec is '${topSpeedSpec.value}' (speed: ${speed} mph).`
+						);
+					}
+				}
 			}
 		}
 	}

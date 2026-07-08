@@ -32,6 +32,31 @@ function parseNumericValue(value: string, key: string): { numeric: number; unit:
 		return null;
 	}
 
+	// Heuristic: If the string contains "Total: <number> <unit>" or "total <number> <unit>", prioritize it!
+	if (key === 'Power Output' || key === 'Tractive Effort') {
+		const totalMatch = value.match(
+			/(?:total|aggregate|sum|combined)\s*:?\s*(\d[\d,.']*)\s*(mph|km\/h|hp|bhp|kW|MW|lbf|kN)/i
+		);
+		if (totalMatch) {
+			let numStr = totalMatch[1].replace(/,/g, '');
+			if (numStr.includes('.')) {
+				const parts = numStr.split('.');
+				if (parts.length === 2 && parts[1].length === 3) {
+					numStr = parts.join('');
+				}
+			}
+			const n = parseFloat(numStr);
+			if (!isNaN(n) && n > 0) {
+				let unit = totalMatch[2].toLowerCase();
+				if (unit === 'kw') unit = 'kW';
+				else if (unit === 'mw') unit = 'MW';
+				else if (unit === 'kn') unit = 'kN';
+				else if (unit === 'bhp') unit = 'hp';
+				return { numeric: n, unit };
+			}
+		}
+	}
+
 	// For other numeric specs: find the FIRST number followed by a known unit
 	// Pattern: optional leading text, then digits (with commas/dots), then optional space, then unit
 	const unitPattern = /(\d[\d,.']*)\s*(mph|km\/h|hp|bhp|kW|MW|lbf|kN|kg|lb|tons?|tonnes?)/i;

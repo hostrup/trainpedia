@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 import { CandidateClassSchema, type CandidateClass } from './types.js';
+import { QID_BLOCKLIST } from './blocklist.js';
 
 const prisma = new PrismaClient();
 
@@ -327,6 +328,10 @@ async function main() {
 	const eraStats: Record<string, number> = {};
 
 	for (const item of candidatesMap.values()) {
+		if (QID_BLOCKLIST.some((b) => b.qid === item.wikidataQid)) {
+			console.log(`  - Skipping blocklisted QID: ${item.wikidataQid} (${item.name})`);
+			continue;
+		}
 		const traction = determineTraction(item.subclasses, item.powerSources, item.name);
 		let serviceEntry = item.serviceEntry;
 		if (!serviceEntry && missingServiceEntryDates[item.wikidataQid]) {

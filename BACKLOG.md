@@ -92,22 +92,8 @@ lokomotiv (fx navne gennem historien fra start til TOPS til i dag), langt
 bredere billedjagt efter fede billeder online, og links til kendte
 YouTube-videoer el.lign. for det specifikke tog.
 
-- [ ] **F12.1** [High] **Datakorrekthed: kryds-validering + genseed-sikre
-      eksklusioner.** (a) **Blocklist:** "New Enterprise Trains" (Q139989800)
-      skal slettes IGEN — og denne gang varigt: indfør en QID-eksklusionsliste
-      (med begrundelse pr. post) i `scripts/seed/`, håndhævet i `01-discover.ts`
-      og tjekket i `08-validate.ts` (hard error hvis en blocklistet QID findes i
-      DB). Tag også NSB Di 8 (F7-sletningen) med på listen. (b) **Kryds-kilde-
-      validering:** nyt valideringstrin sammenligner DB-felter indbyrdes og mod
-      Wikidata — totalBuilt vs. "Total Built"-spec'en vs. optalte individer;
-      buildStart vs. serviceEntry; wheelArrangement vs. powerType-heuristikken
-      (en SHUNTER med 100 mph er en fejl). Uoverensstemmelser → soft warnings i
-      DATA-QUALITY.md med BEGGE kilder citeret. (c) **Dublet-identiteterne**
-      (D6700/D6729/D6732, loco ID 10/39/42) rodårsags-fixes i 06-fleet-parseren
-      (ikke bare slettes). (d) Stikprøve-verifikation af 10 kendte facts
-      (Deltic=TYPE_5, HST=1976, 08=SHUNTER…) som fast del af gaten.
-      **Accept:** 98 klasser igen; blocklist overlever `npm run seed`;
-      DATA-QUALITY.md har kryds-kilde-sektion; 0 dublet-identiteter.
+- [x] **F12.1** [High] **Datakorrekthed: kryds-validering + genseed-sikre eksklusioner.**
+      **FIXET 2026-07-08:** Indført QID-blocklist (`blocklist.ts`), som håndhæves i `01-discover.ts` og tjekkes i `08-validate.ts`. Forbedret fleet-parsing i `06-fleet.ts` med `isValidLocoNumber` til bortfiltrering af tekststøj, dedup af identities, og rydning af gamle individrækker for at undgå forældreløse dubletter. Tilføjet kryds-kilde-validering og 10 kendte facts stikprøver i gaten.
 - [ ] **F12.2** [High] **"Names through history" — navnekæden som museums-
       plakette på klassesiden.** Ronnis eksempel: fra oprindelse over TOPS til
       i dag. Data: `ClassAlias` har scheme men INGEN tidsdimension — tilføj

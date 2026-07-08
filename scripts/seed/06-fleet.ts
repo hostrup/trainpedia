@@ -12,6 +12,34 @@ function cleanText(text: string): string {
 	return text.replace(/\s+/g, ' ').trim();
 }
 
+function isValidLocoNumber(num: string): boolean {
+	const cleaned = num.trim();
+	if (cleaned.length === 0 || cleaned.length > 15) return false;
+	if (!/\d/.test(cleaned)) return false;
+
+	const lowercase = cleaned.toLowerCase();
+	const forbiddenWords = [
+		'railway',
+		'museum',
+		'line',
+		'centre',
+		'center',
+		'ltd',
+		'trust',
+		'preservation',
+		'society',
+		'station',
+		'green',
+		'blue',
+		'livery'
+	];
+	for (const word of forbiddenWords) {
+		if (lowercase.includes(word)) return false;
+	}
+
+	return /^[a-zA-Z0-9\s/-]+$/.test(cleaned);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function stripCitations($: CheerioAPI, cell: any): string {
 	const clone = $(cell).clone();
@@ -32,16 +60,6 @@ function parseNames($: CheerioAPI, cell: any): string[] {
 		if (withoutIndex) names.push(withoutIndex);
 	}
 	return names;
-}
-
-function parseStatus(raw: string): FleetLocoCandidate['status'] {
-	const t = raw.toLowerCase();
-	if (t.includes('in service')) return 'IN_SERVICE';
-	if (t.includes('stored')) return 'STORED';
-	if (t.includes('preserved')) return 'PRESERVED';
-	if (t.includes('scrapped')) return 'SCRAPPED';
-	if (t.includes('exported')) return 'EXPORTED';
-	return 'UNKNOWN';
 }
 
 async function wikipediaPageExists(title: string): Promise<boolean> {
@@ -82,74 +100,173 @@ async function fetchFleetTable(
 
 	$('table.wikitable').each((_, tableEl) => {
 		const table = $(tableEl);
-		const rows = table.find('tbody > tr').toArray();
+		const rows = table.find('tr').toArray();
 		const candidates: FleetLocoCandidate[] = [];
 
+		// Find the preceding heading tag
+		let prevHeading = '';
+		let el = table.prev();
+		while (el.length > 0) {
+			const tagName = el.get(0)?.tagName?.toLowerCase() ?? '';
+			if (/^h[1-6]$/.test(tagName)) {
+				prevHeading = el.text().trim().toLowerCase();
+				break;
+			}
+			const heading = el.find('h1, h2, h3, h4, h5, h6');
+			if (heading.length > 0) {
+				prevHeading = heading.first().text().trim().toLowerCase();
+				break;
+			}
+			el = el.prev();
+		}
+		const isPreservedTable =
+			prevHeading.includes('preserv') || wikipediaPageTitle.toLowerCase().includes('preserv');
+
+		// Parse headers to find column indices
+		const headers: string[] = [];
+		table
+			.find('tr')
+			.first()
+			.find('th, td')
+			.each((_, headerEl) => {
+				headers.push($(headerEl).text().trim().toLowerCase());
+			});
+
+		let nameColIdx = -1;
+		let statusColIdx = -1;
+		let liveryColIdx = -1;
+		let notesColIdx = -1;
+
+		for (let i = 0; i < headers.length; i++) {
+			const h = headers[i];
+			if (h.includes('name') || h.includes('named')) {
+				nameColIdx = i;
+			} else if (h.includes('status')) {
+				statusColIdx = i;
+			} else if (h.includes('livery')) {
+				liveryColIdx = i;
+			} else if (h.includes('notes') || h.includes('history') || h.includes('remarks')) {
+				notesColIdx = i;
+			}
+		}
+
 		for (const row of rows) {
+			if ($(row).find('th').length > 0) continue; // Skip header row
 			const cells = $(row).find('td').toArray();
-			if (cells.length < 5) continue;
+			if (cells.length < 3) continue;
 
-			if (cells.length >= 8) {
-				const numberChain = [0, 1, 2, 3, 4, 5]
-					.map((i) => (cells[i] ? cleanText($(cells[i]).text()) : ''))
-					.filter((n) => n.length > 0 && /^[a-zA-Z0-9/-\s]+$/.test(n));
-				if (numberChain.length === 0) continue;
+			const rawNumberChain: string[] = [];
+			const maxNumCols = cells.length >= 8 ? Math.min(6, cells.length) : Math.min(3, cells.length);
+			for (let i = 0; i < maxNumCols; i++) {
+				if (i === nameColIdx || i === statusColIdx || i === liveryColIdx || i === notesColIdx)
+					continue;
+				const txt = cells[i] ? cleanText($(cells[i]).text()) : '';
+				if (txt && isValidLocoNumber(txt)) {
+					rawNumberChain.push(txt);
+				}
+			}
+			if (rawNumberChain.length === 0) continue;
 
-				const names = cells[6] ? parseNames($, cells[6]) : [];
-				const status = cells[7] ? parseStatus(stripCitations($, cells[7])) : 'UNKNOWN';
-				const history = cells[8] ? stripCitations($, cells[8]) : null;
+			const numberChain: string[] = [];
+			for (const num of rawNumberChain) {
+				if (!numberChain.includes(num)) {
+					numberChain.push(num);
+				}
+			}
 
-				const raw = {
-					currentNumber: numberChain[numberChain.length - 1],
-					currentName: names.length > 0 ? names[names.length - 1] : null,
-					nicknames: names.slice(0, -1),
-					status,
-					history,
-					numberChain,
-					sourceUrl,
-					sourceRevision
-				};
-				const parsed = FleetLocoCandidateSchema.safeParse(raw);
-				if (parsed.success) candidates.push(parsed.data);
+			// Determine status: check mapped column first, otherwise search all cells, default to PRESERVED if in preservation table
+			let status: FleetLocoCandidate['status'] = isPreservedTable ? 'PRESERVED' : 'UNKNOWN';
+			if (statusColIdx !== -1 && cells[statusColIdx]) {
+				const cellText = stripCitations($, cells[statusColIdx]);
+				const cellTextLower = cellText.toLowerCase();
+				if (
+					cellTextLower.includes('preserved') ||
+					cellTextLower.includes('operational') ||
+					cellTextLower.includes('active') ||
+					cellTextLower.includes('overhaul') ||
+					cellTextLower.includes('restoration') ||
+					cellTextLower.includes('static')
+				) {
+					status = 'PRESERVED';
+				} else if (
+					cellTextLower.includes('scrapped') ||
+					cellTextLower.includes('cut up') ||
+					cellTextLower.includes('cut-up')
+				) {
+					status = 'SCRAPPED';
+				} else if (cellTextLower.includes('in service')) {
+					status = 'IN_SERVICE';
+				} else if (cellTextLower.includes('stored')) {
+					status = 'STORED';
+				} else if (cellTextLower.includes('exported')) {
+					status = 'EXPORTED';
+				}
 			} else {
-				const numberChain = [0, 1]
-					.map((i) => (cells[i] ? cleanText($(cells[i]).text()) : ''))
-					.filter((n) => n.length > 0 && /^[a-zA-Z0-9/-\s]+$/.test(n));
-				if (numberChain.length === 0) continue;
-
-				let status: FleetLocoCandidate['status'] = 'UNKNOWN';
-				let names: string[] = [];
-				let history: string | null = null;
-
-				for (let i = 2; i < cells.length; i++) {
+				// Fallback: search cells for status keywords
+				for (let i = 0; i < cells.length; i++) {
+					if (i === nameColIdx || i === liveryColIdx) continue;
 					const cellText = stripCitations($, cells[i]);
 					const cellTextLower = cellText.toLowerCase();
 					if (
 						cellTextLower.includes('preserved') ||
-						cellTextLower.includes('scrapped') ||
-						cellTextLower.includes('in service')
+						cellTextLower.includes('operational') ||
+						cellTextLower.includes('active') ||
+						cellTextLower.includes('overhaul') ||
+						cellTextLower.includes('restoration')
 					) {
-						status = parseStatus(cellText);
-					} else if (i === 2 && cellText && !/^\d+$/.test(cellText)) {
-						names = parseNames($, cells[i]);
-					} else if (i === cells.length - 1) {
-						history = cellText;
+						status = 'PRESERVED';
+						break;
+					} else if (
+						cellTextLower.includes('scrapped') ||
+						cellTextLower.includes('cut up') ||
+						cellTextLower.includes('cut-up')
+					) {
+						status = 'SCRAPPED';
+						break;
+					} else if (cellTextLower.includes('in service')) {
+						status = 'IN_SERVICE';
+						break;
+					} else if (cellTextLower.includes('stored')) {
+						status = 'STORED';
+						break;
+					} else if (cellTextLower.includes('exported')) {
+						status = 'EXPORTED';
+						break;
 					}
 				}
-
-				const raw = {
-					currentNumber: numberChain[numberChain.length - 1],
-					currentName: names.length > 0 ? names[names.length - 1] : null,
-					nicknames: names.slice(0, -1),
-					status,
-					history,
-					numberChain,
-					sourceUrl,
-					sourceRevision
-				};
-				const parsed = FleetLocoCandidateSchema.safeParse(raw);
-				if (parsed.success) candidates.push(parsed.data);
 			}
+
+			// Names: use Name column index, otherwise fallback to column 2 if it's not livery
+			let names: string[] = [];
+			if (nameColIdx !== -1 && cells[nameColIdx]) {
+				names = parseNames($, cells[nameColIdx]);
+			} else if (nameColIdx === -1 && liveryColIdx !== 2 && cells[2]) {
+				const cellText = stripCitations($, cells[2]);
+				if (cellText && !/^\d+$/.test(cellText)) {
+					names = parseNames($, cells[2]);
+				}
+			}
+
+			// Notes/history
+			let history: string | null = null;
+			if (notesColIdx !== -1 && cells[notesColIdx]) {
+				history = stripCitations($, cells[notesColIdx]);
+			} else if (cells.length > 0) {
+				history = stripCitations($, cells[cells.length - 1]);
+			}
+
+			const raw = {
+				currentNumber: numberChain[numberChain.length - 1],
+				currentName: names.length > 0 ? names[names.length - 1] : null,
+				nicknames: names.slice(0, -1),
+				status,
+				history,
+				numberChain,
+				sourceUrl,
+				sourceRevision
+			};
+			const parsed = FleetLocoCandidateSchema.safeParse(raw);
+			if (parsed.success) candidates.push(parsed.data);
 		}
 
 		if (candidates.length > bestCandidates.length) {
@@ -207,10 +324,10 @@ async function main() {
 		let created = 0;
 		let updated = 0;
 
+		await prisma.locomotive.deleteMany({ where: { classId: dbClass.id } });
+
 		for (const c of foundSource.candidates) {
-			const existing = await prisma.locomotive.findUnique({
-				where: { classId_currentNumber: { classId: dbClass.id, currentNumber: c.currentNumber } }
-			});
+			const existing = null;
 
 			const loco = await prisma.locomotive.upsert({
 				where: { classId_currentNumber: { classId: dbClass.id, currentNumber: c.currentNumber } },
