@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types.js';
 import { db } from '$lib/server/db.js';
 import type { Prisma } from '@prisma/client';
+import { MUSEUM_DARLINGS } from '$lib/loco.js';
 
 /**
  * F11.1: /browse — "The Roster". One dataset, four lenses.
@@ -22,6 +23,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	const sel = url.searchParams.get('sel') ?? '';
 	const x = url.searchParams.get('x') ?? 'speed';
 	const y = url.searchParams.get('y') ?? 'power';
+	const darling = url.searchParams.get('darling') ?? '';
 
 	// Build Prisma where clause
 	const where: Prisma.LocomotiveClassWhereInput = {};
@@ -55,6 +57,11 @@ export const load: PageServerLoad = async ({ url }) => {
 	if (surviving === 'yes') {
 		conditions.push({
 			locomotives: { some: { status: { in: ['PRESERVED', 'IN_SERVICE'] } } }
+		});
+	}
+	if (darling === 'yes') {
+		conditions.push({
+			wikidataQid: { in: Array.from(MUSEUM_DARLINGS) }
 		});
 	}
 
@@ -270,7 +277,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			dir,
 			sel,
 			x,
-			y
+			y,
+			darling
 		}
 	};
 };

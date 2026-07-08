@@ -148,3 +148,24 @@ test('Locomotive details page loads with provenance', async ({ page }) => {
 	await expect(page.locator('text=Preserved').first()).toBeVisible();
 	await expect(page.locator('text=Source: Wikipedia')).toBeVisible();
 });
+
+test('Museum Darlings filter and badges on browse page', async ({ page }) => {
+	// Navigate directly to filtered browse page
+	await page.goto('/browse?darling=yes');
+	await page.waitForLoadState('networkidle');
+
+	// Expect the active filter count to reflect the darling filter
+	await expect(page.url()).toContain('darling=yes');
+
+	// Expect darling badges to be visible on the cards
+	const darlingBadge = page.locator('text=Darling').first();
+	await expect(darlingBadge).toBeVisible();
+
+	// Click the button to toggle the filter off
+	const darlingButton = page.locator('button:has-text("Museum Darlings")');
+	await darlingButton.click();
+	await page.waitForTimeout(300);
+
+	// Expect the URL not to contain darling=yes anymore
+	await expect(page.url()).not.toContain('darling=yes');
+});

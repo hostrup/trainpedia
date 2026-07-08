@@ -64,15 +64,22 @@
 			</button>
 		</form>
 
-		<div class="mt-6 flex gap-4">
+		<div class="mt-6 flex flex-wrap justify-center gap-4">
 			<a
 				href={resolve('/browse')}
-				class="rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-transform hover:scale-105"
+				class="rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-transform hover:scale-105 animate-fade-in"
 				style="background: var(--tfl-blue);"
 			>
 				Browse the collection
 			</a>
 			<!-- eslint-disable svelte/no-navigation-without-resolve -- all hrefs use resolve() -->
+			<a
+				href={resolve('/browse') + '?darling=yes'}
+				class="rounded-full border px-5 py-2.5 text-sm font-semibold transition-transform hover:scale-105 flex items-center gap-1.5"
+				style="border-color: #d97706; color: #d97706; background: rgba(217, 119, 6, 0.05);"
+			>
+				⭐ Museum Darlings
+			</a>
 			<a
 				href={resolve('/browse') + '?lens=timeline'}
 				class="rounded-full border px-5 py-2.5 text-sm font-semibold transition-transform hover:scale-105"

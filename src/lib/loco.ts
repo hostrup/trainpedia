@@ -52,3 +52,20 @@ export function buildPeriod(buildStart: number | null, buildEnd: number | null):
 	if (buildStart === null) return '—';
 	return buildEnd && buildEnd !== buildStart ? `${buildStart}–${buildEnd}` : `${buildStart}`;
 }
+
+export const MUSEUM_DARLINGS = new Set([
+	'Q796898', // Class 55
+	'Q3306037', // Class 37
+	'Q3246420', // Class 47
+	'Q4970826', // Class 50
+	'Q12053618', // Class 52
+	'Q12053606', // Class 08
+	'Q4970812', // Class 43
+	'Q3306004', // Class 28
+	'Q4970734', // Class 14
+	'Q4970775' // Class 35
+]);
+
+export function isMuseumDarling(qid: string): boolean {
+	return MUSEUM_DARLINGS.has(qid);
+}

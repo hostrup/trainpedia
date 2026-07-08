@@ -4,7 +4,13 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import { tractionColor, tractionLabel, buildPeriod, mediaSrcset } from '$lib/loco.js';
+	import {
+		tractionColor,
+		tractionLabel,
+		buildPeriod,
+		mediaSrcset,
+		isMuseumDarling
+	} from '$lib/loco.js';
 	import { resolveDisplayName } from '$lib/nameScheme.js';
 	import EraRoomCard from '$lib/components/EraRoomCard.svelte';
 
@@ -68,7 +74,8 @@
 			data.filters.wheel,
 			data.filters.builder,
 			data.filters.decade,
-			data.filters.surviving
+			data.filters.surviving,
+			data.filters.darling
 		].filter(Boolean).length
 	);
 
@@ -301,6 +308,17 @@
 				{/each}
 			{/if}
 
+			<!-- Museum Darlings filter -->
+			<button
+				onclick={() => updateUrl({ darling: data.filters.darling === 'yes' ? null : 'yes' })}
+				class="rounded-full border px-2.5 py-0.5 text-[11px] transition-all duration-200 flex items-center gap-1 font-semibold"
+				style={data.filters.darling === 'yes'
+					? 'background: #d97706; border-color: #b45309; color: white; box-shadow: 0 0 6px rgba(217, 119, 6, 0.4);'
+					: 'border-color: var(--map-zone); color: var(--map-ink-soft); background: var(--map-bg);'}
+			>
+				⭐ Museum Darlings
+			</button>
+
 			<!-- Clear all -->
 			{#if activeFilterCount > 0}
 				<button
@@ -394,6 +412,14 @@
 							style="background: rgba(0,0,0,0.6); color: white;"
 						>
 							{cls.powerType.startsWith('TYPE_') ? `T${cls.powerType.slice(5)}` : '⚙'}
+						</span>
+					{/if}
+					<!-- Museum Darling badge -->
+					{#if isMuseumDarling(cls.wikidataQid)}
+						<span
+							class="absolute left-2 top-2 rounded px-2 py-0.5 text-[10px] font-bold tracking-wider flex items-center gap-0.5 shadow-md bg-amber-500 text-black"
+						>
+							⭐ Darling
 						</span>
 					{/if}
 				</div>
