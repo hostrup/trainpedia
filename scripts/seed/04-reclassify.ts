@@ -74,6 +74,99 @@ function targetEraSlug(traction: Traction, year: number): string {
 	return 'modern';
 }
 
+// F11-D1: BTC (British Transport Commission) power type classification.
+// Historically, main-line diesel locomotives were classified by brake horsepower:
+//   Type 1: <1,000 hp · Type 2: 1,000–1,499 · Type 3: 1,500–1,999
+//   Type 4: 2,000–2,999 · Type 5: ≥3,000
+// Shunters are identified by wheel arrangement (0-6-0) or low max speed (<40 mph).
+// Without a sourced hp value, powerType remains null (strict factuality).
+function btcPowerType(
+	hpValue: number | null,
+	wheelArrangement: string | null,
+	maxSpeedMph: number | null
+): string | null {
+	// Detect shunters: typically 0-6-0 wheel arrangement or very low max speed
+	const isShunterWheel =
+		wheelArrangement !== null &&
+		/^0-[46]-0/i.test(wheelArrangement.trim());
+	if (isShunterWheel && (hpValue === null || hpValue < 1000)) return 'SHUNTER';
+	if (maxSpeedMph !== null && maxSpeedMph <= 30 && (hpValue === null || hpValue < 1000))
+		return 'SHUNTER';
+
+	if (hpValue === null) return null;
+	if (hpValue < 1000) return 'TYPE_1';
+	if (hpValue < 1500) return 'TYPE_2';
+	if (hpValue < 2000) return 'TYPE_3';
+	if (hpValue < 3000) return 'TYPE_4';
+	return 'TYPE_5';
+}
+
+// F11-D2: Builder/manufacturer normalization alias table.
+// Raw string is preserved in Specification; this maps common variants to a canonical key.
+const BUILDER_ALIASES: Record<string, string> = {
+	'brel': 'BREL',
+	'british rail engineering limited': 'BREL',
+	'british rail engineering': 'BREL',
+	'br workshops': 'BREL',
+	'english electric': 'English Electric',
+	'english electric co': 'English Electric',
+	'the english electric company': 'English Electric',
+	'brush traction': 'Brush',
+	'brush electrical engineering': 'Brush',
+	'brush electrical machines': 'Brush',
+	'beyer, peacock and company': 'Beyer Peacock',
+	'beyer peacock': 'Beyer Peacock',
+	'north british locomotive company': 'North British',
+	'north british': 'North British',
+	'robert stephenson and hawthorns': 'RSH',
+	'rshl': 'RSH',
+	'rsh': 'RSH',
+	'general electric': 'GE',
+	'ge transportation': 'GE',
+	'general motors': 'GM/EMD',
+	'emd': 'GM/EMD',
+	'electro-motive division': 'GM/EMD',
+	'general motors electro-motive division': 'GM/EMD',
+	'metropolitan-vickers': 'Metrovick',
+	'metropolitan vickers': 'Metrovick',
+	'metrovick': 'Metrovick',
+	'vulcan foundry': 'Vulcan Foundry',
+	'hunslet engine company': 'Hunslet',
+	'hunslet': 'Hunslet',
+	'hunslet-barclay': 'Hunslet',
+	'andrew barclay sons and company': 'Andrew Barclay',
+	'andrew barclay': 'Andrew Barclay',
+	'yorkshire engine company': 'Yorkshire Engine Co',
+	'yorkshire engine': 'Yorkshire Engine Co',
+	'ruston and hornsby': 'Ruston & Hornsby',
+	'ruston & hornsby': 'Ruston & Hornsby',
+	'clayton equipment': 'Clayton',
+	'clayton': 'Clayton',
+	'birmingham rc&w': 'Birmingham RCW',
+	'birmingham railway carriage and wagon company': 'Birmingham RCW',
+	'swindon works': 'BR Swindon',
+	'derby works': 'BR Derby',
+	'crewe works': 'BR Crewe',
+	'doncaster works': 'BR Doncaster',
+	'darlington works': 'BR Darlington',
+	'lms derby': 'BR Derby',
+	'horwich works': 'BR Horwich',
+	'vossloh': 'Stadler/Vossloh',
+	'stadler': 'Stadler/Vossloh',
+	'stadler rail': 'Stadler/Vossloh',
+	'bombardier': 'Bombardier',
+	'bombardier transportation': 'Bombardier',
+	'alstom': 'Alstom',
+	'hitachi': 'Hitachi',
+	'caf': 'CAF',
+};
+
+function normalizeBuilder(raw: string): string {
+	const trimmed = raw.trim();
+	const key = trimmed.toLowerCase().replace(/[.,]+$/, '').trim();
+	return BUILDER_ALIASES[key] ?? trimmed;
+}
+
 async function main() {
 	const eras = await prisma.era.findMany();
 	const eraBySlug = new Map(eras.map((e) => [e.slug, e]));
@@ -93,8 +186,26 @@ async function main() {
 		}
 	});
 
+	// Pre-fetch specs for powerType and builder
+	const allSpecs = await prisma.specification.findMany({
+		where: {
+			key: { in: ['Power Output', 'Top Speed', 'Manufacturer'] }
+		},
+		select: { classId: true, key: true, value: true, valueNumeric: true, unit: true }
+	});
+
+	// Index specs by classId
+	const specsByClass = new Map<number, typeof allSpecs>();
+	for (const spec of allSpecs) {
+		const list = specsByClass.get(spec.classId) ?? [];
+		list.push(spec);
+		specsByClass.set(spec.classId, list);
+	}
+
 	let tractionUpdates = 0;
 	let eraUpdates = 0;
+	let powerTypeUpdates = 0;
+	let builderUpdates = 0;
 
 	for (const c of classes) {
 		const inferred = inferTraction(c);
@@ -116,23 +227,45 @@ async function main() {
 			if (era && era.id !== c.eraId) newEraId = era.id;
 		}
 
-		if (newTraction !== c.traction || newEraId !== c.eraId) {
-			await prisma.locomotiveClass.update({
-				where: { id: c.id },
-				data: { traction: newTraction, eraId: newEraId }
-			});
-			if (newTraction !== c.traction) tractionUpdates++;
-			if (newEraId !== c.eraId) {
-				eraUpdates++;
-				console.log(
-					`  ${c.name}: ${eraById.get(c.eraId)?.slug} -> ${eraById.get(newEraId)?.slug}` +
-						(newTraction !== c.traction ? ` (traction ${c.traction} -> ${newTraction})` : '')
-				);
-			}
+		// F11-D1: Compute powerType from sourced hp value
+		const classSpecs = specsByClass.get(c.id) ?? [];
+		const powerSpec = classSpecs.find((s) => s.key === 'Power Output');
+		const speedSpec = classSpecs.find((s) => s.key === 'Top Speed');
+		const hpValue = powerSpec?.valueNumeric ?? null;
+		const speedMph =
+			speedSpec?.unit === 'mph' ? speedSpec.valueNumeric : null;
+		const powerType = btcPowerType(hpValue, c.wheelArrangement, speedMph);
+
+		// F11-D2: Normalize builder from Manufacturer spec
+		const mfrSpec = classSpecs.find((s) => s.key === 'Manufacturer');
+		const builder = mfrSpec ? normalizeBuilder(mfrSpec.value) : null;
+
+		const data: Record<string, unknown> = {};
+		if (newTraction !== c.traction) data.traction = newTraction;
+		if (newEraId !== c.eraId) data.eraId = newEraId;
+		data.powerType = powerType; // always set (may be null)
+		data.builder = builder; // always set (may be null)
+
+		await prisma.locomotiveClass.update({
+			where: { id: c.id },
+			data
+		});
+
+		if (newTraction !== c.traction) tractionUpdates++;
+		if (newEraId !== c.eraId) {
+			eraUpdates++;
+			console.log(
+				`  ${c.name}: ${eraById.get(c.eraId)?.slug} -> ${eraById.get(newEraId)?.slug}` +
+					(newTraction !== c.traction ? ` (traction ${c.traction} -> ${newTraction})` : '')
+			);
 		}
+		if (powerType !== null) powerTypeUpdates++;
+		if (builder !== null) builderUpdates++;
 	}
 
 	console.log(`\nTraction opdateret: ${tractionUpdates}, æra opdateret: ${eraUpdates}`);
+	console.log(`PowerType sat: ${powerTypeUpdates}/${classes.length}`);
+	console.log(`Builder sat: ${builderUpdates}/${classes.length}`);
 
 	const summary = await prisma.locomotiveClass.groupBy({
 		by: ['eraId', 'traction'],
@@ -148,6 +281,16 @@ async function main() {
 	for (const era of eras.sort((a, b) => a.sortIndex - b.sortIndex)) {
 		console.log(`  ${era.name}: ${(byEra.get(era.id) ?? ['tom']).join(', ')}`);
 	}
+
+	// Report powerType distribution
+	const ptSummary = await prisma.locomotiveClass.groupBy({
+		by: ['powerType'],
+		_count: true
+	});
+	console.log('\nPowerType fordeling:');
+	for (const row of ptSummary) {
+		console.log(`  ${row.powerType ?? 'null'}: ${row._count}`);
+	}
 }
 
 main()
@@ -156,3 +299,4 @@ main()
 		process.exit(1);
 	})
 	.finally(() => prisma.$disconnect());
+
