@@ -63,6 +63,8 @@ model LocomotiveClass {
   totalBuilt       Int?
   narrative        String? // "hvorfor klassen betød noget" — citeret fra kilde
   isLandmark       Boolean         @default(false) // F5.5: ring-station på kortet (fx A3, Deltic, Class 37, APT)
+  powerType        String? // F11-D1: BTC Type 1–5 / "SHUNTER" / null — afledt af kildet hk-værdi i 04-reclassify.ts
+  builder          String? // F11-D2: normaliseret fabrikant-nøgle (alias-tabel i kode, rå streng bevares i Specification)
   regions          String[]        @default([]) // BR-region(er) (F5.4-pivot): "WESTERN"/"EASTERN"/"MIDLAND"/"SOUTHERN"/"SCOTTISH". Flere = interchange på kortet. Eneste kilde til linjefarve (tractionColor) og kort-tilhørsforhold — traction-feltet ovenfor er nu altid DIESEL og bærer INGEN linje-betydning.
   era              Era             @relation(fields: [eraId], references: [id])
   eraId            Int
@@ -144,15 +146,16 @@ model LocomotiveIdentity {
 
 /// Fleksibelt spec-grid (Manufacturer, Designer, Power Output, Tractive Effort, Top Speed, ...)
 model Specification {
-  id          Int             @id @default(autoincrement())
-  class       LocomotiveClass @relation(fields: [classId], references: [id], onDelete: Cascade)
-  classId     Int
-  key         String // "Power Output"
-  value       String // "1.750 hp" — string bevarer kildens præcision/enheder
-  unit        String? // normaliseret enhed hvis parsebar (til evt. sammenligninger)
-  sortIndex   Int             @default(0)
-  sourceUrl   String?
-  retrievedAt DateTime?
+  id           Int             @id @default(autoincrement())
+  class        LocomotiveClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId      Int
+  key          String // "Power Output"
+  value        String // "1.750 hp" — string bevarer kildens præcision/enheder
+  unit         String? // normaliseret enhed hvis parsebar (til evt. sammenligninger)
+  valueNumeric Float? // F9.15: parsede tal for sortering/scatterplot (undgår runtime-regex)
+  sortIndex    Int             @default(0)
+  sourceUrl    String?
+  retrievedAt  DateTime?
 
   @@unique([classId, key])
 }
