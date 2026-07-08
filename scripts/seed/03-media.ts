@@ -466,51 +466,80 @@ async function main() {
 				}
 			}
 
-			// standard intitle search
-			const searchQuery = cls.wikipediaTitle ? cls.wikipediaTitle.replace(/_/g, ' ') : cls.name;
-			try {
-				const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`intitle:"${searchQuery}"`)}&srnamespace=6&srlimit=50&format=json`;
-				const searchRes = await fetchWithRetry(searchUrl, {
-					headers: { 'User-Agent': USER_AGENT }
-				});
-				if (searchRes.ok) {
-					const searchData = (await searchRes.json()) as any;
-					const results = searchData.query?.search || [];
-					console.log(`  - Search API (intitle): Found ${results.length} files`);
-					for (const r of results) {
-						if (!fileCandidates.includes(r.title)) {
-							fileCandidates.push(r.title);
-						}
-					}
-				}
-			} catch (err) {
-				console.warn(`  - Warning: Search API (intitle) failed:`, err);
+			// standard intitle and alternative queries search
+			const baseQuery = cls.wikipediaTitle ? cls.wikipediaTitle.replace(/_/g, ' ') : cls.name;
+			const searchQueries: string[] = [baseQuery];
+
+			// Derive alternate shunter names/numbers for obscure classes
+			if (cls.name.startsWith('British Rail Class ')) {
+				const num = cls.name.replace('British Rail Class ', '');
+				searchQueries.push(`Class ${num}`);
+				searchQueries.push(`BR Class ${num}`);
+			} else if (cls.name.startsWith('British Railways class ')) {
+				const num = cls.name.replace('British Railways class ', '');
+				searchQueries.push(`Class ${num}`);
+				searchQueries.push(`BR Class ${num}`);
+				searchQueries.push(`${num} shunter`);
+			} else if (cls.name.startsWith('British Railways Class ')) {
+				const num = cls.name.replace('British Railways Class ', '');
+				searchQueries.push(`Class ${num}`);
+				searchQueries.push(`BR Class ${num}`);
+				searchQueries.push(`${num} shunter`);
+			} else if (cls.name.includes('shunter')) {
+				const cleaned = cls.name.replace(' diesel shunter', '').replace(' shunter', '');
+				searchQueries.push(cleaned);
+				searchQueries.push(`${cleaned} shunter`);
 			}
 
-			// Geograph / Flickr Search
-			try {
-				const queryStr = `"${searchQuery}" (Geograph OR Flickr)`;
-				const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(queryStr)}&srnamespace=6&srlimit=30&format=json`;
-				const searchRes = await fetchWithRetry(searchUrl, {
-					headers: { 'User-Agent': USER_AGENT }
-				});
-				if (searchRes.ok) {
-					const searchData = (await searchRes.json()) as any;
-					const results = searchData.query?.search || [];
-					console.log(`  - Geograph/Flickr search: Found ${results.length} files`);
-					for (const r of results) {
-						if (!fileCandidates.includes(r.title)) {
-							fileCandidates.push(r.title);
+			const dedupedQueries = Array.from(new Set(searchQueries))
+				.map((q) => q.trim())
+				.filter(Boolean)
+				.slice(0, 3);
+
+			console.log(`  - Crawling alternative queries: ${JSON.stringify(dedupedQueries)}`);
+
+			for (const query of dedupedQueries) {
+				try {
+					const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`intitle:"${query}"`)}&srnamespace=6&srlimit=25&format=json`;
+					const searchRes = await fetchWithRetry(searchUrl, {
+						headers: { 'User-Agent': USER_AGENT }
+					});
+					if (searchRes.ok) {
+						const searchData = (await searchRes.json()) as any;
+						const results = searchData.query?.search || [];
+						for (const r of results) {
+							if (!fileCandidates.includes(r.title)) {
+								fileCandidates.push(r.title);
+							}
 						}
 					}
+				} catch (err) {
+					console.warn(`  - Warning: Search API (intitle) failed for "${query}":`, err);
 				}
-			} catch (err) {
-				console.warn(`  - Warning: Geograph/Flickr search failed:`, err);
+
+				try {
+					const queryStr = `"${query}" (Geograph OR Flickr)`;
+					const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(queryStr)}&srnamespace=6&srlimit=15&format=json`;
+					const searchRes = await fetchWithRetry(searchUrl, {
+						headers: { 'User-Agent': USER_AGENT }
+					});
+					if (searchRes.ok) {
+						const searchData = (await searchRes.json()) as any;
+						const results = searchData.query?.search || [];
+						for (const r of results) {
+							if (!fileCandidates.includes(r.title)) {
+								fileCandidates.push(r.title);
+							}
+						}
+					}
+				} catch (err) {
+					console.warn(`  - Warning: Geograph/Flickr search failed for "${query}":`, err);
+				}
 			}
 
 			// Video Commons Search
 			try {
-				const videoUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`"${searchQuery}" filetype:video`)}&srnamespace=6&srlimit=10&format=json`;
+				const videoUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`"${baseQuery}" filetype:video`)}&srnamespace=6&srlimit=10&format=json`;
 				const videoRes = await fetchWithRetry(videoUrl, {
 					headers: { 'User-Agent': USER_AGENT }
 				});

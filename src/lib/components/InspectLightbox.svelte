@@ -1,12 +1,39 @@
 <script lang="ts">
 	import type { MediaAsset } from '$lib/types.js';
 
-	let { media, onClose } = $props<{
+	let {
+		photos = [],
+		media,
+		onClose
+	} = $props<{
+		photos?: MediaAsset[];
 		media: MediaAsset;
 		onClose: () => void;
 	}>();
 
+	// Find the initial index of the media inside photos
+	let activeIndex = $state(0);
+
+	$effect.pre(() => {
+		const idx = photos.findIndex((p: MediaAsset) => p.localPath === media.localPath);
+		if (idx !== -1) {
+			activeIndex = idx;
+		}
+	});
+
+	let currentMedia = $derived(photos[activeIndex] ?? media);
+
 	let dialogEl = $state<HTMLElement | null>(null);
+
+	function goNext() {
+		if (photos.length <= 1) return;
+		activeIndex = (activeIndex + 1) % photos.length;
+	}
+
+	function goPrev() {
+		if (photos.length <= 1) return;
+		activeIndex = (activeIndex - 1 + photos.length) % photos.length;
+	}
 
 	$effect(() => {
 		if (!dialogEl) return;
@@ -24,6 +51,16 @@
 		const handleKeydown = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') {
 				onClose();
+				return;
+			}
+
+			if (e.key === 'ArrowRight' || e.key === 'Right') {
+				goNext();
+				return;
+			}
+
+			if (e.key === 'ArrowLeft' || e.key === 'Left') {
+				goPrev();
 				return;
 			}
 
@@ -65,9 +102,16 @@
 			<h3 class="text-sm font-bold text-zinc-100 font-mono tracking-wider uppercase">
 				Cinematic Media Inspector
 			</h3>
-			{#if media.title}
-				<span class="text-xs text-zinc-400 mt-1 max-w-xl truncate">{media.title}</span>
-			{/if}
+			<div class="flex items-center gap-3 text-xs text-zinc-400 mt-1">
+				{#if photos.length > 1}
+					<span class="font-semibold text-white bg-white/10 px-2 py-0.5 rounded font-mono">
+						{activeIndex + 1} / {photos.length}
+					</span>
+				{/if}
+				{#if currentMedia.title}
+					<span class="max-w-xl truncate">{currentMedia.title}</span>
+				{/if}
+			</div>
 		</div>
 		<button
 			onclick={onClose}
@@ -79,14 +123,29 @@
 	</div>
 
 	<!-- Image Showcase Area -->
-	<div class="flex-1 flex items-center justify-center max-w-7xl mx-auto py-8 w-full min-h-[50vh]">
+	<div
+		class="flex-1 flex items-center justify-between max-w-7xl mx-auto py-8 w-full min-h-[50vh] gap-4"
+	>
+		<!-- Left Arrow -->
+		{#if photos.length > 1}
+			<button
+				onclick={goPrev}
+				class="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white hover:text-black flex items-center justify-center text-white transition-all cursor-pointer font-bold text-lg select-none hover:scale-105 active:scale-95"
+				aria-label="Previous image"
+			>
+				◀
+			</button>
+		{:else}
+			<div class="w-10 h-10 md:w-12 md:h-12"></div>
+		{/if}
+
 		<div
-			class="relative max-h-full max-w-full group shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-white/10"
+			class="relative max-h-[70vh] max-w-[80%] group shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-white/10 flex items-center justify-center bg-black/40"
 		>
-			{#if media.kind === 'VIDEO'}
+			{#if currentMedia.kind === 'VIDEO'}
 				<!-- eslint-disable-next-line jsx-a11y/media-has-caption -->
 				<video
-					src="/{media.localPath}"
+					src="/{currentMedia.localPath}"
 					controls
 					autoplay
 					class="max-h-[70vh] max-w-full object-contain"
@@ -95,12 +154,25 @@
 				</video>
 			{:else}
 				<img
-					src="/{media.localPath}"
-					alt={media.title || 'Locomotive Class Asset'}
-					class="max-h-[70vh] max-w-full object-contain"
+					src="/{currentMedia.localPath}"
+					alt={currentMedia.title || 'Locomotive Class Asset'}
+					class="max-h-[70vh] max-w-full object-contain select-none"
 				/>
 			{/if}
 		</div>
+
+		<!-- Right Arrow -->
+		{#if photos.length > 1}
+			<button
+				onclick={goNext}
+				class="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white hover:text-black flex items-center justify-center text-white transition-all cursor-pointer font-bold text-lg select-none hover:scale-105 active:scale-95"
+				aria-label="Next image"
+			>
+				▶
+			</button>
+		{:else}
+			<div class="w-10 h-10 md:w-12 md:h-12"></div>
+		{/if}
 	</div>
 
 	<!-- Bottom Metadata Bar -->
@@ -108,7 +180,7 @@
 		class="w-full max-w-4xl mx-auto flex-shrink-0 bg-zinc-950/60 border border-white/5 backdrop-blur rounded-2xl p-6 space-y-4"
 	>
 		<!-- Anecdote & Historical context -->
-		{#if media.anecdote}
+		{#if currentMedia.anecdote}
 			<div class="space-y-1">
 				<span
 					class="text-[9px] font-mono tracking-widest uppercase"
@@ -116,7 +188,7 @@
 				>
 
 				<p class="text-sm text-zinc-200 leading-relaxed font-serif">
-					{media.anecdote}
+					{currentMedia.anecdote}
 				</p>
 			</div>
 		{/if}
@@ -128,26 +200,26 @@
 			<div class="flex flex-col">
 				<span class="text-[9px] text-zinc-500 uppercase">Attribution</span>
 				<span class="text-zinc-300 font-semibold mt-1 truncate">
-					{media.attribution || 'Unknown Photographer'}
+					{currentMedia.attribution || 'Unknown Photographer'}
 				</span>
 			</div>
 			<div class="flex flex-col">
 				<span class="text-[9px] text-zinc-500 uppercase">License</span>
 				<span class="text-zinc-300 font-semibold mt-1">
-					{media.license}
+					{currentMedia.license}
 				</span>
 			</div>
 			<div class="flex flex-col">
 				<span class="text-[9px] text-zinc-500 uppercase">Year Taken</span>
 				<span class="text-zinc-300 font-semibold mt-1 tabular-nums">
-					{media.year || 'Unknown'}
+					{currentMedia.year || 'Unknown'}
 				</span>
 			</div>
 			<div class="flex flex-col">
 				<span class="text-[9px] text-zinc-500 uppercase">Wikimedia link</span>
 				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 				<a
-					href={media.commonsUrl}
+					href={currentMedia.commonsUrl}
 					target="_blank"
 					rel="external noopener noreferrer"
 					class="mt-1 truncate hover:underline"

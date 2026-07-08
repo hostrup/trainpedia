@@ -395,5 +395,9 @@
 </div>
 
 {#if activeLightboxMedia}
-	<InspectLightbox media={activeLightboxMedia} onClose={() => (activeLightboxMedia = null)} />
+	<InspectLightbox
+		{photos}
+		media={activeLightboxMedia}
+		onClose={() => (activeLightboxMedia = null)}
+	/>
 {/if}
