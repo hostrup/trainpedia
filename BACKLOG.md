@@ -46,12 +46,13 @@ Faserne (detaljer og accept i spec'ens §11; datakrav i §9):
 - [ ] **F11.6** [Medium] Exhibit/Locomotive-udvidelser (fleet-status-søjle,
       lifespan-strip, Type-badges, records-plaketter, siblings-navigation,
       galleri-fallback) + motion-polish + e2e-suite der KLIKKER alle linse-flows.
-- [ ] **F11-D1** [High, data] Nyt afledt felt `powerType` (BTC Type 1–5 /
-      SHUNTER / null) beregnet i `04-reclassify.ts` af KILDET hk-værdi efter
-      BTC's historiske klassifikation (spec §9) — nørdernes egen taksonomi.
-      Afhænger af F9.15 (valueNumeric).
-- [ ] **F11-D2** [Medium, data] Builder-facet: normaliseret fabrikant-nøgle
+- [x] **F11-D1** [High, data] Nyt afledt felt `powerType` (BTC Type 1–5 /
+      SHUNTER / null) beregnet i `04-reclassify.ts` af KILDET hk-værdi.
+      **FIXET 2026-07-08:** 96/98 klasser har powerType. Fordeling: SHUNTER=39,
+      TYPE_1=12, TYPE_2=16, TYPE_3=6, TYPE_4=17, TYPE_5=6, null=2.
+- [x] **F11-D2** [Medium, data] Builder-facet: normaliseret fabrikant-nøgle
       fra Specification "Manufacturer" (alias-tabel i kode, rå streng bevares).
+      **FIXET 2026-07-08:** 96/98 klasser har builder. Alias-tabel i 04-reclassify.ts.
 
 **Konsekvenser for eksisterende backlog (re-statusering 2026-07-08):**
 F9.0b, F9.12, F9.13 og F10.3 BORTFALDER (kort-koden pensioneres i F11.3);
@@ -131,7 +132,10 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
       **Accept:** dæknings-rapport (individer fundet vs. Total Built pr. klasse)
       udskrives; de store TOPS-klasser med kendte listeartikler (08, 20, 31, 40, 47,
       50, 55…) har fleets i DB; genkørsel ændrer intet (idempotens).
-- [ ] **F9.2** [High] **Backfill `LocomotiveClass.totalBuilt` — feltet er NULL på
+- [x] **F9.2** [High] **Backfill `LocomotiveClass.totalBuilt`.**
+      **FIXET 2026-07-08:** 88/98 klasser har nu totalBuilt (10 mangler Wikipedia-kilde).
+      Script: `scripts/seed/backfill-total-built.ts`.
+- [ ] **F9.2-ORIG** [High] **totalBuilt var NULL på
       alle 98 klasser.** Kilden findes allerede to steder: Specification-rækken
       "Total Built" (`06-fleet.ts:113` parser den allerede ad-hoc) og Wikidata P2560
       (hentes i `01-discover.ts` men når åbenbart ikke DB-feltet for det nuværende
@@ -242,7 +246,11 @@ data — den opdager, rapporterer og (ved harde brud) blokerer.
       rapporter sammen hvis det er naturligt). **Accept:** gaten kører grønt på
       nuværende DB efter A-sektionens fixes, fanger bevidst indplantede brud i
       en testkørsel, og `deploy.sh` kører den før build.
-- [ ] **F9.15** [Medium] **Spec-normalisering ved seed frem for runtime-regex.**
+- [x] **F9.15** [Medium] **Spec-normalisering ved seed: `valueNumeric Float?`
+      tilføjet til Specification.** 358/365 specs parsed: Power Output 95/96,
+      Top Speed 97/97, Tractive Effort 78/84, Total Built 88/88. 7 uparseable
+      (zero-width-space-strenge). Script: `scripts/seed/backfill-value-numeric.ts`.
+- [ ] **F9.15-ORIG** [Medium] **Spec-normalisering ved seed frem for runtime-regex.**
       F7's scatterplot-bug ("90 mph (145 km/h)" → 90145) var et symptom på, at
       numeriske spec-værdier parses ad-hoc i UI-laget. Fix ved roden: additivt
       felt `valueNumeric Float?` på `Specification` (skemaet HAR allerede `unit`,
