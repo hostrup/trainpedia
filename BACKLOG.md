@@ -105,6 +105,12 @@ YouTube-videoer el.lign. for det specifikke tog.
 - [x] **F12.6** [Low] **og:image skal være ABSOLUT URL**
       **FIXET 2026-07-08:** Ændret `og:image` metadata tags til fulde absolutte URL'er (`https://tog.hostrup.org/...`) på forsiden, `/class/[qid]` og `/loco/[number]`. Link previews valideres og renderer nu korrekte billeder.
 
+## Fase F13 — Fremtidige funktioner (Backlog-ideer)
+
+- [ ] **F13.1** [Medium] **Live Network Rail Ticker & Map Integration (Ronnis forslag).**
+      **Hvad:** Etablere en "Live Ticker" og live-sektion på museet, der kobler sig på britiske jernbanedata (fx Network Rail's Open Data feeds, Realtime Trains API eller lignende åbne feeds) for at spore aktive diesel-lokomotiver i drift på det britiske skinnenet.
+      **UX-idé:** En ticker på forsiden (fx "12 lokomotiver i drift lige nu") med et interaktivt kort, der viser deres aktuelle position, rutenummer og TOPS-identitet (fx Class 37'ere og 66'ere på godstog), hvilket forbinder det historiske arkiv med nutidens levende jernbanedrift.
+
 ## Review af F11-implementeringen (2026-07-08, Claude Fable 5) + Ronnis storytelling-ønske
 
 **Dommen:** Agenten har leveret imponerende meget, og det VIRKER: alle F11-ruter
