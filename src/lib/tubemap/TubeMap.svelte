@@ -400,7 +400,7 @@
 
 <div class="relative flex flex-1 flex-col">
 	{#if activeTab === 'map'}
-		<!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 		<div
 			bind:this={zoomContainer}
 			bind:clientWidth={viewportWidth}
@@ -579,9 +579,11 @@
 		<!-- Time Machine: FRA som standard (opt-in), så kortets standardtilstand kun
 		     har ÉN dæmpnings-kilde (æra/hjul-filtre). Ronnis feedback 2026-07-07: den
 		     tidligere altid-synlige "Active year"-slider var ikke til at gennemskue
-		     formålet med, og dæmpede oveni filtrenes egen dæmpning. -->
+		     formålet med, og dæmpede oveni filtrenes egen dæmpning.
+		     Z-lagdelingsorden: kort-overlays z-10/z-20 < backdrop z-30 < placard z-40.
+		     Baren skal KUN ligge over SVG'en, aldrig over draweren (F9.0a-fix). -->
 		<div
-			class="z-50 border-t px-6 py-3"
+			class="z-10 border-t px-6 py-3"
 			style="border-color: var(--map-zone); background: var(--map-bg);"
 		>
 			<button
