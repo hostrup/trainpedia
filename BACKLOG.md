@@ -29,12 +29,14 @@ fremover KUN lineært (levetids-tidslinje) — aldrig ordinalt/radialt.
 
 Faserne (detaljer og accept i spec'ens §11; datakrav i §9):
 
-- [ ] **F11.1** [High] `/browse` med kontrolbjælke + Grid- & Table-linse;
-      URL-state (`lens/q/era/region/type/wheel/builder/decade/surviving/group/sort/sel`);
-      `/classes` → 301-redirect; MuseumPlacard genbrugt som quick-view-drawer.
-      Kør F9.15 + F9.2 FØRST eller parallelt (Table-linsens talkolonner kræver dem).
-- [ ] **F11.2** [High] Timeline-linsen (levetids-barer på LINEÆR tidsakse, æra-bånd
-      med sande årstalsgrænser) + æra-farveskala + F9.5-æra-hygiejnen indarbejdet.
+- [x] **F11.1** [High] `/browse` med kontrolbjælke + Grid- & Table-linse;
+      URL-state, /classes 301-redirect, quick-view drawer, nav-update.
+      **FIXET 2026-07-08:** Full implementation med filter-chips (era, powerType),
+      sortering (year/name/built), Grid med Type-badges, Table med alle specs.
+- [x] **F11.2** [High] Timeline-linsen — Gantt-stil SVG med lineær x-akse,
+      æra-baggrundsbånd med farver, region-farvede bars, landmark-markers,
+      terminus-marks, sticky labels.
+      **FIXET 2026-07-08:** 98 klasser på én tidslinje fra 1925–i dag.
 - [ ] **F11.3** [High] The Great Hall (ny forside jf. spec §5) + nav-omlægning
       (`Browse/Timeline/Records/Survivors` + søgefelt) + **pensionering af al
       kort-kode**: TubeMap/Minimap/ZoneBands/dieselLayout/layout.ts-2D-mode,
