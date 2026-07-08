@@ -1,6 +1,6 @@
 # Data Quality Report
 
-Genereret: 2026-07-08T13:50:27.192Z
+Genereret: 2026-07-08T14:00:39.552Z
 Database status: 1324 individer · 98 klasser · 879 media assets
 
 ## Data Freshness (Ældning)
@@ -17,7 +17,6 @@ _Ingen kritiske fejl fundet._ ✅
 
 - ⚠️ Klasse uden media assets: British Railways class D3/14 (Q4970901)
 - ⚠️ Klasse uden media assets: LNER class J45 (Q4970908)
-- ⚠️ Klasse uden narrativ: British Rail Class 97/6 (Q4970874)
 - ⚠️ Klasse uden media assets: British Railways class D2/5 (Q4970889)
 - ⚠️ Klasse uden media assets: British Railways class D2/1 (Q4970884)
 - ⚠️ Klasse uden media assets: British Railways class D3/11 (Q4970897)

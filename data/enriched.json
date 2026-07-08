@@ -3785,8 +3785,8 @@
 		"manufacturer": "Ruston & Hornsby",
 		"commonsCategory": null,
 		"sourceUrl": "https://en.wikipedia.org/wiki/British_Rail_Class_97/6",
-		"narrative": null,
-		"sourceRevision": "6",
+		"narrative": "The British Rail Class 97/6 diesel-electric locomotives (originally numbered PWM650–654) were a class of five shunt engines built by Ruston & Hornsby for permanent way work. Commonly referred to as the 'PWM shunters', they were used across the Western Region and later renumbered into Class 97.",
+		"sourceRevision": "1274725885",
 		"specs": [
 			{
 				"key": "Manufacturer",
