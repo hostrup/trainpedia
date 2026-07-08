@@ -92,4 +92,3 @@ export const load: PageServerLoad = async ({ url }) => {
 		throw error(503, 'Database unavailable. Please try again later.');
 	}
 };
-

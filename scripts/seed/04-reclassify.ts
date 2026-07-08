@@ -86,9 +86,7 @@ function btcPowerType(
 	maxSpeedMph: number | null
 ): string | null {
 	// Detect shunters: typically 0-6-0 wheel arrangement or very low max speed
-	const isShunterWheel =
-		wheelArrangement !== null &&
-		/^0-[46]-0/i.test(wheelArrangement.trim());
+	const isShunterWheel = wheelArrangement !== null && /^0-[46]-0/i.test(wheelArrangement.trim());
 	if (isShunterWheel && (hpValue === null || hpValue < 1000)) return 'SHUNTER';
 	if (maxSpeedMph !== null && maxSpeedMph <= 30 && (hpValue === null || hpValue < 1000))
 		return 'SHUNTER';
@@ -104,7 +102,7 @@ function btcPowerType(
 // F11-D2: Builder/manufacturer normalization alias table.
 // Raw string is preserved in Specification; this maps common variants to a canonical key.
 const BUILDER_ALIASES: Record<string, string> = {
-	'brel': 'BREL',
+	brel: 'BREL',
 	'british rail engineering limited': 'BREL',
 	'british rail engineering': 'BREL',
 	'br workshops': 'BREL',
@@ -119,20 +117,20 @@ const BUILDER_ALIASES: Record<string, string> = {
 	'north british locomotive company': 'North British',
 	'north british': 'North British',
 	'robert stephenson and hawthorns': 'RSH',
-	'rshl': 'RSH',
-	'rsh': 'RSH',
+	rshl: 'RSH',
+	rsh: 'RSH',
 	'general electric': 'GE',
 	'ge transportation': 'GE',
 	'general motors': 'GM/EMD',
-	'emd': 'GM/EMD',
+	emd: 'GM/EMD',
 	'electro-motive division': 'GM/EMD',
 	'general motors electro-motive division': 'GM/EMD',
 	'metropolitan-vickers': 'Metrovick',
 	'metropolitan vickers': 'Metrovick',
-	'metrovick': 'Metrovick',
+	metrovick: 'Metrovick',
 	'vulcan foundry': 'Vulcan Foundry',
 	'hunslet engine company': 'Hunslet',
-	'hunslet': 'Hunslet',
+	hunslet: 'Hunslet',
 	'hunslet-barclay': 'Hunslet',
 	'andrew barclay sons and company': 'Andrew Barclay',
 	'andrew barclay': 'Andrew Barclay',
@@ -141,7 +139,7 @@ const BUILDER_ALIASES: Record<string, string> = {
 	'ruston and hornsby': 'Ruston & Hornsby',
 	'ruston & hornsby': 'Ruston & Hornsby',
 	'clayton equipment': 'Clayton',
-	'clayton': 'Clayton',
+	clayton: 'Clayton',
 	'birmingham rc&w': 'Birmingham RCW',
 	'birmingham railway carriage and wagon company': 'Birmingham RCW',
 	'swindon works': 'BR Swindon',
@@ -151,19 +149,22 @@ const BUILDER_ALIASES: Record<string, string> = {
 	'darlington works': 'BR Darlington',
 	'lms derby': 'BR Derby',
 	'horwich works': 'BR Horwich',
-	'vossloh': 'Stadler/Vossloh',
-	'stadler': 'Stadler/Vossloh',
+	vossloh: 'Stadler/Vossloh',
+	stadler: 'Stadler/Vossloh',
 	'stadler rail': 'Stadler/Vossloh',
-	'bombardier': 'Bombardier',
+	bombardier: 'Bombardier',
 	'bombardier transportation': 'Bombardier',
-	'alstom': 'Alstom',
-	'hitachi': 'Hitachi',
-	'caf': 'CAF',
+	alstom: 'Alstom',
+	hitachi: 'Hitachi',
+	caf: 'CAF'
 };
 
 function normalizeBuilder(raw: string): string {
 	const trimmed = raw.trim();
-	const key = trimmed.toLowerCase().replace(/[.,]+$/, '').trim();
+	const key = trimmed
+		.toLowerCase()
+		.replace(/[.,]+$/, '')
+		.trim();
 	return BUILDER_ALIASES[key] ?? trimmed;
 }
 
@@ -232,8 +233,7 @@ async function main() {
 		const powerSpec = classSpecs.find((s) => s.key === 'Power Output');
 		const speedSpec = classSpecs.find((s) => s.key === 'Top Speed');
 		const hpValue = powerSpec?.valueNumeric ?? null;
-		const speedMph =
-			speedSpec?.unit === 'mph' ? speedSpec.valueNumeric : null;
+		const speedMph = speedSpec?.unit === 'mph' ? speedSpec.valueNumeric : null;
 		const powerType = btcPowerType(hpValue, c.wheelArrangement, speedMph);
 
 		// F11-D2: Normalize builder from Manufacturer spec
@@ -299,4 +299,3 @@ main()
 		process.exit(1);
 	})
 	.finally(() => prisma.$disconnect());
-

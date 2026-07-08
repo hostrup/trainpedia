@@ -9,12 +9,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Spec keys that should have numeric values
-const NUMERIC_KEYS = new Set([
-	'Power Output',
-	'Tractive Effort',
-	'Top Speed',
-	'Total Built'
-]);
+const NUMERIC_KEYS = new Set(['Power Output', 'Tractive Effort', 'Top Speed', 'Total Built']);
 
 /**
  * Parse the first meaningful numeric value from a spec string.
