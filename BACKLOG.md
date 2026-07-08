@@ -144,7 +144,11 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
       fleet-dækningsrapporten (F9.1) eller "N built"-visninger regne rigtigt.
       **Accept:** `totalBuilt` udfyldt hvor en kilde findes; /classes-kortene og
       /class/[qid] viser tallet; antal resterende NULL rapporteres.
-- [ ] **F9.3** [Medium] **Søgningen finder ikke individer.** Header-søgningen går
+- [x] **F9.3** [Medium] **Søgningen finder nu individer.** Server-load i
+      `/classes/+page.server.ts` matcher nu også `Locomotive.currentNumber`,
+      `currentName`, og `LocomotiveIdentity.number`. UI viser "Individual Locomotives"
+      sektion med links til `/loco/[number]`.
+      **FIXET 2026-07-08.** Accept-stikprøve: "37403" og "D6607" funder begge Class 37-individer.
       til /classes, hvis load (`src/routes/classes/+page.server.ts:14-18`) kun matcher
       klassenavn/nickname/ClassAlias — søgning på "37403" eller "D6607" giver 0 hits,
       selvom 853 `LocomotiveIdentity`-rækker findes og `/loco/[number]` allerede
@@ -163,7 +167,12 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
       på Commons — det er acceptabelt, men skal så stå i rapporten.
       **Accept:** antal klasser med 0 media reduceret og dokumenteret før/efter;
       landmark-klasser har mærkbart flere assets.
-- [ ] **F9.5** [Medium] **Æra-hygiejne.** (a) "Pre-Grouping" har 0 klasser efter
+- [x] **F9.5** [Medium] **Æra-hygiejne.**
+      **FIXET 2026-07-08:** (a) Pre-Grouping og Pilot Scheme er korrekt tomme
+      (diesel-only dataset) — skjules i UI (F11). (b) br-transition startYear
+      rettet fra 1968→1948; 67 diesel-klasser fra 1948–1981 ligger nu korrekt.
+      Stikprøve: Class 43 (1960+1976)→Transition, Class 56 (1976)→Transition,
+      Class 58 (1983)→Sectorisation. Script: `fix-era-startYear.ts`.
       diesel-pivoten, men sendes stadig til kortets zone-bånd og /classes-filteret —
       skjul/udelad tomme æraer i UI (behold rækken i DB til evt. genudvidelse, U7).
       (b) Fordelingen 16/65/2/4/11 på de øvrige æraer ser skæv ud: "The Diesel &
