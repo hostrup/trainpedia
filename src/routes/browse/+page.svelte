@@ -404,13 +404,176 @@
 			</table>
 		</div>
 
-		<!-- TIMELINE LENS (placeholder — F11.2) -->
+		<!-- TIMELINE LENS (F11.2) -->
 	{:else if data.lens === 'timeline'}
-		<div
-			class="flex items-center justify-center rounded-2xl border border-dashed py-20"
-			style="border-color: var(--map-zone);"
-		>
-			<p style="color: var(--map-ink-soft);">Timeline lens — coming in F11.2</p>
+		{@const ROW_H = 28}
+		{@const LABEL_W = 180}
+		{@const CHART_W = 800}
+		{@const HEADER_H = 40}
+		{@const timelineClasses = [...data.classes].sort(
+			(a, b) => (a.buildStart ?? 9999) - (b.buildStart ?? 9999)
+		)}
+		{@const minYear = Math.min(
+			...timelineClasses
+				.map((c) => c.buildStart ?? c.serviceEntry?.getFullYear() ?? 1930)
+				.filter(Boolean),
+			1925
+		)}
+		{@const maxYear = new Date().getFullYear() + 2}
+		{@const yearRange = maxYear - minYear}
+		{@const svgH = HEADER_H + timelineClasses.length * ROW_H + 20}
+
+		<div class="overflow-x-auto rounded-lg border" style="border-color: var(--map-zone);">
+			<svg
+				width={LABEL_W + CHART_W + 20}
+				height={svgH}
+				viewBox="0 0 {LABEL_W + CHART_W + 20} {svgH}"
+				style="background: var(--map-bg); font-family: var(--font-ui);"
+				role="img"
+				aria-label="Timeline of British locomotive classes"
+			>
+				<!-- Era background bands -->
+				{#each data.eras as era (era.slug)}
+					{@const eraX = LABEL_W + ((era.startYear - minYear) / yearRange) * CHART_W}
+					{@const eraEndYear = era.endYear ?? maxYear}
+					{@const eraW = ((eraEndYear - era.startYear) / yearRange) * CHART_W}
+					<rect
+						x={eraX}
+						y={0}
+						width={eraW}
+						height={svgH}
+						fill="color-mix(in srgb, var(--tfl-blue) {Math.max(
+							5,
+							25 - data.eras.indexOf(era) * 5
+						)}%, var(--map-zone))"
+						opacity="0.3"
+					/>
+					<text
+						x={eraX + 4}
+						y={HEADER_H - 6}
+						font-size="9"
+						fill="var(--map-ink-soft)"
+						opacity="0.7"
+					>
+						{era.startYear}
+					</text>
+				{/each}
+
+				<!-- Decade gridlines -->
+				{#each Array.from({ length: Math.ceil(yearRange / 10) + 1 }, (_, i) => Math.floor(minYear / 10) * 10 + i * 10) as decade (decade)}
+					{@const dx = LABEL_W + ((decade - minYear) / yearRange) * CHART_W}
+					<line
+						x1={dx}
+						y1={HEADER_H}
+						x2={dx}
+						y2={svgH}
+						stroke="var(--map-zone)"
+						stroke-width="0.5"
+					/>
+					<text
+						x={dx + 2}
+						y={HEADER_H - 4}
+						font-size="10"
+						fill="var(--map-ink-soft)"
+						style="font-family: var(--font-map);"
+					>
+						{decade}
+					</text>
+				{/each}
+
+				<!-- Class bars -->
+				{#each timelineClasses as cls, i (cls.wikidataQid)}
+					{@const y = HEADER_H + i * ROW_H}
+					{@const startYear =
+						cls.buildStart ?? (cls.serviceEntry ? new Date(cls.serviceEntry).getFullYear() : null)}
+					{@const endYear = cls.serviceExit ? new Date(cls.serviceExit).getFullYear() : null}
+					{@const barStart = startYear
+						? LABEL_W + ((startYear - minYear) / yearRange) * CHART_W
+						: 0}
+					{@const barEnd = endYear
+						? LABEL_W + ((endYear - minYear) / yearRange) * CHART_W
+						: LABEL_W + CHART_W}
+					{@const barW = Math.max(barEnd - barStart, 3)}
+					{@const color = tractionColor(cls.regions)}
+
+					<!-- Row background on hover handled via CSS -->
+					<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+					<g class="timeline-row" onclick={() => selectClass(cls.wikidataQid)}>
+						<rect
+							x={0}
+							{y}
+							width={LABEL_W + CHART_W + 20}
+							height={ROW_H}
+							fill="transparent"
+							class="cursor-pointer hover:fill-[var(--map-zone)]"
+							opacity="0.3"
+						/>
+
+						<!-- Label -->
+						<text
+							x={LABEL_W - 8}
+							y={y + ROW_H / 2 + 4}
+							font-size="11"
+							fill="var(--map-ink)"
+							text-anchor="end"
+							style="font-family: var(--font-map);"
+						>
+							{resolveDisplayName(cls.name, cls.aliases, data.nameScheme)}
+						</text>
+
+						<!-- Bar -->
+						{#if startYear}
+							<rect
+								x={barStart}
+								y={y + 6}
+								width={barW}
+								height={ROW_H - 12}
+								rx="3"
+								fill={color}
+								opacity="0.85"
+							/>
+							<!-- Open-ended arrow for classes still in service -->
+							{#if !endYear}
+								<polygon
+									points="{barEnd},{y + ROW_H / 2} {barEnd - 6},{y + 6} {barEnd - 6},{y +
+										ROW_H -
+										6}"
+									fill={color}
+									opacity="0.85"
+								/>
+							{:else}
+								<!-- Terminus mark -->
+								<line
+									x1={barEnd}
+									y1={y + 4}
+									x2={barEnd}
+									y2={y + ROW_H - 4}
+									stroke={color}
+									stroke-width="2"
+								/>
+							{/if}
+
+							<!-- Landmark marker -->
+							{#if cls.isLandmark}
+								<circle
+									cx={barStart}
+									cy={y + ROW_H / 2}
+									r="4"
+									fill="white"
+									stroke={color}
+									stroke-width="1.5"
+								/>
+							{/if}
+						{/if}
+
+						<!-- Hover tooltip (SVG title) -->
+						<title
+							>{cls.name}{cls.nickname ? ` "${cls.nickname}"` : ''} — {startYear ?? '?'}–{endYear ??
+								'present'}{cls.totalBuilt ? ` · ${cls.totalBuilt} built` : ''}</title
+						>
+					</g>
+				{/each}
+			</svg>
 		</div>
 
 		<!-- CHART LENS (placeholder — F11.4) -->
