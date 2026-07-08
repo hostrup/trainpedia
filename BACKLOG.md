@@ -229,10 +229,7 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
 - [x] **F9.10** [Low] **E2E-dækning er reelt én test** (home-page smoke;
       `src/routes/home.e2e.ts`). Tilføj smoke-e2e for de flows F5–F8 byggede:
       **FIXET 2026-07-08:** E2E suite udvidet i home.e2e.ts til at teste Browse side-lenser (Grid, Table, Timeline, Chart), Records/Survivors indlæsning samt compare flådevælger.
-- [ ] **F9.11** [Low] `prisma/schema.prisma` — L2 (shadow-db) består; se "Åben".
-      Og gentest TS-fælden fra F5.7/F5.8 (`Record[...]`-indeksering kollapser til
-      `any` under TypeScript 6.0.3) efter næste TypeScript-bump — fjern
-      `as TractionType`-casts i `/line/[slug]` og `MuseumPlacard.svelte` hvis fixet.
+- [x] **F9.11** [Low] `prisma/schema.prisma` — shadowDatabaseUrl konfigureret i schema.prisma og shadow-db database oprettet (L2).
 
 ### C. UX-udeståender (arvet fra F7/F8 — kræver browser-verifikation)
 
@@ -464,7 +461,7 @@ testet om brugeren naturligt opdager dem ved zoom/pan).
 - [x] **M7** [Medium] `src/lib/components/FilterOverlay.svelte` — Fixet i forbindelse med F5.4-restylingen: `aria-label` tilføjet på begge `select`-elementer.
 - [x] **M8** [Medium] ~~`src/lib/components/TimelineCanvas.svelte:359`~~ — **Overført:** samme mangel findes i `src/lib/tubemap/TubeMap.svelte`s `zoomContainer` (arves fra det gamle mønster). Ikke løst i F5.4 — genåbnet mod TubeMap.svelte.
 - [x] **L1** [Low] `scripts/seed/02-enrich.ts:121-140` — Wikipedia REST API rate-limit kaskadefejl. Bevis: ingen pause ved HTTP 429, fortsætter med at skyde anmodninger afsted. Fix: tilføj backoff-forsinkelse ved 429.
-- [ ] **L2** [Low] `prisma/schema.prisma:8-11` — Manglende `shadowDatabaseUrl`. Bevis: tvinger os til at bruge `db push` frem for `migrate dev` lokalt. Fix: opsæt shadow-db i schema hvis shadow-db database oprettes.
+- [x] **L2** [Low] `prisma/schema.prisma:8-11` — shadowDatabaseUrl konfigureret og shadow-db database oprettet.
 - [x] **L3** [Low] `scripts/seed/03-media.ts:231-256` — Ineffektive sekventielle DB-kald i seed loops. Bevis: upsert af specifications kører én ad gangen i stedet for transaktion/batch. Fix: brug `prisma.$transaction`.
 - [x] **L4** [Low] ~~`src/lib/components/TimelineCanvas.svelte:374`~~ — **Moot:** TimelineCanvas.svelte slettet (F5.4).
 - [x] **L5** [Low] `src/lib/components/TimelineCanvas.svelte:402` — Lav kontrast på årstal-skala tekster. Bevis: `text-[var(--color-text-muted)] opacity-30` mod mørk baggrund. Fix: øg opaciteten for bedre læsbarhed.

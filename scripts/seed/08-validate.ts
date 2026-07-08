@@ -5,6 +5,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { execSync } from 'child_process';
 import { QID_BLOCKLIST } from './blocklist.js';
 
 const prisma = new PrismaClient();
@@ -430,6 +431,11 @@ ${
 `;
 
 	fs.writeFileSync(path.join(process.cwd(), 'DATA-QUALITY.md'), docContent);
+	try {
+		execSync('npx prettier --write DATA-QUALITY.md', { stdio: 'ignore' });
+	} catch (err) {
+		console.warn('Prettier format failed on DATA-QUALITY.md:', err);
+	}
 	console.log('DATA-QUALITY.md opdateret.');
 
 	// ----------------------------------------------------
