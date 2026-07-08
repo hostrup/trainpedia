@@ -1,11 +1,12 @@
 # Backlog — trainpedia (review 2026-07-07)
 
-Baseline (genverificeret 2026-07-08 morgen, Claude Opus 4.6): lint 0 fejl · check/tsc
-0 fejl, 0 warnings (F9.8 lukket) · 23 unit-tests grønne (F9.9: 2 demo-tests fjernet)
-· working tree ren på main.
-DB-fakta: 98 klasser (100% DIESEL) · 309 individer (kun 1/98 klasser har fleet-data)
-· 353 media-assets (13 klasser har 0) · 853 identities · `totalBuilt` er NULL på
-ALLE 98 klasser.
+Baseline (genverificeret 2026-07-08 efter F11-review, Claude Fable 5): lint 0 fejl ·
+check 0 fejl/0 warnings · 9 unit-tests grønne (tubemap-specs slettet med koden i
+F11.3 — korrekt) · e2e 4/4 grønne · working tree ren på main.
+DB-fakta: 98 klasser (100% DIESEL) · **1.193 individer på 51/98 klasser** ·
+totalBuilt 88/98 · powerType+builder 96/98 · valueNumeric 358/365 · narrativ 98/98
+· 353 media-assets (13 klasser har stadig 0) · **æra-narrativ: 0/6 (INTET
+storytelling-indhold)** · æra-fordeling 0/16/0/67/4/11 (skæv, se F11.8).
 
 ## Fase F11 — "The Working Museum": UI-pivot væk fra metrokortet (Ronnis direktiv 2026-07-08)
 
@@ -69,6 +70,75 @@ for F10.7 (OG-metadata) og F10.8 (Random class). U8 (mobil) er LUKKET af spec
 §10 (responsive linser). F9-datasporet (A+D-sektionerne) er UÆNDRET og nu endnu
 mere kritisk: linserne er kun så gode som tallene bag dem.
 
+## Review af F11-implementeringen (2026-07-08, Claude Fable 5) + Ronnis storytelling-ønske
+
+**Dommen:** Agenten har leveret imponerende meget, og det VIRKER: alle F11-ruter
+svarer 200 live, linse-skift/quick-view→"Open full chronicle"→klasseside-flowet
+er klik-verificeret mod tog.hostrup.org, typeahead finder "Deltic"→Class 55,
+`/api/search?q=37403` rammer individet, gamle ruter redirecter/404'er korrekt.
+Datapåstandene holdt stikprøvekontrol mod databasen (1.193 individer/51 klasser,
+totalBuilt 88/98, powerType 96/98, valueNumeric 358). Kvaliteten af backlog-
+bogføringen haltede til gengæld (dubletter og teksterester — ryddet op i dette
+review), og tre reelle fund + Ronnis nye feature-ønske står herunder.
+
+**Ronni 2026-07-08:** _"jeg vil gerne have en feature med hvor der er mere
+storytelling — fx når jeg vælger The Big Four, så bør der komme en information
+et sted som fortæller om denne era og hvad der kendetegner den."_
+
+- [ ] **F11.7** [High] **Storytelling: æra-fortællinger overalt hvor en æra er i
+      fokus (Ronnis feature).** Problemet er dobbelt: `Era.narrative` er NULL for
+      ALLE 6 æraer (der findes bogstaveligt intet at fortælle), og UI'et har
+      ingen flade til det. Leverancen består af data + UI:
+      **(a) Data — `scripts/seed/09-eras.ts`:** seed kildeciterede æra-narrativer
+      fra Wikipedias historie-artikler (fx "History of rail transport in Great
+      Britain 1923–1947" for The Big Four; tilsvarende for Transition/
+      Sectorisation/Privatisation) — uddrag SOM CITAT med sourceUrl +
+      sourceRevision-felter (additivt skema-tilføj `sourceRevision` på Era hvis
+      det mangler). Strict factuality: citerede uddrag, ingen AI-omskrivning.
+      2-3 afsnit pr. æra + én "kendetegn"-sætning til kompakte flader.
+      **(b) UI — "The era room card":** når `era=`-filteret er aktivt på
+      /browse (uanset linse), vises et æra-panel ØVERST i resultatområdet:
+      æra-navn + år-spænd (Hammersmith One), det citerede narrativ (Fraunces,
+      2-3 afsnit, sammenklappelig til første afsnit), nøgletal (N klasser,
+      N bygget, N bevaret) og kilde-linje (F9.16-mønsteret). Samme komponent
+      genbruges: på Great Hall-æra-kortene (én kendetegn-sætning + "Enter the
+      era →"), som header når `group=era` er valgt (én sætning pr. rum), og i
+      Timeline-linsen ved klik/hover på et æra-bånd. **Accept:** vælger man
+      "The Big Four" nogen steder, fortæller sitet med kildeciteret tekst hvad
+      der kendetegner æraen; alle 6 æraer med klasser har narrativ i DB;
+      Playwright-klik verificerer panelet på /browse?era=big-four.
+      **Afhænger af F11.8** (fortællingen skal hænge på en sand æra-struktur).
+- [ ] **F11.8** [High] **Æra-strukturen er blevet skæv og skal bære fortællingen.**
+      Fordelingen er nu 0/16/0/67/4/11: F9.5-fixet flyttede br-transitions
+      startYear til 1948, hvilket TØMTE "The Pilot Scheme" (1948–1968) og
+      efterlod to æraer med OVERLAPPENDE år-spænd — 67 af 98 klasser bor i ét
+      rum, hvilket gør æra-gruppering og storytelling meningsløs for
+      hovedparten af samlingen. Fix: genopret en sand, ikke-overlappende
+      inddeling — Pilot Scheme & Modernisation 1948–1967, Transition 1968–1981
+      (flyt grænsen tilbage, genplacér de 67 efter introduktionsår), slet eller
+      skjul de tomme rækker (Pre-Grouping; behold evt. i DB for U7). Opdater
+      `04-reclassify.ts` så inddelingen overlever genseed, og verificér at
+      Timeline-linsens bånd + Great Hall-æra-kort viser den nye fordeling.
+      **Accept:** ingen æra med 0 klasser vises; ingen overlappende år-spænd;
+      største æra ≤ ~40 klasser; stikprøver (Class 20/31/37/55 → Pilot Scheme,
+      Class 43 HST/56 → Transition, Class 60 → Sectorisation) sidder rigtigt.
+- [ ] **F11.9** [Medium] **Grid-kortene er `<div cursor-pointer>` uden href/rolle**
+      (verificeret i live-DOM: 0 links i main, 98 klikbare divs). Konsekvens:
+      ingen tastatur-adgang til quick-view, intet midterklik/åbn-i-ny-fane,
+      ingen crawlbare links til klassesiderne fra /browse. Fix: gør kortet til
+      et `<a href="/browse?...&sel=QID">` (progressive enhancement: JS
+      intercepter og åbner draweren uden fuld navigation) eller minimum
+      `role="button"` + `tabindex` + Enter-handler — MEN href-varianten
+      foretrækkes (SEO + a11y i ét greb). Samme tjek for Table-rækker og
+      Timeline-barer. **Accept:** tab → Enter åbner quick-view; midterklik
+      åbner ny fane; e2e-test dækker tastatur-flowet.
+- [ ] **F11.10** [Low] **E2e-suiten mangler de flows, der historisk er gået i
+      stykker:** quick-view→"Open full chronicle"→/class-navigation (F9.0a-lektien
+      — suiten skifter linser men klikker aldrig et kort), /loco/[number]-siden
+      (identitets-tidslinjen), typeahead-klik→navigation, og era-filter→
+      room card (når F11.7 lander). Udvid `home.e2e.ts` (evt. split i flere
+      filer). **Accept:** suiten fejler hvis chronicle-CTA'en dør igen.
+
 ## Fase F9 — Opslagsværkets komplethed + oprydning (analyse 2026-07-07, Claude Fable 5)
 
 **Analysens hovedkonklusion:** F5–F8 har leveret et sammenhængende TfL-univers med
@@ -130,29 +200,12 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
 - [x] **F9.2** [High] **Backfill `LocomotiveClass.totalBuilt`.**
       **FIXET 2026-07-08:** 88/98 klasser har nu totalBuilt (10 mangler Wikipedia-kilde).
       Script: `scripts/seed/backfill-total-built.ts`.
-- [ ] **F9.2-ORIG** [High] **totalBuilt var NULL på
-      alle 98 klasser.** Kilden findes allerede to steder: Specification-rækken
-      "Total Built" (`06-fleet.ts:113` parser den allerede ad-hoc) og Wikidata P2560
-      (hentes i `01-discover.ts` men når åbenbart ikke DB-feltet for det nuværende
-      datasæt). Nyt engangsscript efter `backfill-regions.ts`-mønsteret (eller ind i
-      `04-reclassify.ts` så det kører pr. seed). Uden feltet kan hverken
-      fleet-dækningsrapporten (F9.1) eller "N built"-visninger regne rigtigt.
-      **Accept:** `totalBuilt` udfyldt hvor en kilde findes; /classes-kortene og
-      /class/[qid] viser tallet; antal resterende NULL rapporteres.
 - [x] **F9.3** [Medium] **Søgningen finder nu individer.** Server-load i
       `/classes/+page.server.ts` matcher nu også `Locomotive.currentNumber`,
       `currentName`, og `LocomotiveIdentity.number`. UI viser "Individual Locomotives"
       sektion med links til `/loco/[number]`.
-      **FIXET 2026-07-08.** Accept-stikprøve: "37403" og "D6607" funder begge Class 37-individer.
-      til /classes, hvis load (`src/routes/classes/+page.server.ts:14-18`) kun matcher
-      klassenavn/nickname/ClassAlias — søgning på "37403" eller "D6607" giver 0 hits,
-      selvom 853 `LocomotiveIdentity`-rækker findes og `/loco/[number]` allerede
-      slår op på historiske numre. (Kendt datahul noteret i F5.6 — "søgningen bør
-      udvides når F6.2 er kørt"; F6.2 ER kørt.) Fix: match q mod
-      `Locomotive.currentNumber` + `LocomotiveIdentity.number`; ved unikt match vis
-      et "Individuals"-resultat der linker til `/loco/[nummer]` (eller redirect ved
-      eksakt match). **Accept:** søgning på "37403", "D6607" og "Isle of Mull" fører
-      brugeren til individsiden for 37403.
+      **FIXET 2026-07-08.** Accept-stikprøve: "37403" og "D6607" finder begge Class 37-individer.
+      Review-verificeret mod live-API: `/api/search?q=37403` → individet med status+klasse.
 - [ ] **F9.4** [Medium] **Media-huller: 13/98 klasser har 0 billeder** (bl.a.
       Class 74, LNER J45, en stribe tidlige LMS/BR-shuntere — kør
       `media: { none: {} }`-query for den aktuelle liste). Gennemsnittet er ~3,6
@@ -168,14 +221,10 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
       rettet fra 1968→1948; 67 diesel-klasser fra 1948–1981 ligger nu korrekt.
       Stikprøve: Class 43 (1960+1976)→Transition, Class 56 (1976)→Transition,
       Class 58 (1983)→Sectorisation. Script: `fix-era-startYear.ts`.
-      diesel-pivoten, men sendes stadig til kortets zone-bånd og /classes-filteret —
-      skjul/udelad tomme æraer i UI (behold rækken i DB til evt. genudvidelse, U7).
-      (b) Fordelingen 16/65/2/4/11 på de øvrige æraer ser skæv ud: "The Diesel &
-      Electric Transition Era" (1968–1981) har kun 2 klasser, selvom HST/Class 43,
-      56 m.fl. hører hjemme dér — verificér `04-reclassify.ts`'s æra-grænselogik mod
-      buildStart-fordelingen og genplacér fejlplacerede klasser. **Accept:** ingen
-      tomme æra-zoner på kortet; stikprøve (Class 43, 56, 58) ligger i den æra deres
-      introduktionsår tilsiger.
+      **REVIEW-FORBEHOLD 2026-07-08 (Fable 5): løsningen skabte et NYT problem —
+      "The Pilot Scheme"-æraen (1948–1968) er nu TOM, mens Transition dækker
+      1948–1981 med 67 klasser i ét rum, og de to æraers år-spænd OVERLAPPER.
+      Genåbnet som F11.8 (æra-strukturen skal bære storytelling).**
 - [x] **F9.6** [Low] **`seed-report.md` er forældet og misvisende** — den beskriver
       et 152-klassers damp-univers ("488 klasser undervejs") fra FØR diesel-pivoten.
       **FIXET 2026-07-08:** Opdateret scripts/generate-report.ts til at medtage klasser/æraer, spec-dækning, media-dækning (med liste af klasser uden billeder) samt flådedistribution (1193 lokomotiver i alt). Rapporten afspejler nu fuldt ud den faktiske database.
@@ -248,17 +297,6 @@ data — den opdager, rapporterer og (ved harde brud) blokerer.
       tilføjet til Specification.** 358/365 specs parsed: Power Output 95/96,
       Top Speed 97/97, Tractive Effort 78/84, Total Built 88/88. 7 uparseable
       (zero-width-space-strenge). Script: `scripts/seed/backfill-value-numeric.ts`.
-- [ ] **F9.15-ORIG** [Medium] **Spec-normalisering ved seed frem for runtime-regex.**
-      F7's scatterplot-bug ("90 mph (145 km/h)" → 90145) var et symptom på, at
-      numeriske spec-værdier parses ad-hoc i UI-laget. Fix ved roden: additivt
-      felt `valueNumeric Float?` på `Specification` (skemaet HAR allerede `unit`,
-      men det udfyldes aldrig); `02-enrich.ts` parser tal+enhed én gang ved seed
-      (genbrug F7's forbedrede regex fra scatterplot-koden); scatterplottet og
-      fremtidige sammenligninger (F10.4) læser `valueNumeric`/`unit` direkte.
-      Skemaændringen er additiv (ingen C1-checkin nødvendig jf. F6.1-præcedens
-      for additive felter), men nævnes for Ronni ved næste lejlighed.
-      **Accept:** scatterplottet indeholder ingen regex-parsing af spec-strenge;
-      `valueNumeric`-dækning rapporteres i kvalitetsgaten (F9.14).
 - [ ] **F9.16** [Medium] **Provenance synligt i UI — gør strict factuality til en
       FEATURE.** Produktets største troværdighedsaktiv er, at intet er opdigtet,
       men brugeren kan ikke se det: `retrievedAt`/`sourceRevision` gemmes på alle

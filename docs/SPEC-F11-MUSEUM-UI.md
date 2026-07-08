@@ -373,3 +373,39 @@ kun screenshots — lærestregen fra F9.0a), `npm run check`/tests grønne,
    dén taksonomi, britiske dieselnørder faktisk taler i.
 6. U9 (kuraterede fortællinger) forbliver ÅBEN — Records' "fortællinger" er
    rene data-rankings og kræver ingen fritekst.
+
+---
+
+## 13. Tilføjelse 2026-07-08 — Storytelling: "The Era Room Card" (F11.7/F11.8)
+
+Ronnis ønske efter første F11-leverance: _"mere storytelling — fx når jeg
+vælger The Big Four, så bør der komme en information et sted som fortæller om
+denne era og hvad der kendetegner den."_ Museums-metaforen får dermed sit
+manglende element: **rummets vægtekst**.
+
+**Komponenten `EraRoomCard`** (exhibit-label-familien, §3): æra-navn + år-spænd
+i Hammersmith One, kildeciteret narrativ i Fraunces (2-3 afsnit, sammenklappet
+til første afsnit med "Read more"), nøgletals-linje (N klasser · N bygget ·
+N bevaret — alle klikbare ind i /browse), kilde-linje efter F9.16-mønsteret
+(Wikipedia-link + revision + dato). Æra-farven (§3, tilføjelse 1) som kant-accent.
+
+**Placeringer (samme komponent, tre størrelser):**
+
+1. **Fuld** — øverst i /browse-resultatområdet når `era=`-filteret er aktivt,
+   uanset linse. Det er det direkte svar på Ronnis eksempel.
+2. **Kompakt (én kendetegn-sætning)** — som rum-header når `group=era`, og på
+   Great Hall-æra-kortene ("Enter the era →").
+3. **Tooltip/panel** — ved klik på et æra-bånd i Timeline-linsen (klik
+   filtrerer OG viser kortet, jf. §4.4).
+
+**Data (strict factuality):** `Era.narrative` er i dag NULL for alle 6 æraer —
+nyt seed-script `09-eras.ts` henter citerede uddrag fra Wikipedias
+historie-artikler (fx "History of rail transport in Great Britain 1923–1947")
+med sourceUrl + revision; additivt `sourceRevision`-felt på Era hvis det
+mangler. Én "kendetegn"-sætning pr. æra udvælges som CITAT (første sætning
+af uddragets ingress), aldrig AI-formuleret. **Forudsætning:** æra-strukturen
+skal først være sand og ikke-overlappende (F11.8) — 67 klasser i ét rum kan
+ikke fortælles.
+
+Dette er IKKE U9 (kuraterede ture med fri overgangstekst) — U9 forbliver åben;
+æra-narrativer er citeret kildetekst inden for strict factuality.
