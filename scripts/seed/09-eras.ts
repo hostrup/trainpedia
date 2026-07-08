@@ -28,11 +28,10 @@ const eraNarratives = [
 	},
 	{
 		slug: 'br-transition',
-		sourceUrl:
-			'https://en.wikipedia.org/wiki/History_of_rail_transport_in_Great_Britain_1948%E2%80%931994',
-		sourceRevision: '1234901844',
+		sourceUrl: 'https://en.wikipedia.org/wiki/InterCity_125',
+		sourceRevision: '1224508933',
 		narrative:
-			'The transition from steam to diesel and electric traction on British Railways was a defining feature of the post-nationalisation era. Following the 1955 Modernisation Plan, steam locomotives were rapidly phased out, with the last steam-hauled scheduled service running in August 1968.\n\nThis period of transition saw the introduction of standard diesel classes and early main-line electrification, reshaping the operations, speed, and efficiency of the network.'
+			'The InterCity 125, or High Speed Train (HST), was introduced by British Rail in 1976 to provide high-speed passenger services on major routes. Its development followed the complete elimination of steam traction in 1968, a period dominated by the iconic "corporate blue" livery and logo identity.\n\nRunning at service speeds of up to 125 mph, the HST became an immediate success and revolutionized express travel in Great Britain, proving to be one of the most successful and enduring designs in British railway history.'
 	},
 	{
 		slug: 'sectorisation',

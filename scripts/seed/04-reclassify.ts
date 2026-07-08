@@ -175,12 +175,18 @@ async function main() {
 		{ slug: 'big-four', name: 'The Big Four', startYear: 1923, endYear: 1947, sortIndex: 2 },
 		{
 			slug: 'br-steam',
-			name: 'Pilot Scheme & Modernisation',
+			name: 'Modernisation & Transition',
 			startYear: 1948,
 			endYear: 1967,
 			sortIndex: 3
 		},
-		{ slug: 'br-transition', name: 'Transition', startYear: 1968, endYear: 1981, sortIndex: 4 },
+		{
+			slug: 'br-transition',
+			name: 'BR Blue & High Speed',
+			startYear: 1968,
+			endYear: 1981,
+			sortIndex: 4
+		},
 		{ slug: 'sectorisation', name: 'Sectorisation', startYear: 1982, endYear: 1993, sortIndex: 5 },
 		{
 			slug: 'modern',
