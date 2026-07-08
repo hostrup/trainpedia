@@ -15,6 +15,14 @@
 		content="Explore {data.stats
 			.classCount} classes of British diesel and electric locomotives. Browse, compare, and discover the machines that shaped Britain's railways."
 	/>
+	<meta property="og:title" content="Trainpedia — A working museum of British rail traction" />
+	<meta
+		property="og:description"
+		content="Explore {data.stats
+			.classCount} classes of British diesel and electric locomotives. Browse, compare, and discover the machines that shaped Britain's railways."
+	/>
+	<meta property="og:type" content="website" />
+	<meta property="og:image" content="https://tog.hostrup.org/screenshot-real.png" />
 </svelte:head>
 
 <div style="background: var(--map-bg);">

@@ -23,7 +23,9 @@
 	const title = $derived(
 		loco.currentName ? `${loco.currentNumber} "${loco.currentName}"` : loco.currentNumber
 	);
-	const galleryItems = $derived(data.hasIndividualMedia ? data.media : data.fallbackMedia);
+	const rawGalleryItems = $derived(data.hasIndividualMedia ? data.media : data.fallbackMedia);
+	const photos = $derived(rawGalleryItems.filter((m: { kind: string }) => m.kind !== 'VIDEO'));
+	const videos = $derived(rawGalleryItems.filter((m: { kind: string }) => m.kind === 'VIDEO'));
 </script>
 
 <svelte:head>
@@ -42,8 +44,8 @@
 		] ?? 'Unknown'}."
 	/>
 	<meta property="og:type" content="article" />
-	{#if galleryItems.length > 0}
-		<meta property="og:image" content="/{galleryItems[0].localPath}" />
+	{#if photos.length > 0}
+		<meta property="og:image" content="https://tog.hostrup.org/{photos[0].localPath}" />
 	{/if}
 </svelte:head>
 
@@ -185,19 +187,78 @@
 					</section>
 				{/if}
 
+				<!-- "On film" Section (F12.5) -->
+				<section class="border-t pt-8" style="border-color: var(--map-zone);">
+					<h2
+						class="mb-4 text-[11px] font-bold tracking-widest uppercase"
+						style="color: var(--map-ink-soft);"
+					>
+						On film
+					</h2>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<!-- Local Commons video files -->
+						{#each videos as video (video.id)}
+							<div
+								class="flex flex-col rounded-lg border overflow-hidden"
+								style="background: var(--map-zone); border-color: var(--map-zone);"
+							>
+								<div class="aspect-[16/9] bg-black overflow-hidden relative">
+									<!-- eslint-disable-next-line jsx-a11y/media-has-caption -->
+									<video
+										src="/{video.localPath}"
+										controls
+										preload="metadata"
+										class="h-full w-full object-cover"
+									>
+										<track kind="captions" />
+									</video>
+								</div>
+								<div class="p-3 text-xs space-y-1.5" style="color: var(--map-ink);">
+									<div class="font-semibold truncate">
+										{video.title || 'Wikimedia Commons footage'}
+									</div>
+									{#if video.attribution}
+										<div class="text-[10px] text-zinc-500 font-mono truncate">
+											Camera: {video.attribution}
+										</div>
+									{/if}
+									<div class="text-[10px] text-zinc-500 font-mono">License: {video.license}</div>
+								</div>
+							</div>
+						{/each}
+
+						<!-- YouTube fallback link card -->
+						<a
+							href="https://www.youtube.com/results?search_query={encodeURIComponent(
+								`Locomotive ${loco.currentNumber} ${loco.class.name}`
+							)}"
+							target="_blank"
+							rel="external noopener noreferrer"
+							class="flex flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center hover:bg-white/40 transition-colors"
+							style="border-color: var(--map-zone); background: var(--map-zone);"
+						>
+							<div class="text-3xl mb-2">🎬</div>
+							<div class="font-semibold text-sm" style="color: var(--map-ink);">
+								Watch on YouTube ➔
+							</div>
+							<div class="text-[10px] text-zinc-500 mt-1 max-w-xs">
+								Search YouTube for live footage and operational video archives of locomotive {loco.currentNumber}.
+							</div>
+						</a>
+					</div>
+				</section>
+
 				<!-- Gallery and Fallback Gallery -->
 				<section>
 					<h2
 						class="mb-4 text-[11px] font-bold tracking-widest uppercase"
 						style="color: var(--map-ink-soft);"
 					>
-						Gallery — {data.hasIndividualMedia ? data.media.length : data.fallbackMedia.length}
-						{(data.hasIndividualMedia ? data.media.length : data.fallbackMedia.length) === 1
-							? 'asset'
-							: 'assets'}
+						Gallery — {photos.length}
+						{photos.length === 1 ? 'asset' : 'assets'}
 					</h2>
 
-					{#if !data.hasIndividualMedia && data.fallbackMedia.length > 0}
+					{#if !data.hasIndividualMedia && photos.length > 0}
 						<div
 							class="mb-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4 text-xs"
 							style="color: var(--map-ink);"
@@ -213,9 +274,9 @@
 						</div>
 					{/if}
 
-					{#if galleryItems.length > 0}
+					{#if photos.length > 0}
 						<div class="grid grid-cols-2 gap-4 md:grid-cols-3">
-							{#each galleryItems as media (media.id)}
+							{#each photos as media (media.id)}
 								{@const img = mediaSrcset(media.localPath)}
 								<button
 									onclick={() => (activeLightboxMedia = media)}

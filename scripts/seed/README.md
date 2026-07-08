@@ -44,11 +44,46 @@ Idempotente TypeScript-scripts (`tsx`), køres i rækkefølge. Al output valider
 
 - `seed-report.md`: klasser/æra, assets/klasse-fordeling, specs-dækning, licens-fordeling, fejlliste → fremlægges for Ronni (ikke implementeret som separat script endnu, se BACKLOG)
 
+## Backfill- og hjælpescripts (runde 3 tilføjelser)
+
+- **`backfill-value-numeric.ts`** — Udvinder numeriske værdier (fx HK, vægt, hastighed, brændstofkapacitet) fra fritekst-specs ved hjælp af regex-enheds-parsing og gemmer dem i `valueNumeric`.
+- **`backfill-total-built.ts`** — Kopierer det numeriske `Total Built` spec-felt over på `LocomotiveClass.totalBuilt`-kolonnen for at sikre, at kildebåret metadata er direkte tilgængelig til ledertavler og søgninger.
+- **`backfill-regions.ts`** — Udfylder `LocomotiveClass.regions`-listen ud fra kendte britiske driftsregioner beskrevet i Wikipedia-artikler.
+
+## Den fulde Seed-rækkefølge og rørledning
+
+For at sikre korrekt referentiel integritet og undgå, at data overskrives uhensigtsmæssigt, skal scripts afvikles i denne præcise rækkefølge (som defineret i `npm run seed`):
+
+1. **`01-discover.ts`** (Wikidata indledende tjek)
+2. **`02-enrich.ts`** (Wikipedia REST narrative sektioner & rå infobox)
+3. **`03-media.ts`** (Wikimedia Commons downloader og video-crawler)
+4. **`backfill-value-numeric.ts`** (Konverterer specs til talværdier)
+5. **`backfill-total-built.ts`** (Fremmer spec-værdier til klasserne)
+6. **`backfill-regions.ts`** (Regioner og linjefarver til kortet)
+7. **`04-reclassify.ts`** (Triage: retter æraer og powerType)
+8. **`05-aliases.ts`** (Aggregerer pre-TOPS og klasse-aliasser)
+9. **`06-fleet.ts`** (Individ-tabelopbygning fra omlitreringslister)
+10. **`07-landmarks.ts`** (Opsætning af landmark-flag)
+11. **`09-eras.ts`** (Synkroniserer æra-slugs og narrativer)
+12. **`08-validate.ts`** (Kørselskontrol og generering af `DATA-QUALITY.md`)
+
+### Forventet varighed og driftskrav
+
+- **Hurtig kørsel (uden nye medier):** ~30-60 sekunder. Hvis filerne allerede eksisterer på disken under `data/media/`, springer `03-media.ts` filoverførslen over.
+- **Fuld kørsel (første gang eller tom database):** 10-30 minutter. Tidsforbruget drives primært af ratelimiteret netværkshastighed ved download af billeder/videoer (5-12 medier pr. normal klasse, op til 40 for landmarks).
+- **Ratelimits og User-Agent:** Alle kald til Wikipedia/Wikimedia Commons API'er er forsynet med en global rate limit (200ms spacing) og identificeres via en dedikeret User-Agent i `03-media.ts`.
+
+### Idempotens- og integritetsgarantier
+
+- **Klasser:** Unik-nøgle på `wikidataQid`. Genkørsel opdaterer eksisterende klasser i stedet for at duplikere.
+- **Medier:** Unik-nøgle på `commonsUrl`. Mediefiler genkendes på deres MD5-hashværdi, og scriptet verificerer fil-eksistens på disken før eventuel download for at undgå unødig API-belastning.
+- **Specifikationer:** Unik-nøgle på `[classId, key]`.
+- **Historik for individer:** `06-fleet.ts` sletter tidligere oprettede `LocomotiveIdentity`-kæder for et individ før genindsættelse, hvilket sikrer, at omlitreringskæderne forbliver konsistente og fri for dubletter, uanset hvor mange gange seed-pipelinen køres.
+- **Kvalitetsgate:** `08-validate.ts` forhindrer deploy, hvis kritiske fact-checks (fx Class 47's totalBuilt) eller blocklisten overtrædes.
+
 ## Kørsel
 
 ```bash
-npm run seed          # alle trin
-npm run seed:media    # kun media (genoptagelig)
+npm run seed          # Kører alle trin i pipelinen
+npm run seed:media    # Kun mediedownloader (resumable)
 ```
-
-Upsert-nøgler: `wikidataQid` (klasser), `commonsUrl` (media) — genkørsel opdaterer uden dubletter.

@@ -1,20 +1,24 @@
 # Data Quality Report
 
-Genereret: 2026-07-08T10:24:19.228Z
-Database status: 1324 individer · 98 klasser · 384 media assets
+Genereret: 2026-07-08T11:57:18.621Z
+Database status: 1324 individer · 98 klasser · 879 media assets
+
+## Data Freshness (Ældning)
+- **Locomotive Classes:** ældste: 0 dage, nyeste: 0 dage
+- **Locomotives (Fleet):** ældste: 0 dage, nyeste: 0 dage
+- **Media Assets:** ældste: 0 dage, nyeste: 0 dage
 
 ## Hard Errors (Blokerende)
 *Ingen kritiske fejl fundet.* ✅
 
 ## Soft Warnings (Advarsler)
-- ⚠️ Klasse uden media assets: British Rail Class 74 (Q4970847)
+- ⚠️ Klasse uden media assets: British Railways class D2/5 (Q4970889)
+- ⚠️ Klasse uden media assets: British Railways class D3/14 (Q4970901)
 - ⚠️ Klasse uden media assets: LNER class J45 (Q4970908)
 - ⚠️ Klasse uden narrativ: British Rail Class 97/6 (Q4970874)
-- ⚠️ Klasse uden media assets: British Railways class D3/14 (Q4970901)
-- ⚠️ Klasse uden media assets: British Railways class D2/5 (Q4970889)
 - ⚠️ Klasse uden media assets: British Railways class D2/1 (Q4970884)
-- ⚠️ Klasse uden media assets: British Railways Class D3/5 (Q4970904)
 - ⚠️ Klasse uden media assets: British Railways class D3/11 (Q4970897)
+- ⚠️ Klasse uden media assets: British Railways Class D3/5 (Q4970904)
 - ⚠️ Klasse uden media assets: British Railways Class D3/3 (Q4970903)
 - ⚠️ Klasse uden media assets: British Railways class D3/1 (Q4970893)
 - ⚠️ Klasse uden media assets: LMS diesel shunter 7054 (Q6459188)

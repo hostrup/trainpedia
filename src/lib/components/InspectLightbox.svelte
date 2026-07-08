@@ -83,11 +83,23 @@
 		<div
 			class="relative max-h-full max-w-full group shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-white/10"
 		>
-			<img
-				src="/{media.localPath}"
-				alt={media.title || 'Locomotive Class Asset'}
-				class="max-h-[70vh] max-w-full object-contain"
-			/>
+			{#if media.kind === 'VIDEO'}
+				<!-- eslint-disable-next-line jsx-a11y/media-has-caption -->
+				<video
+					src="/{media.localPath}"
+					controls
+					autoplay
+					class="max-h-[70vh] max-w-full object-contain"
+				>
+					<track kind="captions" />
+				</video>
+			{:else}
+				<img
+					src="/{media.localPath}"
+					alt={media.title || 'Locomotive Class Asset'}
+					class="max-h-[70vh] max-w-full object-contain"
+				/>
+			{/if}
 		</div>
 	</div>
 

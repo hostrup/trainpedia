@@ -356,12 +356,63 @@ async function main() {
 	}
 
 	// ----------------------------------------------------
+	// Freshness calculation (F9.17)
+	// ----------------------------------------------------
+	const now = new Date();
+	const classDates = classes.map((c) => c.retrievedAt).filter((d): d is Date => d !== null);
+	const oldestClassAge =
+		classDates.length > 0
+			? Math.floor(
+					(now.getTime() - Math.min(...classDates.map((d) => d.getTime()))) / (1000 * 60 * 60 * 24)
+				)
+			: null;
+	const newestClassAge =
+		classDates.length > 0
+			? Math.floor(
+					(now.getTime() - Math.max(...classDates.map((d) => d.getTime()))) / (1000 * 60 * 60 * 24)
+				)
+			: null;
+
+	const locoDates = locomotives.map((l) => l.retrievedAt).filter((d): d is Date => d !== null);
+	const oldestLocoAge =
+		locoDates.length > 0
+			? Math.floor(
+					(now.getTime() - Math.min(...locoDates.map((d) => d.getTime()))) / (1000 * 60 * 60 * 24)
+				)
+			: null;
+	const newestLocoAge =
+		locoDates.length > 0
+			? Math.floor(
+					(now.getTime() - Math.max(...locoDates.map((d) => d.getTime()))) / (1000 * 60 * 60 * 24)
+				)
+			: null;
+
+	const mediaDates = mediaAssets.map((m) => m.retrievedAt).filter((d): d is Date => d !== null);
+	const oldestMediaAge =
+		mediaDates.length > 0
+			? Math.floor(
+					(now.getTime() - Math.min(...mediaDates.map((d) => d.getTime()))) / (1000 * 60 * 60 * 24)
+				)
+			: null;
+	const newestMediaAge =
+		mediaDates.length > 0
+			? Math.floor(
+					(now.getTime() - Math.max(...mediaDates.map((d) => d.getTime()))) / (1000 * 60 * 60 * 24)
+				)
+			: null;
+
+	// ----------------------------------------------------
 	// SKRIV DATA-QUALITY.md
 	// ----------------------------------------------------
 	const docContent = `# Data Quality Report
 
 Genereret: ${new Date().toISOString()}
 Database status: ${locomotives.length} individer · ${classes.length} klasser · ${mediaAssets.length} media assets
+
+## Data Freshness (Ældning)
+- **Locomotive Classes:** ældste: ${oldestClassAge !== null ? `${oldestClassAge} dage` : 'N/A'}, nyeste: ${newestClassAge !== null ? `${newestClassAge} dage` : 'N/A'}
+- **Locomotives (Fleet):** ældste: ${oldestLocoAge !== null ? `${oldestLocoAge} dage` : 'N/A'}, nyeste: ${newestLocoAge !== null ? `${newestLocoAge} dage` : 'N/A'}
+- **Media Assets:** ældste: ${oldestMediaAge !== null ? `${oldestMediaAge} dage` : 'N/A'}, nyeste: ${newestMediaAge !== null ? `${newestMediaAge} dage` : 'N/A'}
 
 ## Hard Errors (Blokerende)
 ${

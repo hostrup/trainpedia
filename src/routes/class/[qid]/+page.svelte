@@ -59,6 +59,9 @@
 			)
 	);
 
+	const photos = $derived((cls.media ?? []).filter((m: { kind: string }) => m.kind !== 'VIDEO'));
+	const videos = $derived((cls.media ?? []).filter((m: { kind: string }) => m.kind === 'VIDEO'));
+
 	function parseMarkdownLinks(
 		text: string
 	): { type: 'text' | 'link'; content: string; url?: string }[] {
@@ -89,7 +92,7 @@
 	<meta property="og:title" content="{displayName} — Trainpedia" />
 	<meta property="og:type" content="article" />
 	{#if heroMedia}
-		<meta property="og:image" content="/{heroMedia.localPath}" />
+		<meta property="og:image" content="https://tog.hostrup.org/{heroMedia.localPath}" />
 	{/if}
 </svelte:head>
 
@@ -350,17 +353,78 @@
 					</section>
 				{/if}
 
-				<section>
+				<!-- "On film" Section (F12.5) -->
+				<section class="border-t pt-8" style="border-color: var(--map-zone);">
 					<h2
 						class="mb-4 text-[11px] font-bold tracking-widest uppercase"
 						style="color: var(--map-ink-soft);"
 					>
-						Gallery — {cls.media.length}
-						{cls.media.length === 1 ? 'asset' : 'assets'}
+						On film
 					</h2>
-					{#if cls.media.length > 0}
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<!-- Local Commons video files -->
+						{#each videos as video (video.id)}
+							<div
+								class="flex flex-col rounded-lg border overflow-hidden"
+								style="background: var(--map-zone); border-color: var(--map-zone);"
+							>
+								<div class="aspect-[16/9] bg-black overflow-hidden relative">
+									<!-- eslint-disable-next-line jsx-a11y/media-has-caption -->
+									<video
+										src="/{video.localPath}"
+										controls
+										preload="metadata"
+										class="h-full w-full object-cover"
+									>
+										<track kind="captions" />
+									</video>
+								</div>
+								<div class="p-3 text-xs space-y-1.5" style="color: var(--map-ink);">
+									<div class="font-semibold truncate">
+										{video.title || 'Wikimedia Commons footage'}
+									</div>
+									{#if video.attribution}
+										<div class="text-[10px] text-zinc-500 font-mono truncate">
+											Camera: {video.attribution}
+										</div>
+									{/if}
+									<div class="text-[10px] text-zinc-500 font-mono">License: {video.license}</div>
+								</div>
+							</div>
+						{/each}
+
+						<!-- YouTube fallback link card -->
+						<a
+							href="https://www.youtube.com/results?search_query={encodeURIComponent(
+								`${cls.name} ${cls.nickname || ''} locomotive`
+							)}"
+							target="_blank"
+							rel="external noopener noreferrer"
+							class="flex flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center hover:bg-white/40 transition-colors"
+							style="border-color: var(--map-zone); background: var(--map-zone);"
+						>
+							<div class="text-3xl mb-2">🎬</div>
+							<div class="font-semibold text-sm" style="color: var(--map-ink);">
+								Watch on YouTube ➔
+							</div>
+							<div class="text-[10px] text-zinc-500 mt-1 max-w-xs">
+								Search YouTube for live footage, restoration logs, and operational cabrides for the {cls.name}.
+							</div>
+						</a>
+					</div>
+				</section>
+
+				<section class="border-t pt-8" style="border-color: var(--map-zone);">
+					<h2
+						class="mb-4 text-[11px] font-bold tracking-widest uppercase"
+						style="color: var(--map-ink-soft);"
+					>
+						Gallery — {photos.length}
+						{photos.length === 1 ? 'photo' : 'photos'}
+					</h2>
+					{#if photos.length > 0}
 						<div class="grid grid-cols-2 gap-4 md:grid-cols-3">
-							{#each cls.media as media (media.id)}
+							{#each photos as media (media.id)}
 								{@const img = mediaSrcset(media.localPath)}
 								<button
 									onclick={() => (activeLightboxMedia = media)}

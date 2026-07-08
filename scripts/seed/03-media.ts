@@ -136,6 +136,104 @@ function parseDateTime(dateStr: string | null | undefined): Date | null {
 	return date;
 }
 
+async function fetchCategoryMembers(categoryTitle: string): Promise<string[]> {
+	try {
+		const url = `https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(categoryTitle)}&cmtype=file&cmlimit=40&format=json`;
+		const res = await fetchWithRetry(url, { headers: { 'User-Agent': USER_AGENT } });
+		if (!res.ok) return [];
+		const data = (await res.json()) as any;
+		const members = data.query?.categorymembers || [];
+		return members.map((m: any) => m.title);
+	} catch {
+		return [];
+	}
+}
+
+async function fetchSubcategories(categoryTitle: string): Promise<string[]> {
+	try {
+		const url = `https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:${encodeURIComponent(categoryTitle)}&cmtype=subcat&cmlimit=10&format=json`;
+		const res = await fetchWithRetry(url, { headers: { 'User-Agent': USER_AGENT } });
+		if (!res.ok) return [];
+		const data = (await res.json()) as any;
+		const members = data.query?.categorymembers || [];
+		return members.map((m: any) => m.title);
+	} catch {
+		return [];
+	}
+}
+
+async function fetchBatchDetails(filenames: string[]): Promise<any[]> {
+	if (filenames.length === 0) return [];
+	const titlesParam = filenames.map((f) => (f.startsWith('File:') ? f : `File:${f}`)).join('|');
+	try {
+		const url = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(titlesParam)}&prop=imageinfo&iiprop=url|size|mime|extmetadata&format=json`;
+		const res = await fetchWithRetry(url, { headers: { 'User-Agent': USER_AGENT } });
+		if (!res.ok) return [];
+		const data = (await res.json()) as any;
+		return Object.values(data.query?.pages || {});
+	} catch (err) {
+		console.warn(`    - Warning: Failed to fetch batch details:`, err);
+		return [];
+	}
+}
+
+function scoreCandidate(
+	page: any,
+	wikiMainFile: string | null,
+	classKeywords: string[],
+	preservedLocoNumbers: string[]
+): number {
+	const info = page.imageinfo?.[0];
+	if (!info) return -100;
+
+	const extmetadata = info.extmetadata || {};
+	if (!isLicenseCompatible(extmetadata)) return -1000;
+
+	let score = 0;
+
+	const title = page.title || '';
+	if (wikiMainFile && title.toLowerCase() === wikiMainFile.toLowerCase()) {
+		score += 1000;
+	}
+
+	const width = info.width || 0;
+	const height = info.height || 0;
+	const megapixels = (width * height) / 1000000;
+	score += Math.min(megapixels * 2, 20);
+
+	if (width > 0 && height > 0) {
+		const ratio = width / height;
+		if (ratio >= 1.3 && ratio <= 1.8) {
+			score += 15;
+		} else if (ratio > 1.0) {
+			score += 5;
+		} else {
+			score -= 10;
+		}
+	}
+
+	const desc = extmetadata.ImageDescription?.value || '';
+	const combinedText = `${title} ${desc}`.toLowerCase();
+
+	for (const num of preservedLocoNumbers) {
+		if (combinedText.includes(num.toLowerCase())) {
+			score += 30;
+		}
+	}
+
+	for (const kw of classKeywords) {
+		if (combinedText.includes(kw.toLowerCase())) {
+			score += 10;
+		}
+	}
+
+	const bytes = info.size || 0;
+	if (bytes > 500000) score += 5;
+	if (bytes > 1500000) score += 5;
+
+	return score;
+}
+
 async function main() {
 	const enrichedPath = path.resolve('data/enriched.json');
 	if (!fs.existsSync(enrichedPath)) {
@@ -290,7 +388,7 @@ async function main() {
 
 			// 3. Determine media limit
 			const isFeatured = dbClass.isLandmark || FEATURED_QIDS.has(cls.wikidataQid);
-			const maxImages = isFeatured ? 40 : 5;
+			const maxImages = isFeatured ? 40 : 12;
 			console.log(
 				`  - Media Limit: ${maxImages} images (${isFeatured ? 'Landmark/Featured' : 'Normal'} class)`
 			);
@@ -343,149 +441,193 @@ async function main() {
 			let fileCandidates: string[] = [];
 			const candidateToLocoNumber = new Map<string, string>();
 
+			// direct category and subcategories crawl
 			if (cls.commonsCategory) {
 				try {
-					const categoryUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:${encodeURIComponent(cls.commonsCategory)}&cmtype=file&cmlimit=50&format=json`;
-					const categoryRes = await fetchWithRetry(categoryUrl, {
-						headers: { 'User-Agent': USER_AGENT }
-					});
-					if (categoryRes.ok) {
-						const catData = (await categoryRes.json()) as any;
-						const members = catData.query?.categorymembers || [];
-						fileCandidates = members.map((m: any) => m.title);
-						console.log(
-							`  - Commons Category "${cls.commonsCategory}": Found ${fileCandidates.length} files`
-						);
-					} else {
-						console.warn(
-							`  - Warning: Category API returned HTTP ${categoryRes.status} for "${cls.commonsCategory}"`
-						);
-					}
-				} catch (err) {
-					console.warn(
-						`  - Warning: Category API fetch error for "${cls.commonsCategory}": ${err instanceof Error ? err.message : String(err)}`
+					const directFiles = await fetchCategoryMembers(`Category:${cls.commonsCategory}`);
+					fileCandidates.push(...directFiles);
+					console.log(
+						`  - Commons Category "${cls.commonsCategory}": Found ${directFiles.length} direct files`
 					);
-				}
-			}
 
-			if (fileCandidates.length === 0) {
-				const searchQuery = cls.wikipediaTitle ? cls.wikipediaTitle.replace(/_/g, ' ') : cls.name;
-				console.log(`  - Category empty/missing. Searching Commons for "${searchQuery}"...`);
-				try {
-					// FA5/F5.9(a): en løs (unquoted) fritekst-søgning matcher ethvert dokument der
-					// nævner de enkelte ord ("class" er ekstremt generisk og gav falske hits som
-					// "The two Mr. Wetherbys; a middle-class comedy"). `intitle:"frase"` begrænser
-					// til filer hvis TITEL indeholder den nøjagtige frase — langt mere præcist.
-					const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`intitle:"${searchQuery}"`)}&srnamespace=6&srlimit=50&format=json`;
-					const searchRes = await fetchWithRetry(searchUrl, {
-						headers: { 'User-Agent': USER_AGENT }
-					});
-					if (searchRes.ok) {
-						const searchData = (await searchRes.json()) as any;
-						const results = searchData.query?.search || [];
-						fileCandidates = results.map((r: any) => r.title);
-						console.log(`  - Search API (intitle): Found ${fileCandidates.length} files`);
-					} else {
-						console.warn(
-							`  - Warning: Search API returned HTTP ${searchRes.status} for "${searchQuery}"`
-						);
-					}
-
-					// Fallback 1: Fulltext quoted search (finds files mentioning the exact class in text/description)
-					if (fileCandidates.length === 0) {
+					const subcats = await fetchSubcategories(cls.commonsCategory);
+					if (subcats.length > 0) {
 						console.log(
-							`  - Search API (intitle) returned 0. Trying fulltext search for "${searchQuery}"...`
+							`  - Category "${cls.commonsCategory}" has ${subcats.length} subcategories. Crawling...`
 						);
-						const fulltextUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`"${searchQuery}"`)}&srnamespace=6&srlimit=10&format=json`;
-						const fulltextRes = await fetchWithRetry(fulltextUrl, {
-							headers: { 'User-Agent': USER_AGENT }
-						});
-						if (fulltextRes.ok) {
-							const fulltextData = (await fulltextRes.json()) as any;
-							const results = fulltextData.query?.search || [];
-							fileCandidates = results.map((r: any) => r.title);
-							console.log(`  - Search API (fulltext): Found ${fileCandidates.length} files`);
-						}
-					}
-
-					// Fallback 2: Short name search (e.g. "Class D2/10" or "Class D2 10")
-					if (fileCandidates.length === 0) {
-						const classMatch = cls.name.match(
-							/(?:British Railways? class|LNER class|LMS class) (.+)/i
-						);
-						if (classMatch) {
-							const shortName = `Class ${classMatch[1]}`;
-							console.log(`  - Trying short name search for "${shortName}"...`);
-							const shortUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`"${shortName}"`)}&srnamespace=6&srlimit=10&format=json`;
-							const shortRes = await fetchWithRetry(shortUrl, {
-								headers: { 'User-Agent': USER_AGENT }
-							});
-							if (shortRes.ok) {
-								const shortData = (await shortRes.json()) as any;
-								const results = shortData.query?.search || [];
-								fileCandidates = results.map((r: any) => r.title);
-								console.log(`  - Search API (short name): Found ${fileCandidates.length} files`);
-							}
+						for (const subcat of subcats.slice(0, 5)) {
+							const subFiles = await fetchCategoryMembers(subcat);
+							fileCandidates.push(...subFiles);
+							console.log(`    - Subcat "${subcat}": Found ${subFiles.length} files`);
 						}
 					}
 				} catch (err) {
-					console.warn(
-						`  - Warning: Search API fetch error for "${searchQuery}": ${err instanceof Error ? err.message : String(err)}`
-					);
+					console.warn(`  - Warning: Category API fetch error:`, err);
 				}
 			}
 
-			// Prepend Wikipedia summary main image if found, to ensure we have a valid primary image
+			// standard intitle search
+			const searchQuery = cls.wikipediaTitle ? cls.wikipediaTitle.replace(/_/g, ' ') : cls.name;
+			try {
+				const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`intitle:"${searchQuery}"`)}&srnamespace=6&srlimit=50&format=json`;
+				const searchRes = await fetchWithRetry(searchUrl, {
+					headers: { 'User-Agent': USER_AGENT }
+				});
+				if (searchRes.ok) {
+					const searchData = (await searchRes.json()) as any;
+					const results = searchData.query?.search || [];
+					console.log(`  - Search API (intitle): Found ${results.length} files`);
+					for (const r of results) {
+						if (!fileCandidates.includes(r.title)) {
+							fileCandidates.push(r.title);
+						}
+					}
+				}
+			} catch (err) {
+				console.warn(`  - Warning: Search API (intitle) failed:`, err);
+			}
+
+			// Geograph / Flickr Search
+			try {
+				const queryStr = `"${searchQuery}" (Geograph OR Flickr)`;
+				const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(queryStr)}&srnamespace=6&srlimit=30&format=json`;
+				const searchRes = await fetchWithRetry(searchUrl, {
+					headers: { 'User-Agent': USER_AGENT }
+				});
+				if (searchRes.ok) {
+					const searchData = (await searchRes.json()) as any;
+					const results = searchData.query?.search || [];
+					console.log(`  - Geograph/Flickr search: Found ${results.length} files`);
+					for (const r of results) {
+						if (!fileCandidates.includes(r.title)) {
+							fileCandidates.push(r.title);
+						}
+					}
+				}
+			} catch (err) {
+				console.warn(`  - Warning: Geograph/Flickr search failed:`, err);
+			}
+
+			// Video Commons Search
+			try {
+				const videoUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`"${searchQuery}" filetype:video`)}&srnamespace=6&srlimit=10&format=json`;
+				const videoRes = await fetchWithRetry(videoUrl, {
+					headers: { 'User-Agent': USER_AGENT }
+				});
+				if (videoRes.ok) {
+					const videoData = (await videoRes.json()) as any;
+					const results = videoData.query?.search || [];
+					console.log(`  - Video search: Found ${results.length} files`);
+					for (const r of results) {
+						if (!fileCandidates.includes(r.title)) {
+							fileCandidates.push(r.title);
+						}
+					}
+				}
+			} catch (err) {
+				console.warn(`  - Warning: Video search failed:`, err);
+			}
+
+			// Prepend wiki summary image if available
 			if (wikiMainFile) {
-				// Remove duplicates of the same file to avoid downloading it twice
 				fileCandidates = fileCandidates.filter(
 					(f) => f.toLowerCase() !== wikiMainFile!.toLowerCase()
 				);
 				fileCandidates.unshift(wikiMainFile);
 			}
 
-			// F6.4: Udvid med målrettet Commons-søgning pr. loco-nummer for kendte lokomotiver i DB
+			// Individual Locomotive search
 			const locos = await prisma.locomotive.findMany({
-				where: { classId: dbClass.id, status: { in: ['PRESERVED', 'IN_SERVICE'] } }
+				where: { classId: dbClass.id, status: { in: ['PRESERVED', 'IN_SERVICE'] } },
+				include: { identities: true }
 			});
 			if (locos.length > 0) {
 				console.log(
-					`  - Searching Commons for ${locos.length} individual locomotives (PRESERVED/IN_SERVICE)...`
+					`  - Searching Commons for ${locos.length} preserved locomotives & their identities...`
 				);
 				for (const loco of locos) {
-					const queryStr = `"${dbClass.wikipediaTitle || dbClass.name}" "${loco.currentNumber}"`;
-					try {
-						const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(queryStr)}&srnamespace=6&srlimit=5&format=json`;
-						const searchRes = await fetchWithRetry(searchUrl, {
-							headers: { 'User-Agent': USER_AGENT }
-						});
-						if (searchRes.ok) {
-							const searchData = (await searchRes.json()) as any;
-							const results = searchData.query?.search || [];
-							console.log(`    - Loco ${loco.currentNumber}: Found ${results.length} files`);
-							for (const r of results) {
-								if (!fileCandidates.includes(r.title)) {
-									fileCandidates.push(r.title);
+					const locoNumbers = new Set<string>();
+					locoNumbers.add(loco.currentNumber);
+					for (const ident of loco.identities) {
+						locoNumbers.add(ident.number);
+					}
+
+					for (const num of locoNumbers) {
+						const queryStr = `"${cls.wikipediaTitle || cls.name}" "${num}"`;
+						try {
+							const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(queryStr)}&srnamespace=6&srlimit=5&format=json`;
+							const searchRes = await fetchWithRetry(searchUrl, {
+								headers: { 'User-Agent': USER_AGENT }
+							});
+							if (searchRes.ok) {
+								const searchData = (await searchRes.json()) as any;
+								const results = searchData.query?.search || [];
+								for (const r of results) {
+									if (!fileCandidates.includes(r.title)) {
+										fileCandidates.push(r.title);
+									}
+									let cleanFilename = r.title;
+									if (cleanFilename.startsWith('File:')) {
+										cleanFilename = cleanFilename.substring(5);
+									}
+									candidateToLocoNumber.set(cleanFilename, loco.currentNumber);
 								}
-								let cleanFilename = r.title;
-								if (cleanFilename.startsWith('File:')) {
-									cleanFilename = cleanFilename.substring(5);
-								}
-								candidateToLocoNumber.set(cleanFilename, loco.currentNumber);
 							}
+						} catch (err) {
+							console.warn(`    - Warning: Search failed for loco number ${num}:`, err);
 						}
-					} catch (err) {
-						console.warn(`    - Warning: Individual search failed for ${loco.currentNumber}:`, err);
 					}
 				}
 			}
 
+			// De-duplicate fileCandidates (case-insensitive)
+			const uniqueCandidates = new Array<string>();
+			const seenTitles = new Set<string>();
+			for (const title of fileCandidates) {
+				const low = title.toLowerCase();
+				if (!seenTitles.has(low)) {
+					seenTitles.add(low);
+					uniqueCandidates.push(title);
+				}
+			}
+			console.log(`  - Total unique file candidates collected: ${uniqueCandidates.length}`);
+
+			// Batch details query (in chunks of 50)
+			const candidatePages: any[] = [];
+			for (let i = 0; i < uniqueCandidates.length; i += 50) {
+				const chunk = uniqueCandidates.slice(i, i + 50);
+				const pages = await fetchBatchDetails(chunk);
+				candidatePages.push(...pages);
+			}
+
+			const classKeywords = [cls.name, cls.nickname || ''].filter(Boolean);
+			const preservedLocoNumbers = locos.map((l) => l.currentNumber);
+			for (const l of locos) {
+				for (const ident of l.identities) {
+					preservedLocoNumbers.push(ident.number);
+				}
+			}
+
+			// Score and sort candidates
+			const scoredCandidates = candidatePages
+				.map((page) => {
+					const score = scoreCandidate(page, wikiMainFile, classKeywords, preservedLocoNumbers);
+					return { page, score };
+				})
+				.filter((c) => c.score > -500)
+				.sort((a, b) => b.score - a.score);
+
+			console.log(`  - Scored and sorted ${scoredCandidates.length} eligible candidates`);
+
 			// 5. Download and process candidates up to maxImages
 			let savedCount = existingMediaCount;
-			for (const candidateTitle of fileCandidates) {
+			for (const scored of scoredCandidates) {
 				if (savedCount >= maxImages) {
 					break;
 				}
+
+				const page = scored.page;
+				const candidateTitle = page.title || '';
 
 				try {
 					let filename = candidateTitle;
@@ -494,34 +636,27 @@ async function main() {
 					}
 
 					const ext = path.extname(filename).toLowerCase();
-					const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.svg', '.gif'];
+					const allowedExtensions = [
+						'.jpg',
+						'.jpeg',
+						'.png',
+						'.webp',
+						'.svg',
+						'.gif',
+						'.webm',
+						'.ogv',
+						'.ogg',
+						'.mp4'
+					];
 					if (!allowedExtensions.includes(ext)) {
-						console.log(`    - Skipping irrelevant file type: ${filename}`);
 						continue;
 					}
 
-					const detailsUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=File:${encodeURIComponent(filename)}&prop=imageinfo&iiprop=url|size|mime|extmetadata&format=json`;
-					const detailsRes = await fetchWithRetry(detailsUrl, {
-						headers: { 'User-Agent': USER_AGENT }
-					});
-					if (!detailsRes.ok) {
-						console.warn(`    - Warning: Details API HTTP ${detailsRes.status} for "${filename}"`);
-						continue;
-					}
+					const isVideo = ['.webm', '.ogv', '.ogg', '.mp4'].includes(ext);
 
-					const detailsData = (await detailsRes.json()) as any;
-					const page = Object.values(detailsData.query?.pages || {})[0] as any;
-					if (!page || !page.imageinfo || page.imageinfo.length === 0) {
-						console.warn(`    - Warning: Details response missing imageinfo for "${filename}"`);
-						continue;
-					}
-
-					const info = page.imageinfo[0];
+					const info = page.imageinfo?.[0];
+					if (!info) continue;
 					const extmetadata = info.extmetadata || {};
-
-					if (!isLicenseCompatible(extmetadata)) {
-						continue;
-					}
 
 					const commonsUrl =
 						info.descriptionurl ||
@@ -533,35 +668,41 @@ async function main() {
 						where: { commonsUrl }
 					});
 					if (existingAsset) {
-						const pathsToCheck = [
-							existingAsset.localPath,
-							existingAsset.localPath.replace('-960.webp', '-1920.webp'),
-							existingAsset.localPath.replace('-960.webp', '-480.webp'),
-							existingAsset.localPath.replace('-960.webp', '-lqip.webp'),
-							existingAsset.localPath.replace('-960.webp', '-lqip.txt')
-						];
-						const filesExist = pathsToCheck.every((p) => fs.existsSync(p));
-						if (filesExist) {
-							console.log(
-								`    - Media "${filename}" already exists on disk and DB. Skipping download.`
-							);
-							savedCount++;
-							continue;
+						if (isVideo) {
+							if (fs.existsSync(existingAsset.localPath)) {
+								console.log(`    - Video "${filename}" already exists. Skipping.`);
+								savedCount++;
+								continue;
+							}
+						} else {
+							const pathsToCheck = [
+								existingAsset.localPath,
+								existingAsset.localPath.replace('-960.webp', '-1920.webp'),
+								existingAsset.localPath.replace('-960.webp', '-480.webp'),
+								existingAsset.localPath.replace('-960.webp', '-lqip.webp'),
+								existingAsset.localPath.replace('-960.webp', '-lqip.txt')
+							];
+							const filesExist = pathsToCheck.every((p) => fs.existsSync(p));
+							if (filesExist) {
+								console.log(
+									`    - Media "${filename}" already exists on disk and DB. Skipping download.`
+								);
+								savedCount++;
+								continue;
+							}
 						}
 					}
 
 					const imageUrl = info.url;
 					if (!imageUrl) {
-						console.warn(`    - Warning: Missing download URL for "${filename}"`);
 						continue;
 					}
 
-					console.log(`    - Downloading media: "${filename}"`);
-					const imgRes = await fetchWithRetry(imageUrl, { headers: { 'User-Agent': USER_AGENT } });
+					console.log(`    - Downloading media: "${filename}" (Score: ${scored.score})`);
+					const imgRes = await fetchWithRetry(imageUrl, {
+						headers: { 'User-Agent': USER_AGENT }
+					});
 					if (!imgRes.ok) {
-						console.warn(
-							`      - Warning: Download failed (HTTP ${imgRes.status}) for ${imageUrl}`
-						);
 						continue;
 					}
 
@@ -571,31 +712,46 @@ async function main() {
 					const targetDir = path.join('data', 'media', cls.wikidataQid);
 					fs.mkdirSync(targetDir, { recursive: true });
 
-					// Resize with sharp
-					const image = sharp(buffer);
+					let localPath = '';
+					let width = 0;
+					let height = 0;
 
-					// Save the three versions:
-					await image
-						.clone()
-						.resize(1920)
-						.webp()
-						.toFile(path.join(targetDir, `${md5}-1920.webp`));
-					const info960 = await image
-						.clone()
-						.resize(960)
-						.webp()
-						.toFile(path.join(targetDir, `${md5}-960.webp`));
-					await image
-						.clone()
-						.resize(480)
-						.webp()
-						.toFile(path.join(targetDir, `${md5}-480.webp`));
+					if (isVideo) {
+						localPath = `data/media/${cls.wikidataQid}/${md5}${ext}`;
+						fs.writeFileSync(path.join(targetDir, `${md5}${ext}`), buffer);
+						width = info.width || 0;
+						height = info.height || 0;
+					} else {
+						// Resize with sharp
+						const image = sharp(buffer);
 
-					// Save LQIP WebP (16x16) and base64 text
-					const lqipBuffer = await image.clone().resize(16, 16).webp().toBuffer();
-					const lqipBase64 = `data:image/webp;base64,${lqipBuffer.toString('base64')}`;
-					fs.writeFileSync(path.join(targetDir, `${md5}-lqip.webp`), lqipBuffer);
-					fs.writeFileSync(path.join(targetDir, `${md5}-lqip.txt`), lqipBase64, 'utf8');
+						// Save the three versions:
+						await image
+							.clone()
+							.resize(1920)
+							.webp()
+							.toFile(path.join(targetDir, `${md5}-1920.webp`));
+						const info960 = await image
+							.clone()
+							.resize(960)
+							.webp()
+							.toFile(path.join(targetDir, `${md5}-960.webp`));
+						await image
+							.clone()
+							.resize(480)
+							.webp()
+							.toFile(path.join(targetDir, `${md5}-480.webp`));
+
+						// Save LQIP WebP (16x16) and base64 text
+						const lqipBuffer = await image.clone().resize(16, 16).webp().toBuffer();
+						const lqipBase64 = `data:image/webp;base64,${lqipBuffer.toString('base64')}`;
+						fs.writeFileSync(path.join(targetDir, `${md5}-lqip.webp`), lqipBuffer);
+						fs.writeFileSync(path.join(targetDir, `${md5}-lqip.txt`), lqipBase64, 'utf8');
+
+						localPath = `data/media/${cls.wikidataQid}/${md5}-960.webp`;
+						width = info960.width;
+						height = info960.height;
+					}
 
 					// Extract metadata fields
 					const metadataTitle = cleanHtml(
@@ -614,17 +770,15 @@ async function main() {
 					const licenseName =
 						extmetadata.LicenseShortName?.value || extmetadata.License?.value || 'Open License';
 
-					const localPath = `data/media/${cls.wikidataQid}/${md5}-960.webp`;
-
 					// Upsert into MediaAsset
 					await prisma.mediaAsset.upsert({
 						where: { commonsUrl: commonsUrl },
 						update: {
 							classId: dbClass.id,
-							kind: 'PHOTO',
+							kind: isVideo ? 'VIDEO' : 'PHOTO',
 							localPath: localPath,
-							width: info960.width,
-							height: info960.height,
+							width: width,
+							height: height,
 							title: metadataTitle || null,
 							year: year,
 							locoNumber: locoNumber,
@@ -636,10 +790,10 @@ async function main() {
 						},
 						create: {
 							classId: dbClass.id,
-							kind: 'PHOTO',
+							kind: isVideo ? 'VIDEO' : 'PHOTO',
 							localPath: localPath,
-							width: info960.width,
-							height: info960.height,
+							width: width,
+							height: height,
 							title: metadataTitle || null,
 							year: year,
 							locoNumber: locoNumber,
