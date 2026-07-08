@@ -55,6 +55,12 @@
 	<title>{displayName} — Trainpedia</title>
 	{#if cls.narrative}
 		<meta name="description" content={cls.narrative.slice(0, 160)} />
+		<meta property="og:description" content={cls.narrative.slice(0, 160)} />
+	{/if}
+	<meta property="og:title" content="{displayName} — Trainpedia" />
+	<meta property="og:type" content="article" />
+	{#if heroMedia}
+		<meta property="og:image" content="/{heroMedia.localPath}" />
 	{/if}
 </svelte:head>
 
@@ -73,6 +79,13 @@
 				alt={heroMedia.title ?? cls.name}
 				class="h-full w-full object-cover opacity-80"
 			/>
+			{#if heroMedia.attribution}
+				<div
+					class="absolute bottom-4 right-4 z-10 rounded bg-black/50 px-2 py-1 text-[10px] text-white/95 font-mono"
+				>
+					Photo: {heroMedia.attribution}
+				</div>
+			{/if}
 		{/if}
 		<div
 			class="absolute inset-0"
@@ -172,15 +185,19 @@
 							{cls.narrative}
 						</p>
 						{#if cls.sourceUrl}
-							<p class="mt-3 text-xs" style="color: var(--map-ink-soft);">
+							<p class="mt-3 text-[11px] font-mono" style="color: var(--map-ink-soft);">
 								Source:
 								<a
-									href={cls.sourceUrl}
+									href={cls.sourceUrl + (cls.sourceRevision ? `?oldid=${cls.sourceRevision}` : '')}
 									target="_blank"
 									rel="external noopener noreferrer"
 									class="hover:underline"
 									style="color: var(--line-color);">Wikipedia</a
 								>
+								{#if cls.sourceRevision}
+									· oldid: {cls.sourceRevision}
+								{/if}
+								· retrieved 7 Jul 2026
 							</p>
 						{/if}
 					</section>

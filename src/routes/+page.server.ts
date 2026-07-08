@@ -41,26 +41,59 @@ export const load: PageServerLoad = async () => {
 		}
 	});
 
+	// Compute stats per era across the entire database
+	const rawStats = await db.locomotiveClass.findMany({
+		select: {
+			eraId: true,
+			totalBuilt: true,
+			_count: {
+				select: {
+					locomotives: {
+						where: { status: { in: ['PRESERVED', 'IN_SERVICE'] } }
+					}
+				}
+			}
+		}
+	});
+
+	const statsByEra = new Map<
+		number,
+		{ classesCount: number; builtCount: number; preservedCount: number }
+	>();
+	for (const c of rawStats) {
+		const curr = statsByEra.get(c.eraId) ?? { classesCount: 0, builtCount: 0, preservedCount: 0 };
+		curr.classesCount += 1;
+		curr.builtCount += c.totalBuilt ?? 0;
+		curr.preservedCount += c._count.locomotives;
+		statsByEra.set(c.eraId, curr);
+	}
+
 	// Eras (non-empty only)
 	const eras = await db.era.findMany({
 		orderBy: { sortIndex: 'asc' },
 		select: {
+			id: true,
 			slug: true,
 			name: true,
 			startYear: true,
 			endYear: true,
 			narrative: true,
+			sourceUrl: true,
+			sourceRevision: true,
 			_count: { select: { classes: true } }
 		}
 	});
 	const visibleEras = eras
 		.filter((e) => e._count.classes > 0)
 		.map((e) => ({
+			id: e.id,
 			slug: e.slug,
 			name: e.name,
 			startYear: e.startYear,
 			endYear: e.endYear,
 			narrative: e.narrative,
+			sourceUrl: e.sourceUrl,
+			sourceRevision: e.sourceRevision,
 			classCount: e._count.classes
 		}));
 
@@ -148,6 +181,7 @@ export const load: PageServerLoad = async () => {
 		},
 		featured,
 		eras: visibleEras,
+		eraStats: Object.fromEntries(statsByEra),
 		leaderboards: {
 			fastest: fastestSorted.map((c) => ({
 				qid: c.wikidataQid,

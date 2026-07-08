@@ -24,7 +24,8 @@
 		{ href: resolve('/browse'), label: 'Browse' },
 		{ href: resolve('/browse') + '?lens=timeline', label: 'Timeline' },
 		{ href: resolve('/records'), label: 'Records' },
-		{ href: resolve('/survivors'), label: 'Survivors' }
+		{ href: resolve('/survivors'), label: 'Survivors' },
+		{ href: resolve('/about'), label: 'About' }
 	];
 
 	function isActive(href: string): boolean {
@@ -196,6 +197,16 @@
 					<option value={scheme}>{NAME_SCHEME_LABELS[scheme]}</option>
 				{/each}
 			</select>
+
+			<a
+				href="/api/random"
+				class="flex h-7 w-7 items-center justify-center rounded-full border transition-all hover:scale-105 text-sm"
+				style="background: var(--map-zone); color: var(--map-ink); border-color: var(--map-zone);"
+				title="Explore a random class"
+				aria-label="Redirect to a random locomotive class chronicle"
+			>
+				🎲
+			</a>
 		</div>
 
 		<div class="search-container relative flex items-center">

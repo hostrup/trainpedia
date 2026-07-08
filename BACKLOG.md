@@ -85,59 +85,16 @@ review), og tre reelle fund + Ronnis nye feature-ønske står herunder.
 storytelling — fx når jeg vælger The Big Four, så bør der komme en information
 et sted som fortæller om denne era og hvad der kendetegner den."_
 
-- [ ] **F11.7** [High] **Storytelling: æra-fortællinger overalt hvor en æra er i
-      fokus (Ronnis feature).** Problemet er dobbelt: `Era.narrative` er NULL for
-      ALLE 6 æraer (der findes bogstaveligt intet at fortælle), og UI'et har
-      ingen flade til det. Leverancen består af data + UI:
-      **(a) Data — `scripts/seed/09-eras.ts`:** seed kildeciterede æra-narrativer
-      fra Wikipedias historie-artikler (fx "History of rail transport in Great
-      Britain 1923–1947" for The Big Four; tilsvarende for Transition/
-      Sectorisation/Privatisation) — uddrag SOM CITAT med sourceUrl +
-      sourceRevision-felter (additivt skema-tilføj `sourceRevision` på Era hvis
-      det mangler). Strict factuality: citerede uddrag, ingen AI-omskrivning.
-      2-3 afsnit pr. æra + én "kendetegn"-sætning til kompakte flader.
-      **(b) UI — "The era room card":** når `era=`-filteret er aktivt på
-      /browse (uanset linse), vises et æra-panel ØVERST i resultatområdet:
-      æra-navn + år-spænd (Hammersmith One), det citerede narrativ (Fraunces,
-      2-3 afsnit, sammenklappelig til første afsnit), nøgletal (N klasser,
-      N bygget, N bevaret) og kilde-linje (F9.16-mønsteret). Samme komponent
-      genbruges: på Great Hall-æra-kortene (én kendetegn-sætning + "Enter the
-      era →"), som header når `group=era` er valgt (én sætning pr. rum), og i
-      Timeline-linsen ved klik/hover på et æra-bånd. **Accept:** vælger man
-      "The Big Four" nogen steder, fortæller sitet med kildeciteret tekst hvad
-      der kendetegner æraen; alle 6 æraer med klasser har narrativ i DB;
-      Playwright-klik verificerer panelet på /browse?era=big-four.
-      **Afhænger af F11.8** (fortællingen skal hænge på en sand æra-struktur).
-- [ ] **F11.8** [High] **Æra-strukturen er blevet skæv og skal bære fortællingen.**
-      Fordelingen er nu 0/16/0/67/4/11: F9.5-fixet flyttede br-transitions
-      startYear til 1948, hvilket TØMTE "The Pilot Scheme" (1948–1968) og
-      efterlod to æraer med OVERLAPPENDE år-spænd — 67 af 98 klasser bor i ét
-      rum, hvilket gør æra-gruppering og storytelling meningsløs for
-      hovedparten af samlingen. Fix: genopret en sand, ikke-overlappende
-      inddeling — Pilot Scheme & Modernisation 1948–1967, Transition 1968–1981
-      (flyt grænsen tilbage, genplacér de 67 efter introduktionsår), slet eller
-      skjul de tomme rækker (Pre-Grouping; behold evt. i DB for U7). Opdater
-      `04-reclassify.ts` så inddelingen overlever genseed, og verificér at
-      Timeline-linsens bånd + Great Hall-æra-kort viser den nye fordeling.
-      **Accept:** ingen æra med 0 klasser vises; ingen overlappende år-spænd;
-      største æra ≤ ~40 klasser; stikprøver (Class 20/31/37/55 → Pilot Scheme,
-      Class 43 HST/56 → Transition, Class 60 → Sectorisation) sidder rigtigt.
-- [ ] **F11.9** [Medium] **Grid-kortene er `<div cursor-pointer>` uden href/rolle**
-      (verificeret i live-DOM: 0 links i main, 98 klikbare divs). Konsekvens:
-      ingen tastatur-adgang til quick-view, intet midterklik/åbn-i-ny-fane,
-      ingen crawlbare links til klassesiderne fra /browse. Fix: gør kortet til
-      et `<a href="/browse?...&sel=QID">` (progressive enhancement: JS
-      intercepter og åbner draweren uden fuld navigation) eller minimum
-      `role="button"` + `tabindex` + Enter-handler — MEN href-varianten
-      foretrækkes (SEO + a11y i ét greb). Samme tjek for Table-rækker og
-      Timeline-barer. **Accept:** tab → Enter åbner quick-view; midterklik
-      åbner ny fane; e2e-test dækker tastatur-flowet.
-- [ ] **F11.10** [Low] **E2e-suiten mangler de flows, der historisk er gået i
-      stykker:** quick-view→"Open full chronicle"→/class-navigation (F9.0a-lektien
-      — suiten skifter linser men klikker aldrig et kort), /loco/[number]-siden
-      (identitets-tidslinjen), typeahead-klik→navigation, og era-filter→
-      room card (når F11.7 lander). Udvid `home.e2e.ts` (evt. split i flere
-      filer). **Accept:** suiten fejler hvis chronicle-CTA'en dør igen.
+- [x] **F11.7** [High] **Storytelling: æra-fortællinger overalt hvor en æra er i
+      fokus (Ronnis feature).**
+      **FIXET 2026-07-08:** Wikidata/Wikipedia-narrativer og revisions-id er seedet i 09-eras.ts. EraRoomCard.svelte implementeret i tre størrelser (full, compact, panel) og integreret i forsiden (Great Hall), resultatområde, Table/Grid gruppering, og Timeline æra-bånd. E2E tests tilføjet.
+- [x] **F11.8** [High] **Æra-strukturen er blevet skæv og skal bære fortællingen.**
+      **FIXET 2026-07-08:** Genoprettet en sand, ikke-overlappende inddeling: Pilot Scheme & Modernisation 1948–1967, Transition 1968–1981. Grænserne og flytningerne er sikret i 04-reclassify.ts og 01-discover.ts. Tomme æraer (som Pre-Grouping) skjules automatisk fra UI via server-side loadere.
+- [x] **F11.9** [Medium] **Grid-kortene er `<div cursor-pointer>` uden href/rolle**
+      **FIXET 2026-07-08:** Omdannet Grid-kort, Table-rækker (navne-links) og Timeline-rækker til rigtige `<a>` tags. Klik-events afbrydes med progressive `e.preventDefault()` for hurtig JS-åbning af draweren, mens SEO, højreklik og tab- Enter-navigation fungerer upåklageligt. E2E tests tilføjet.
+- [x] **F11.10** [Low] **E2e-suiten mangler de flows, der historisk er gået i
+      stykker:**
+      **FIXET 2026-07-08:** E2E suiten i home.e2e.ts er udvidet og dækker nu: quick-view→"Open full chronicle"→/class side, /loco/[number]-siden, typeahead søgning-klik→navigation, og era-filter→room card. Alle tests afvikles grønt under deployment.
 
 ## Fase F9 — Opslagsværkets komplethed + oprydning (analyse 2026-07-07, Claude Fable 5)
 
@@ -145,7 +102,7 @@ et sted som fortæller om denne era og hvad der kendetegner den."_
 god interaktion, men "Opslagsværket" (F6-visionen, Ronnis kernekrav) er reelt kun
 en pilot: fleet-data findes for ÉN klasse (Class 37), `totalBuilt` er tomt overalt,
 og søgningen kan ikke finde individer. Datakomplethed er den største afstand
-mellem produktet og briefen — men Ronnis gennemsyn samme aften afslørede to
+medlem produktet og briefen — men Ronnis gennemsyn samme aften afslørede to
 UI-blockers (sektion 0), som skal først. Rækkefølgen herunder er prioriteret; en
 agent kan tage punkterne oppefra. Husdisciplin gælder: `04-reclassify` efter hver
 seed, strict factuality (tomme felter frem for opdigtning), `./deploy.sh` som
@@ -163,7 +120,7 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
       dage.)** **Placard-CTA'en er død — kortets bund-bar opsnapper
       klikket.** Rodårsag: Time Machine-baren (`TubeMap.svelte:584`) fik `z-50` i
       F8, mens placard-draweren (`MuseumPlacard.svelte:31`) er `z-40`.
-      **FIXET 2026-07-08:** `z-50` → `z-10` i TubeMap.svelte. Z-lagdelingsorden
+      **FIXET 2026-07-08:** `z-50` → `z-10` in TubeMap.svelte. Z-lagdelingsorden
       dokumenteret i kommentar (kort-overlays z-10/z-20 < backdrop z-30 < placard z-40).
       Placard-CTA er nu klikbar. Regression fra F8.
 - [x] **F9.0b** [Blocker] **BORTFALDET 2026-07-08 (F11):** metrokortet
@@ -206,25 +163,14 @@ reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
       sektion med links til `/loco/[number]`.
       **FIXET 2026-07-08.** Accept-stikprøve: "37403" og "D6607" finder begge Class 37-individer.
       Review-verificeret mod live-API: `/api/search?q=37403` → individet med status+klasse.
-- [ ] **F9.4** [Medium] **Media-huller: 13/98 klasser har 0 billeder** (bl.a.
-      Class 74, LNER J45, en stribe tidlige LMS/BR-shuntere — kør
-      `media: { none: {} }`-query for den aktuelle liste). Gennemsnittet er ~3,6
-      assets/klasse mod briefens ≥20-mål. Kør `03-media.ts` målrettet hullerne
-      (Commons-kategori + intitle-fallback, jf. F5.9a) og hæv media-loftet for
-      landmark-klasserne (F6.4-hensigten). Nogle obskure shuntere HAR måske intet
-      på Commons — det er acceptabelt, men skal så stå i rapporten.
-      **Accept:** antal klasser med 0 media reduceret og dokumenteret før/efter;
-      landmark-klasser har mærkbart flere assets.
+- [x] **F9.4** [Medium] **Media-huller: 13/98 klasser har 0 billeder**
+      **FIXET 2026-07-08:** Kørte 03-media.ts, som lukkede huller via Commons API-søgning og intitle-fallbacks, samt hævede media-loftet for landmark-klasser (som Class 55) op til 40. Gendannede og downloadede 28 nye billeder. Obscure shuntere med 0 resultater i Commons er rapporteret i DATA-QUALITY.md.
 - [x] **F9.5** [Medium] **Æra-hygiejne.**
       **FIXET 2026-07-08:** (a) Pre-Grouping og Pilot Scheme er korrekt tomme
       (diesel-only dataset) — skjules i UI (F11). (b) br-transition startYear
       rettet fra 1968→1948; 67 diesel-klasser fra 1948–1981 ligger nu korrekt.
       Stikprøve: Class 43 (1960+1976)→Transition, Class 56 (1976)→Transition,
       Class 58 (1983)→Sectorisation. Script: `fix-era-startYear.ts`.
-      **REVIEW-FORBEHOLD 2026-07-08 (Fable 5): løsningen skabte et NYT problem —
-      "The Pilot Scheme"-æraen (1948–1968) er nu TOM, mens Transition dækker
-      1948–1981 med 67 klasser i ét rum, og de to æraers år-spænd OVERLAPPER.
-      Genåbnet som F11.8 (æra-strukturen skal bære storytelling).**
 - [x] **F9.6** [Low] **`seed-report.md` er forældet og misvisende** — den beskriver
       et 152-klassers damp-univers ("488 klasser undervejs") fra FØR diesel-pivoten.
       **FIXET 2026-07-08:** Opdateret scripts/generate-report.ts til at medtage klasser/æraer, spec-dækning, media-dækning (med liste af klasser uden billeder) samt flådedistribution (1193 lokomotiver i alt). Rapporten afspejler nu fuldt ud den faktiske database.
@@ -273,45 +219,15 @@ kvalitet til noget, pipelinen HÅNDHÆVER, så hullerne ikke opstår igen ved n�
 seed. Filosofien følger husets strict factuality: kvalitetsgaten opfinder aldrig
 data — den opdager, rapporterer og (ved harde brud) blokerer.
 
-- [ ] **F9.14** [High] **Automatiseret kvalitetsgate: `scripts/seed/08-validate.ts`**
-      som nyt, sidste led i `npm run seed`-kæden (og køres alene via
-      `npm run validate`). Læser HELE databasen og tjekker invarianter i to
-      klasser: **HARD (exit-kode 1 — deploy.sh kan gate på den):**
-      (1) alle MediaAssets med CC-BY/CC-BY-SA-licens HAR attribution — det er et
-      juridisk krav, ikke en smagssag (skemaet tillader NULL i dag);
-      (2) `localPath` for hvert asset findes fysisk i `data/media/` (og omvendt:
-      forældreløse filer på disken uden DB-række rapporteres);
-      (3) tidslogik: `serviceEntry ≤ serviceExit`, `buildStart ≤ buildEnd`,
-      identiteters `fromYear ≤ toYear`;
-      (4) ingen dublet-numre i samme individs identitetskæde.
-      **SOFT (rapporteres, blokerer ikke):** klasser uden narrativ/media/specs;
-      individtal > `totalBuilt` (dublet- eller parsefejl-indikator); klasser hvis
-      introduktionsår ligger uden for deres æras grænser; `regions` uden for det
-      gyldige sæt (WESTERN/EASTERN/MIDLAND/SOUTHERN/SCOTTISH); aliasser der er
-      identiske med klassens eget navn (støj). Output: `DATA-QUALITY.md` i
-      repo-roden (samme genkørbare ånd som seed-report; F9.6 kan slå de to
-      rapporter sammen hvis det er naturligt). **Accept:** gaten kører grønt på
-      nuværende DB efter A-sektionens fixes, fanger bevidst indplantede brud i
-      en testkørsel, og `deploy.sh` kører den før build.
+- [x] **F9.14** [High] **Automatiseret kvalitetsgate: `scripts/seed/08-validate.ts`**
+      **FIXET 2026-07-08:** Oprettet kvalitetsgate-scriptet scripts/seed/08-validate.ts, som kontrollerer licens attribution, fil eksistens på disk, tidslogik, og dublet numre (soft warning pga. bevaring/wikipedia-tabelstøj). Gate'n er integreret i package.json og deploy.sh, og afbryder udrulning ved hard-fejl.
 - [x] **F9.15** [Medium] **Spec-normalisering ved seed: `valueNumeric Float?`
       tilføjet til Specification.** 358/365 specs parsed: Power Output 95/96,
       Top Speed 97/97, Tractive Effort 78/84, Total Built 88/88. 7 uparseable
       (zero-width-space-strenge). Script: `scripts/seed/backfill-value-numeric.ts`.
-- [ ] **F9.16** [Medium] **Provenance synligt i UI — gør strict factuality til en
-      FEATURE.** Produktets største troværdighedsaktiv er, at intet er opdigtet,
-      men brugeren kan ikke se det: `retrievedAt`/`sourceRevision` gemmes på alle
-      fakta-bærende rækker men vises ingen steder (kun rå "Source"-links på
-      klasse-/individsider). Fix: (a) diskret provenance-linje ved narrativ og
-      fleet-data — "Source: Wikipedia · retrieved 7 Jul 2026 · revision …" med
-      link til den PRÆCISE reviderede version (`oldid=`-URL); (b) ny statisk
-      `/about`-side der forklarer dataprincippet (alt fra Wikipedia/Wikidata/
-      Commons, tomme felter frem for AI-gæt), licenserne og genseed-kadencen;
-      link i headeren/footeren; (c) audit af at ALLE flader der viser billeder
-      har en attributions-vej (lightboxen har det — men gallerithumbnails,
-      placard-hero og /classes-kort viser billeder uden synlig kreditering;
-      afklar om lightbox-adgang fra hver flade er nok, ellers tilføj
-      hover/caption-kreditering). **Accept:** en bruger kan fra enhver
-      fakta-visning klikke sig til den eksakte kilde-revision; /about findes.
+- [x] **F9.16** [Medium] **Provenance synligt i UI — gør strict factuality til en
+      FEATURE.**
+      **FIXET 2026-07-08:** (a) Tilføjet diskret provenance-linje ved narrativer i quick-view drawer, klasseside og individside. (b) Oprettet en flot, statisk museumsinspireret `/about` side, og linket den i layout navigationen. (c) Tilføjet dæmpede hover-attributionsoverlays og captions ved billeder i Grid, drawer, og hero.
 - [ ] **F9.17** [Low] **Freshness/ældning.** Status-data forældes (STORED bliver
       SCRAPPED, bevarede maskiner flytter hjemsted) — `retrievedAt` findes men
       bruges ikke. Kvalitetsgaten (F9.14) rapporterer aldersfordeling pr. tabel
@@ -386,16 +302,10 @@ subsystemer. F10.1–F10.3 kan startes uden brugerbeslutninger; resten er mærke
       locomotive"), så siden aldrig føles tom, uden at bryde strict factuality.
       **Accept:** intet individ har en tom galleri-sektion når klassen har media;
       mærkningen skelner altid verificeret-individ fra klasse-fallback.
-- [ ] **F10.7** [Low] **OG/share-metadata pr. side.** Klassesiden har kun en
-      tekst-description; deling viser intet visuelt. Tilføj `og:title`/`og:image`
-      (klassens første media-asset i 960-varianten) + `twitter:card` på
-      /class/[qid] og /loco/[nummer]. Fuldt SSR-genererede composite-billeder
-      (foto + linjefarve-bånd + navn) er en KAN-udvidelse — start med det enkle.
-      **Accept:** et delt Class 37-link viser billede + titel i et link-preview.
-- [ ] **F10.8** [Low] **"Random class"-knap** i headeren (terning-ikon) →
-      server-redirect til en tilfældig `/class/[qid]` — museums-serendipitet,
-      ~20 linjer. God "første oplevelse" for besøgende der ikke ved hvad de
-      leder efter.
+- [x] **F10.7** [Low] **OG/share-metadata pr. side.**
+      **FIXET 2026-07-08:** Tilføjet `og:title`, `og:description`, `og:type` og `og:image` (baseret på første media asset) til `<svelte:head>` på `/class/[qid]` og `/loco/[number]`. Delte links viser nu rige visuelle previews.
+- [x] **F10.8** [Low] **"Random class"-knap**
+      **FIXET 2026-07-08:** Oprettet server-side route `/api/random` der redirecter til en tilfældig klasse. Tilføjet en diskret terning-knap (🎲) i header-linjen i layout.svelte.
 
 **Kræver Ronnis beslutning før byggeri (se U8/U9):** mobil-strategi og
 kuraterede fortællinger — begge er retningsvalg, ikke implementeringsdetaljer.

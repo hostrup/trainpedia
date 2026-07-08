@@ -22,14 +22,14 @@ const eras = [
 	},
 	{
 		slug: 'br-steam',
-		name: 'The Pilot Scheme',
+		name: 'Pilot Scheme & Modernisation',
 		startYear: 1948,
-		endYear: 1968,
+		endYear: 1967,
 		sortIndex: 3
 	},
 	{
 		slug: 'br-transition',
-		name: 'The Diesel & Electric Transition Era',
+		name: 'Transition',
 		startYear: 1968,
 		endYear: 1981,
 		sortIndex: 4
@@ -156,14 +156,11 @@ function determineTraction(
 	return 'OTHER';
 }
 
-function getEra(year: number, traction: string): string {
+function getEra(year: number): string {
 	if (year >= 1830 && year <= 1922) return 'pre-grouping';
 	if (year >= 1923 && year <= 1947) return 'big-four';
 	if (year >= 1948 && year <= 1967) return 'br-steam';
-	if (year === 1968) {
-		return traction === 'STEAM' ? 'br-steam' : 'br-transition';
-	}
-	if (year >= 1969 && year <= 1981) return 'br-transition';
+	if (year >= 1968 && year <= 1981) return 'br-transition';
 	if (year >= 1982 && year <= 1993) return 'sectorisation';
 	if (year >= 1994) return 'modern';
 	return '';
@@ -342,7 +339,7 @@ async function main() {
 			const match = serviceEntry.match(/^(\d{4})/);
 			if (match) {
 				year = parseInt(match[1], 10);
-				eraSlug = getEra(year, traction);
+				eraSlug = getEra(year);
 			}
 		}
 

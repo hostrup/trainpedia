@@ -44,6 +44,7 @@ model Era {
   sortIndex   Int
   classes     LocomotiveClass[]
   sourceUrl   String?
+  sourceRevision String?
   retrievedAt DateTime?
 }
 

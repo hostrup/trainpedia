@@ -6,9 +6,10 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${BLUE}[1/5] Kvalitets-gates: lint + typecheck...${NC}"
+echo -e "${BLUE}[1/5] Kvalitets-gates: lint + typecheck + data validation...${NC}"
 npm run lint
 npm run check
+npm run validate
 
 echo -e "${BLUE}[2/5] Tests...${NC}"
 if npm run test; then

@@ -28,6 +28,23 @@
 
 <svelte:head>
 	<title>{title} — Trainpedia</title>
+	<meta
+		name="description"
+		content="Locomotive {title} from the {loco.class.name} class. Status: {STATUS_LABELS[
+			loco.status
+		] ?? 'Unknown'}."
+	/>
+	<meta property="og:title" content="{title} — Trainpedia" />
+	<meta
+		property="og:description"
+		content="Locomotive {title} from the {loco.class.name} class. Status: {STATUS_LABELS[
+			loco.status
+		] ?? 'Unknown'}."
+	/>
+	<meta property="og:type" content="article" />
+	{#if galleryItems.length > 0}
+		<meta property="og:image" content="/{galleryItems[0].localPath}" />
+	{/if}
 </svelte:head>
 
 <div style="--line-color: {lineColor};">
@@ -292,14 +309,22 @@
 						{/if}
 					</dl>
 					{#if loco.sourceUrl}
-						<div class="mt-5 border-t pt-4 text-xs" style="border-color: var(--map-bg);">
+						<div
+							class="mt-5 border-t pt-4 text-[11px] font-mono"
+							style="border-color: var(--map-bg); color: var(--map-ink-soft);"
+						>
+							Source:
 							<a
-								href={loco.sourceUrl}
+								href={loco.sourceUrl + (loco.sourceRevision ? `?oldid=${loco.sourceRevision}` : '')}
 								target="_blank"
 								rel="external noopener noreferrer"
 								class="hover:underline"
-								style="color: var(--line-color);">Read the full Wikipedia article →</a
+								style="color: var(--line-color);">Wikipedia</a
 							>
+							{#if loco.sourceRevision}
+								· oldid: {loco.sourceRevision}
+							{/if}
+							· retrieved 7 Jul 2026
 						</div>
 					{/if}
 				</div>

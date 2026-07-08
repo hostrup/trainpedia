@@ -6,6 +6,7 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { tractionColor, tractionLabel, buildPeriod, mediaSrcset } from '$lib/loco.js';
 	import { resolveDisplayName } from '$lib/nameScheme.js';
+	import EraRoomCard from '$lib/components/EraRoomCard.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -207,24 +208,52 @@
 				{/each}
 			</div>
 
-			<div class="ml-auto flex items-center gap-2">
-				<span
-					class="text-[10px] font-semibold tracking-widest uppercase"
-					style="color: var(--map-ink-soft);"
-				>
-					Sort
-				</span>
-				{#each [{ id: 'year', label: 'Year' }, { id: 'name', label: 'Name' }, { id: 'built', label: 'Built' }] as s (s.id)}
-					<button
-						onclick={() => setSort(s.id)}
-						class="rounded-full border px-2.5 py-0.5 text-[11px] transition-colors"
-						style={data.filters.sort === s.id
-							? 'background: var(--tfl-blue); border-color: var(--tfl-blue); color: white; font-weight: 600;'
-							: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}
+			<div class="ml-auto flex flex-wrap items-center gap-4">
+				<!-- Group switcher -->
+				<div class="flex items-center gap-2">
+					<span
+						class="text-[10px] font-semibold tracking-widest uppercase"
+						style="color: var(--map-ink-soft);"
 					>
-						{s.label}{data.filters.sort === s.id ? (data.filters.dir === 'asc' ? ' ↑' : ' ↓') : ''}
-					</button>
-				{/each}
+						Group
+					</span>
+					{#each [{ id: 'none', label: 'None' }, { id: 'era', label: 'Era' }] as g (g.id)}
+						<button
+							onclick={() => updateUrl({ group: g.id === 'none' ? null : g.id })}
+							class="rounded-full border px-2.5 py-0.5 text-[11px] transition-colors"
+							style={data.filters.group === g.id || (g.id === 'none' && !data.filters.group)
+								? 'background: var(--tfl-blue); border-color: var(--tfl-blue); color: white; font-weight: 600;'
+								: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}
+						>
+							{g.label}
+						</button>
+					{/each}
+				</div>
+
+				<!-- Sort switcher -->
+				<div class="flex items-center gap-2">
+					<span
+						class="text-[10px] font-semibold tracking-widest uppercase"
+						style="color: var(--map-ink-soft);"
+					>
+						Sort
+					</span>
+					{#each [{ id: 'year', label: 'Year' }, { id: 'name', label: 'Name' }, { id: 'built', label: 'Built' }] as s (s.id)}
+						<button
+							onclick={() => setSort(s.id)}
+							class="rounded-full border px-2.5 py-0.5 text-[11px] transition-colors"
+							style={data.filters.sort === s.id
+								? 'background: var(--tfl-blue); border-color: var(--tfl-blue); color: white; font-weight: 600;'
+								: 'border-color: var(--map-zone); color: var(--map-ink-soft);'}
+						>
+							{s.label}{data.filters.sort === s.id
+								? data.filters.dir === 'asc'
+									? ' ↑'
+									: ' ↓'
+								: ''}
+						</button>
+					{/each}
+				</div>
 			</div>
 		</div>
 
@@ -285,6 +314,20 @@
 		</div>
 	</div>
 
+	{#if data.filters.era}
+		{@const activeEra = data.eras.find(
+			(e: PageData['eras'][number]) => e.slug === data.filters.era
+		)}
+		{#if activeEra}
+			<EraRoomCard
+				era={activeEra}
+				eras={data.eras}
+				size="full"
+				stats={data.eraStats[activeEra.id]}
+			/>
+		{/if}
+	{/if}
+
 	<!-- Empty state -->
 	{#if data.classes.length === 0}
 		<div
@@ -304,78 +347,114 @@
 
 		<!-- GRID LENS -->
 	{:else if data.lens === 'grid'}
-		<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-			{#each data.classes as cls (cls.wikidataQid)}
-				<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-				<div
-					onclick={() => selectClass(cls.wikidataQid)}
-					class="group flex cursor-pointer flex-col overflow-hidden rounded-xl border transition-all duration-300 hover:-translate-y-0.5"
-					style="--line-color: {tractionColor(
-						cls.regions
-					)}; background: var(--map-bg); border-color: var(--map-zone); border-top: 3px solid var(--line-color); box-shadow: var(--shadow-subtle);"
-				>
-					<div class="relative aspect-[3/2] overflow-hidden" style="background: var(--map-zone);">
-						{#if cls.media.length > 0}
-							{@const img = mediaSrcset(cls.media[0].localPath)}
-							<img
-								src={img.src}
-								srcset={img.srcset}
-								sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-								alt={cls.media[0].title ?? cls.name}
-								loading="lazy"
-								class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-							/>
-						{:else}
-							<div
-								class="flex h-full w-full items-center justify-center text-[10px] tracking-widest uppercase"
-								style="color: var(--map-ink-soft);"
-							>
-								No imagery
-							</div>
-						{/if}
-						<!-- Type badge -->
-						{#if cls.powerType}
+		{#snippet classCard(cls: PageData['classes'][number])}
+			<a
+				href={resolve('/class/[qid]', { qid: cls.wikidataQid })}
+				onclick={(e) => {
+					if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+						e.preventDefault();
+						selectClass(cls.wikidataQid);
+					}
+				}}
+				class="group flex cursor-pointer flex-col overflow-hidden rounded-xl border transition-all duration-300 hover:-translate-y-0.5 no-underline text-left block"
+				style="--line-color: {tractionColor(
+					cls.regions
+				)}; background: var(--map-bg); border-color: var(--map-zone); border-top: 3px solid var(--line-color); box-shadow: var(--shadow-subtle);"
+			>
+				<div class="relative aspect-[3/2] overflow-hidden" style="background: var(--map-zone);">
+					{#if cls.media.length > 0}
+						{@const img = mediaSrcset(cls.media[0].localPath)}
+						<img
+							src={img.src}
+							srcset={img.srcset}
+							sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+							alt={cls.media[0].title ?? cls.name}
+							loading="lazy"
+							class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+						/>
+						{#if cls.media[0].attribution}
 							<span
-								class="absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider"
-								style="background: rgba(0,0,0,0.6); color: white;"
+								class="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[8px] text-white/80 opacity-0 transition-opacity group-hover:opacity-100 font-mono pointer-events-none"
 							>
-								{cls.powerType.startsWith('TYPE_') ? `T${cls.powerType.slice(5)}` : '⚙'}
+								© {cls.media[0].attribution.split(' ').slice(0, 3).join(' ')}
 							</span>
 						{/if}
-					</div>
-
-					<div class="flex flex-1 flex-col p-4">
-						<h2
-							class="text-base leading-snug font-semibold"
-							style="font-family: var(--font-map); color: var(--map-ink);"
-						>
-							{resolveDisplayName(cls.name, cls.aliases, data.nameScheme)}
-						</h2>
-						{#if cls.nickname}
-							<p class="font-serif text-sm italic" style="color: var(--line-color);">
-								"{cls.nickname}"
-							</p>
-						{/if}
-
-						<!-- Data points -->
+					{:else}
 						<div
-							class="mt-auto flex items-center justify-between border-t pt-3 text-[11px]"
-							style="border-color: var(--map-zone); color: var(--map-ink-soft);"
+							class="flex h-full w-full items-center justify-center text-[10px] tracking-widest uppercase"
+							style="color: var(--map-ink-soft);"
 						>
-							<span class="tabular-nums">{buildPeriod(cls.buildStart, cls.buildEnd)}</span>
-							{#if cls.totalBuilt}
-								<span class="tabular-nums">{cls.totalBuilt} built</span>
-							{/if}
-							<span class="flex items-center gap-1">
-								<span class="h-1.5 w-1.5 rounded-full" style="background-color: var(--line-color);"
-								></span>
-								{tractionLabel(cls.regions)}
-							</span>
+							No imagery
 						</div>
+					{/if}
+					<!-- Type badge -->
+					{#if cls.powerType}
+						<span
+							class="absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider"
+							style="background: rgba(0,0,0,0.6); color: white;"
+						>
+							{cls.powerType.startsWith('TYPE_') ? `T${cls.powerType.slice(5)}` : '⚙'}
+						</span>
+					{/if}
+				</div>
+
+				<div class="flex flex-1 flex-col p-4">
+					<h2
+						class="text-base leading-snug font-semibold"
+						style="font-family: var(--font-map); color: var(--map-ink);"
+					>
+						{resolveDisplayName(cls.name, cls.aliases, data.nameScheme)}
+					</h2>
+					{#if cls.nickname}
+						<p class="font-serif text-sm italic" style="color: var(--line-color);">
+							"{cls.nickname}"
+						</p>
+					{/if}
+
+					<!-- Data points -->
+					<div
+						class="mt-auto flex items-center justify-between border-t pt-3 text-[11px]"
+						style="border-color: var(--map-zone); color: var(--map-ink-soft);"
+					>
+						<span class="tabular-nums">{buildPeriod(cls.buildStart, cls.buildEnd)}</span>
+						{#if cls.totalBuilt}
+							<span class="tabular-nums">{cls.totalBuilt} built</span>
+						{/if}
+						<span class="flex items-center gap-1">
+							<span class="h-1.5 w-1.5 rounded-full" style="background-color: var(--line-color);"
+							></span>
+							{tractionLabel(cls.regions)}
+						</span>
 					</div>
 				</div>
-			{/each}
-		</div>
+			</a>
+		{/snippet}
+
+		{#if data.filters.group === 'era'}
+			<div class="flex flex-col gap-8 w-full">
+				{#each data.eras as era (era.slug)}
+					{@const eraClasses = data.classes.filter(
+						(c: PageData['classes'][number]) => c.era.slug === era.slug
+					)}
+					{#if eraClasses.length > 0}
+						<div class="flex flex-col gap-4">
+							<EraRoomCard {era} eras={data.eras} size="compact" stats={data.eraStats[era.id]} />
+							<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+								{#each eraClasses as cls (cls.wikidataQid)}
+									{@render classCard(cls)}
+								{/each}
+							</div>
+						</div>
+					{/if}
+				{/each}
+			</div>
+		{:else}
+			<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+				{#each data.classes as cls (cls.wikidataQid)}
+					{@render classCard(cls)}
+				{/each}
+			</div>
+		{/if}
 
 		<!-- TABLE LENS -->
 	{:else if data.lens === 'table'}
@@ -427,9 +506,13 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each data.classes as cls (cls.wikidataQid)}
+					{#snippet classRow(cls: PageData['classes'][number])}
 						<tr
-							onclick={() => selectClass(cls.wikidataQid)}
+							onclick={(e) => {
+								const target = e.target as HTMLElement;
+								if (target.tagName === 'A' || target.closest('a')) return;
+								selectClass(cls.wikidataQid);
+							}}
 							class="cursor-pointer border-b transition-colors hover:bg-[var(--map-zone)]"
 							style="--line-color: {tractionColor(
 								cls.regions
@@ -442,7 +525,19 @@
 								{topsNumber(cls.name)}
 							</td>
 							<td class="px-3 py-2 font-medium">
-								{resolveDisplayName(cls.name, cls.aliases, data.nameScheme)}
+								<a
+									href={resolve('/class/[qid]', { qid: cls.wikidataQid })}
+									onclick={(e) => {
+										if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+											e.preventDefault();
+											selectClass(cls.wikidataQid);
+										}
+									}}
+									class="hover:underline"
+									style="color: var(--map-ink);"
+								>
+									{resolveDisplayName(cls.name, cls.aliases, data.nameScheme)}
+								</a>
 							</td>
 							<td class="px-3 py-2 font-serif text-xs italic" style="color: var(--map-ink-soft);">
 								{cls.nickname ?? ''}
@@ -466,7 +561,46 @@
 								></span>
 							</td>
 						</tr>
-					{/each}
+					{/snippet}
+
+					{#if data.filters.group === 'era'}
+						{#each data.eras as era (era.slug)}
+							{@const eraClasses = data.classes.filter(
+								(c: PageData['classes'][number]) => c.era.slug === era.slug
+							)}
+							{#if eraClasses.length > 0}
+								<tr
+									class="bg-[color-mix(in srgb,var(--tfl-blue)_3%,var(--map-bg))] border-b border-[var(--map-zone)]"
+								>
+									<td colspan="10" class="px-4 py-2.5">
+										<div class="flex items-baseline gap-2">
+											<span class="text-base font-semibold" style="font-family: var(--font-map);"
+												>{era.name}</span
+											>
+											<span class="text-xs text-[var(--map-ink-soft)] font-mono"
+												>({era.startYear}–{era.endYear ?? 'Present'})</span
+											>
+											{#if era.narrative}
+												<span
+													class="text-xs italic text-[var(--map-ink-soft)] ml-4"
+													style="font-family: var(--font-narrative);"
+												>
+													— {era.narrative.split('\n\n')[0]}
+												</span>
+											{/if}
+										</div>
+									</td>
+								</tr>
+								{#each eraClasses as cls (cls.wikidataQid)}
+									{@render classRow(cls)}
+								{/each}
+							{/if}
+						{/each}
+					{:else}
+						{#each data.classes as cls (cls.wikidataQid)}
+							{@render classRow(cls)}
+						{/each}
+					{/if}
 				</tbody>
 			</table>
 		</div>
@@ -513,7 +647,18 @@
 							5,
 							25 - data.eras.indexOf(era) * 5
 						)}%, var(--map-zone))"
-						opacity="0.3"
+						opacity={data.filters.era === era.slug ? '0.5' : '0.25'}
+						class="cursor-pointer hover:opacity-40 transition-opacity"
+						role="button"
+						aria-label="Filter by {era.name}"
+						tabindex="0"
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								updateUrl({ era: data.filters.era === era.slug ? null : era.slug });
+							}
+						}}
+						onclick={() => updateUrl({ era: data.filters.era === era.slug ? null : era.slug })}
 					/>
 					<text
 						x={eraX + 4}
@@ -521,6 +666,7 @@
 						font-size="9"
 						fill="var(--map-ink-soft)"
 						opacity="0.7"
+						class="pointer-events-none"
 					>
 						{era.startYear}
 					</text>
@@ -564,8 +710,16 @@
 					{@const color = tractionColor(cls.regions)}
 
 					<!-- Row background on hover handled via CSS -->
-					<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-					<g class="timeline-row" onclick={() => selectClass(cls.wikidataQid)}>
+					<a
+						href={resolve('/class/[qid]', { qid: cls.wikidataQid })}
+						class="timeline-row block"
+						onclick={(e) => {
+							if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+								e.preventDefault();
+								selectClass(cls.wikidataQid);
+							}
+						}}
+					>
 						<rect
 							x={0}
 							{y}
@@ -638,7 +792,7 @@
 							>{cls.name}{cls.nickname ? ` "${cls.nickname}"` : ''} — {startYear ?? '?'}–{endYear ??
 								'present'}{cls.totalBuilt ? ` · ${cls.totalBuilt} built` : ''}</title
 						>
-					</g>
+					</a>
 				{/each}
 			</svg>
 		</div>
@@ -898,21 +1052,47 @@
 			<div class="flex-1 overflow-y-auto p-4">
 				{#if data.selectedClass.narrative}
 					<p
-						class="mb-4 text-sm leading-relaxed"
+						class="mb-1 text-sm leading-relaxed"
 						style="font-family: var(--font-narrative); color: var(--map-ink);"
 					>
 						{data.selectedClass.narrative}
 					</p>
+					{#if data.selectedClass.sourceUrl}
+						<p class="mb-4 text-[10px] font-mono" style="color: var(--map-ink-soft);">
+							Source: <a
+								href={data.selectedClass.sourceUrl +
+									(data.selectedClass.sourceRevision
+										? `?oldid=${data.selectedClass.sourceRevision}`
+										: '')}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="underline hover:text-[var(--map-ink)]"
+							>
+								Wikipedia
+							</a>
+							{#if data.selectedClass.sourceRevision}
+								· oldid: {data.selectedClass.sourceRevision}
+							{/if}
+							· retrieved 7 Jul 2026
+						</p>
+					{/if}
 				{/if}
 				{#if data.selectedClass.media.length > 0}
 					{@const img = mediaSrcset(data.selectedClass.media[0].localPath)}
-					<img
-						src={img.src}
-						srcset={img.srcset}
-						sizes="480px"
-						alt={data.selectedClass.media[0].title ?? data.selectedClass.name}
-						class="mb-4 w-full rounded-lg"
-					/>
+					<div class="relative mb-4">
+						<img
+							src={img.src}
+							srcset={img.srcset}
+							sizes="480px"
+							alt={data.selectedClass.media[0].title ?? data.selectedClass.name}
+							class="w-full rounded-lg"
+						/>
+						{#if data.selectedClass.media[0].attribution}
+							<p class="mt-1 text-[9px] text-[var(--map-ink-soft)] font-mono text-right">
+								Photo: {data.selectedClass.media[0].attribution}
+							</p>
+						{/if}
+					</div>
 				{/if}
 				{#if data.selectedClass.specs.length > 0}
 					<div class="grid grid-cols-2 gap-2">

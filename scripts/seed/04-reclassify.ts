@@ -68,7 +68,7 @@ function introYear(c: ClassRow): number | null {
 function targetEraSlug(traction: Traction, year: number): string {
 	if (year <= 1922) return 'pre-grouping';
 	if (year <= 1947) return 'big-four';
-	if (traction === 'STEAM') return 'br-steam';
+	if (year <= 1967) return 'br-steam';
 	if (year <= 1981) return 'br-transition';
 	if (year <= 1993) return 'sectorisation';
 	return 'modern';
@@ -169,6 +169,47 @@ function normalizeBuilder(raw: string): string {
 }
 
 async function main() {
+	// Ensure Era boundaries and names are correct in the database
+	const eraConfigs = [
+		{ slug: 'pre-grouping', name: 'Pre-Grouping', startYear: 1830, endYear: 1922, sortIndex: 1 },
+		{ slug: 'big-four', name: 'The Big Four', startYear: 1923, endYear: 1947, sortIndex: 2 },
+		{
+			slug: 'br-steam',
+			name: 'Pilot Scheme & Modernisation',
+			startYear: 1948,
+			endYear: 1967,
+			sortIndex: 3
+		},
+		{ slug: 'br-transition', name: 'Transition', startYear: 1968, endYear: 1981, sortIndex: 4 },
+		{ slug: 'sectorisation', name: 'Sectorisation', startYear: 1982, endYear: 1993, sortIndex: 5 },
+		{
+			slug: 'modern',
+			name: 'Privatisation & the Modern Era',
+			startYear: 1994,
+			endYear: null,
+			sortIndex: 6
+		}
+	];
+
+	for (const config of eraConfigs) {
+		await prisma.era.upsert({
+			where: { slug: config.slug },
+			update: {
+				name: config.name,
+				startYear: config.startYear,
+				endYear: config.endYear,
+				sortIndex: config.sortIndex
+			},
+			create: {
+				slug: config.slug,
+				name: config.name,
+				startYear: config.startYear,
+				endYear: config.endYear,
+				sortIndex: config.sortIndex
+			}
+		});
+	}
+
 	const eras = await prisma.era.findMany();
 	const eraBySlug = new Map(eras.map((e) => [e.slug, e]));
 	const eraById = new Map(eras.map((e) => [e.id, e]));

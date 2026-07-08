@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { tractionColor, mediaSrcset } from '$lib/loco.js';
 	import { resolveDisplayName } from '$lib/nameScheme.js';
+	import EraRoomCard from '$lib/components/EraRoomCard.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 </script>
@@ -177,28 +178,15 @@
 			{#each data.eras as era (era.slug)}
 				<a
 					href={`${resolve('/browse')}?era=${era.slug}`}
-					class="group rounded-xl border-l-4 p-4 transition-all hover:-translate-y-0.5"
-					style="background: var(--map-bg); border: 1px solid var(--map-zone); border-left: 4px solid color-mix(in srgb, var(--tfl-blue) {40 -
-						data.eras.indexOf(era) * 8}%, var(--map-zone)); box-shadow: var(--shadow-subtle);"
+					class="group block transition-all hover:-translate-y-0.5"
 				>
-					<h3
-						class="text-sm font-semibold"
-						style="font-family: var(--font-map); color: var(--map-ink);"
-					>
-						{era.name}
-					</h3>
-					<p class="mt-0.5 text-[11px] tabular-nums" style="color: var(--map-ink-soft);">
-						{era.startYear}–{era.endYear ?? 'present'} · {era.classCount}
-						class{era.classCount === 1 ? '' : 'es'}
-					</p>
-					{#if era.narrative}
-						<p
-							class="mt-1 line-clamp-2 text-[11px] leading-relaxed"
-							style="font-family: var(--font-narrative); color: var(--map-ink-soft);"
+					<EraRoomCard {era} eras={data.eras} size="compact" stats={data.eraStats[era.id]}>
+						<div
+							class="mt-2 text-xs font-semibold text-[var(--tfl-blue)] group-hover:underline flex items-center gap-1 font-sans"
 						>
-							{era.narrative}
-						</p>
-					{/if}
+							Enter the era →
+						</div>
+					</EraRoomCard>
 				</a>
 			{/each}
 		</div>

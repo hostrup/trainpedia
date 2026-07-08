@@ -86,7 +86,19 @@ export const load: PageServerLoad = async ({ url }) => {
 	}
 
 	const [allEras, total, classes] = await Promise.all([
-		db.era.findMany({ orderBy: { sortIndex: 'asc' } }),
+		db.era.findMany({
+			orderBy: { sortIndex: 'asc' },
+			select: {
+				id: true,
+				slug: true,
+				name: true,
+				startYear: true,
+				endYear: true,
+				narrative: true,
+				sourceUrl: true,
+				sourceRevision: true
+			}
+		}),
 		db.locomotiveClass.count(),
 		db.locomotiveClass.findMany({
 			where,
@@ -111,7 +123,7 @@ export const load: PageServerLoad = async ({ url }) => {
 				media: {
 					orderBy: { sortIndex: 'asc' },
 					take: 1,
-					select: { localPath: true, title: true }
+					select: { localPath: true, title: true, attribution: true }
 				},
 				aliases: { select: { alias: true, scheme: true } },
 				specs: {
@@ -140,18 +152,46 @@ export const load: PageServerLoad = async ({ url }) => {
 		)
 	].sort();
 
-	// Non-empty eras only (F9.5a)
-	const eraClassCounts = new Map<string, number>();
-	for (const c of classes) {
-		const slug = c.era.slug;
-		eraClassCounts.set(slug, (eraClassCounts.get(slug) ?? 0) + 1);
+	// Compute stats per era across the entire database (unfiltered)
+	const rawStats = await db.locomotiveClass.findMany({
+		select: {
+			eraId: true,
+			totalBuilt: true,
+			_count: {
+				select: {
+					locomotives: {
+						where: { status: { in: ['PRESERVED', 'IN_SERVICE'] } }
+					}
+				}
+			}
+		}
+	});
+
+	const statsByEra = new Map<
+		number,
+		{ classesCount: number; builtCount: number; preservedCount: number }
+	>();
+	for (const c of rawStats) {
+		const curr = statsByEra.get(c.eraId) ?? { classesCount: 0, builtCount: 0, preservedCount: 0 };
+		curr.classesCount += 1;
+		curr.builtCount += c.totalBuilt ?? 0;
+		curr.preservedCount += c._count.locomotives;
+		statsByEra.set(c.eraId, curr);
 	}
-	// But use all eras from DB that have ANY class (not just filtered)
-	const allEraClasses = await db.locomotiveClass.groupBy({ by: ['eraId'], _count: true });
-	const eraIdsWithClasses = new Set(allEraClasses.map((e) => e.eraId));
+
+	const eraIdsWithClasses = new Set(rawStats.map((e) => e.eraId));
 	const visibleEras = allEras
 		.filter((e) => eraIdsWithClasses.has(e.id))
-		.map((e) => ({ slug: e.slug, name: e.name, startYear: e.startYear, endYear: e.endYear }));
+		.map((e) => ({
+			id: e.id,
+			slug: e.slug,
+			name: e.name,
+			startYear: e.startYear,
+			endYear: e.endYear,
+			narrative: e.narrative,
+			sourceUrl: e.sourceUrl,
+			sourceRevision: e.sourceRevision
+		}));
 
 	// Selected class for quick-view
 	let selectedClass = null;
@@ -207,6 +247,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		})),
 		selectedClass,
 		eras: visibleEras,
+		eraStats: Object.fromEntries(statsByEra),
 		total,
 		facets: {
 			regions: allRegions,

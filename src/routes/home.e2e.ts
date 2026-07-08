@@ -86,3 +86,65 @@ test('The Workshop compare flow', async ({ page }) => {
 	const selector = page.locator('#class-add-select');
 	await expect(selector).toBeVisible();
 });
+
+test('Era Room Card and filtering on browse page', async ({ page }) => {
+	await page.goto('/browse?era=big-four');
+	await page.waitForLoadState('networkidle');
+
+	const eraCard = page.locator('.era-room-card.full');
+	await expect(eraCard).toBeVisible();
+	await expect(eraCard.locator('h2')).toContainText('The Big Four');
+	await expect(eraCard.locator('text=Wikipedia')).toBeVisible();
+	await expect(eraCard.locator('text=oldid')).toBeVisible();
+
+	const readMoreBtn = eraCard.locator('button:has-text("Read more")');
+	if (await readMoreBtn.isVisible()) {
+		await readMoreBtn.click();
+		await expect(eraCard.locator('button:has-text("Read less")')).toBeVisible();
+	}
+});
+
+test('Quick-view to full chronicle flow', async ({ page }) => {
+	await page.goto('/browse');
+	await page.waitForLoadState('networkidle');
+
+	const classCard = page.locator('a.timeline-row, a.group').first();
+	await classCard.click();
+
+	const fullChronicleLink = page.locator('a:has-text("Open full chronicle")');
+	await expect(fullChronicleLink).toBeVisible();
+	await expect(page.locator('text=Source: Wikipedia')).toBeVisible();
+
+	await Promise.all([page.waitForURL('**/class/Q*'), fullChronicleLink.click()]);
+
+	expect(page.url()).toContain('/class/Q');
+	await expect(page.locator('h1')).toBeVisible();
+	await expect(page.locator('text=Source: Wikipedia')).toBeVisible();
+});
+
+test('Typeahead search click flow', async ({ page }) => {
+	await page.goto('/');
+	await page.waitForLoadState('networkidle');
+
+	const searchInput = page.locator('input[aria-label="Search locomotive classes"]');
+	await searchInput.focus();
+	await searchInput.pressSequentially('Class 37', { delay: 60 });
+	await page.waitForTimeout(1000);
+
+	const dropdown = page.locator('.search-container div').first();
+	await expect(dropdown).toBeVisible();
+
+	const firstResult = dropdown.locator('a').first();
+	await Promise.all([page.waitForURL('**/class/Q*'), firstResult.click()]);
+
+	await expect(page.url()).toContain('/class/Q');
+});
+
+test('Locomotive details page loads with provenance', async ({ page }) => {
+	await page.goto('/loco/D6700');
+	await page.waitForLoadState('networkidle');
+
+	await expect(page.locator('h1')).toBeVisible();
+	await expect(page.locator('text=Preserved').first()).toBeVisible();
+	await expect(page.locator('text=Source: Wikipedia')).toBeVisible();
+});
