@@ -409,3 +409,44 @@ ikke fortælles.
 
 Dette er IKKE U9 (kuraterede ture med fri overgangstekst) — U9 forbliver åben;
 æra-narrativer er citeret kildetekst inden for strict factuality.
+
+---
+
+## 14. Tilføjelse 2026-07-08 (runde 3) — Samlingens dybde: navnekæden og "On film" (F12)
+
+Ronnis direktiv: _"mere data og bedre data og flere billeder... mere
+museumsviden og mere synlige facts, fx navne gennem historien fra start til
+TOPS til i dag... og links til kendte YouTube-videoer."_ To nye UI-mønstre;
+datakravene står i BACKLOG F12.
+
+**"Names through history"-plaketten (F12.2)** — på /class/[qid] under heroen:
+en vandret kronologisk kæde i exhibit-label-stil, ét led pr. navnefase med
+år-spænd og skema-badge:
+
+```
+[D6700-serien]──────[Class 37]──────["Tractor"]      [English Electric Type 3]
+ 1960–1973 · BR      1973– · TOPS    entusiast-navn    byggerens betegnelse
+```
+
+Led med årstal lægges kronologisk; udaterede aliasser (kaldenavne,
+byggernavne) står som løse plaketter efter kæden. Hvert led har kilde-tooltip
+(F9.16-mønsteret). Pre-TOPS-serien aggregeres fra individernes
+identitetskæder — den vises KUN hvis den er datagrundet. Klik på et led →
+/browse?q=navnet (beviser at søgningen finder alle navne).
+
+**"On film"-sektionen (F12.5)** — nederst på /class og /loco, over galleriet:
+række af video-kort. Commons-videofiler afspilles lokalt (`<video>`-tag,
+samme licens/attributions-pligt som fotos); YouTube-indhold vises som
+thumbnail-kort med titel + kanal, der åbner i ny fane — ALDRIG embeddet
+(ingen tracking, ingen CSP-udvidelse). Uden kuraterede links (U10) viser
+sektionen ét ærligt "Watch on YouTube →"-søgelink bygget af klassens navn +
+kaldenavn hhv. individ-nummeret. Sektionen skjules aldrig — søgelinket ER
+fallback-indholdet.
+
+**Billed-kvalitetsprincip (F12.4):** heroen på hver side skal være det BEDSTE
+billede, ikke det første fundne — `sortIndex` kurateres af seed-scriptet
+(opløsning + motiv-heuristik: hele lokomotiver frem for detaljer/skilte).
+Galleriet grupperer: "This locomotive" (individ-match) → "The class" →
+"Video". Alle nye kilder (Geograph/Flickr) hentes via deres Commons-spejle,
+så licens- og attributions-pipelinen forbliver den eneste vej ind i
+databasen.

@@ -1,12 +1,13 @@
 # Backlog — trainpedia (review 2026-07-07)
 
-Baseline (genverificeret 2026-07-08 efter F11-review, Claude Fable 5): lint 0 fejl ·
-check 0 fejl/0 warnings · 9 unit-tests grønne (tubemap-specs slettet med koden i
-F11.3 — korrekt) · e2e 4/4 grønne · working tree ren på main.
-DB-fakta: 98 klasser (100% DIESEL) · **1.193 individer på 51/98 klasser** ·
-totalBuilt 88/98 · powerType+builder 96/98 · valueNumeric 358/365 · narrativ 98/98
-· 353 media-assets (13 klasser har stadig 0) · **æra-narrativ: 0/6 (INTET
-storytelling-indhold)** · æra-fordeling 0/16/0/67/4/11 (skæv, se F11.8).
+Baseline (genverificeret 2026-07-08 middag efter runde 2-review, Claude Fable 5):
+lint 0 fejl · check 0/0 · unit-tests grønne · e2e grønne · kvalitetsgate GRØN
+(kører i deploy.sh) · working tree ren.
+DB-fakta: **99 klasser** (én for meget — se F12.1: "New Enterprise Trains" er
+genopstået!) · 1.193 individer på 51 klasser · totalBuilt 88 · powerType+builder
+96 · æra-narrativ 6/6 med kilder · æra-fordeling 0/16/65/2/4/12 (sand,
+ikke-overlappende) · 381 media-assets (14 klasser har 0) · 3 dublet-identiteter
+(soft warnings i DATA-QUALITY.md).
 
 ## Fase F11 — "The Working Museum": UI-pivot væk fra metrokortet (Ronnis direktiv 2026-07-08)
 
@@ -69,6 +70,102 @@ F10.5→F11.5 (/survivors), F10.6→F11.6 — F10 består kun som selvstændige 
 for F10.7 (OG-metadata) og F10.8 (Random class). U8 (mobil) er LUKKET af spec
 §10 (responsive linser). F9-datasporet (A+D-sektionerne) er UÆNDRET og nu endnu
 mere kritisk: linserne er kun så gode som tallene bag dem.
+
+## Fase F12 — "Samlingen": mere data, bedre data, flere billeder (Ronnis direktiv 2026-07-08)
+
+**Review af runde 2 (2026-07-08, Claude Fable 5) — GODKENDT:** Era Room Card
+virker live på /browse?era=big-four (kildeciteret narrativ, read-more,
+Wikipedia-kildelink), æra-strukturen er sand og ikke-overlappende (Pilot Scheme
+& Modernisation 1948–1967 med 65 klasser), /about findes, grid-kort er rigtige
+links (99 stk.), random-knap og og:image på plads, kvalitetsgaten kører i
+deploy.sh og er grøn. Alle gates grønne. **Kritik:** hele runden landede i ÉT
+mega-commit (aae5e4a) mod disciplinen om atomare commits — indskærpet i næste
+prompt. **Reviewets vigtigste fund:** genkørslen GENOPLIVEDE "New Enterprise
+Trains" (Q139989800), som F7 slettede som ukildet/spekulativ — sletninger er
+ikke genseed-sikre (nu 99 klasser). Dertil: 3 dublet-identiteter i fleet-data,
+og:image er relativ URL (crawlere kræver absolut), 14 klasser stadig uden
+billeder.
+
+**Ronni 2026-07-08:** _"et sprint der i høj grad handler om mere data og bedre
+data og flere billeder"_ — datavalidering/korrekthed, mere museumsviden pr.
+lokomotiv (fx navne gennem historien fra start til TOPS til i dag), langt
+bredere billedjagt efter fede billeder online, og links til kendte
+YouTube-videoer el.lign. for det specifikke tog.
+
+- [ ] **F12.1** [High] **Datakorrekthed: kryds-validering + genseed-sikre
+      eksklusioner.** (a) **Blocklist:** "New Enterprise Trains" (Q139989800)
+      skal slettes IGEN — og denne gang varigt: indfør en QID-eksklusionsliste
+      (med begrundelse pr. post) i `scripts/seed/`, håndhævet i `01-discover.ts`
+      og tjekket i `08-validate.ts` (hard error hvis en blocklistet QID findes i
+      DB). Tag også NSB Di 8 (F7-sletningen) med på listen. (b) **Kryds-kilde-
+      validering:** nyt valideringstrin sammenligner DB-felter indbyrdes og mod
+      Wikidata — totalBuilt vs. "Total Built"-spec'en vs. optalte individer;
+      buildStart vs. serviceEntry; wheelArrangement vs. powerType-heuristikken
+      (en SHUNTER med 100 mph er en fejl). Uoverensstemmelser → soft warnings i
+      DATA-QUALITY.md med BEGGE kilder citeret. (c) **Dublet-identiteterne**
+      (D6700/D6729/D6732, loco ID 10/39/42) rodårsags-fixes i 06-fleet-parseren
+      (ikke bare slettes). (d) Stikprøve-verifikation af 10 kendte facts
+      (Deltic=TYPE_5, HST=1976, 08=SHUNTER…) som fast del af gaten.
+      **Accept:** 98 klasser igen; blocklist overlever `npm run seed`;
+      DATA-QUALITY.md har kryds-kilde-sektion; 0 dublet-identiteter.
+- [ ] **F12.2** [High] **"Names through history" — navnekæden som museums-
+      plakette på klassesiden.** Ronnis eksempel: fra oprindelse over TOPS til
+      i dag. Data: `ClassAlias` har scheme men INGEN tidsdimension — tilføj
+      additive `fromYear/toYear` og udfyld hvor kilder findes; klassens
+      pre-TOPS-nummerserie kan AGGREGERES fra de allerede-parsede
+      `LocomotiveIdentity`-kæder (min–max af D-numre pr. klasse, fx
+      "D6700–D6999"). UI: kronologisk plakette på /class/[qid] — fx
+      "D6700-serien (1960–1973) → Class 37 (TOPS, 1973–) · 'Tractor' blandt
+      entusiaster · English Electric Type 3 hos byggeren" — med kildelinjer
+      (F9.16-mønsteret). Navneskema-vælgeren (F5.6) består urørt; plaketten er
+      fortællingen OM navnene. **Accept:** Class 37-siden viser hele kæden
+      med årstal og kilder; mindst 30 klasser har en flerledet navnekæde.
+- [ ] **F12.3** [High] **Dybere museumsviden pr. klasse og individ.**
+      (a) Udvid `02-enrich.ts` til at hente FLERE kildeciterede sektioner pr.
+      klasse (Design & construction, Operations, Withdrawal, Preservation) i
+      en ny additiv `NarrativeSection`-tabel (classId, heading, content,
+      sourceUrl, sourceRevision, sortIndex) — narrativ-feltet i dag er ét
+      enkelt uddrag. (b) Flere spec-nøgler fra infoboksen: Engine,
+      Transmission, Brakes, Train heating, Route availability, UIC
+      classification, Fuel capacity (samme parser, flere nøgler). (c) Individ-
+      niveau: udfyld `Locomotive.history` fra listeartiklernes Notes-kolonner
+      (delvist gjort) + Wikidata-emner for bevarede maskiner (F6.2's kendte
+      udestående — hjemsted/status/navnehistorik). UI: klassesiden viser
+      sektionerne som museums-afsnit med provenance; spec-grid udvides.
+      **Accept:** Class 37/55-siderne har ≥3 kildeciterede sektioner og ≥10
+      spec-nøgler; alt citeret, intet AI-formuleret.
+- [ ] **F12.4** [High] **Bred billedjagt — flere og federe billeder, lovligt.**
+      Udvid `03-media.ts` (eller nyt `10-media-wide.ts`): (a) Commons DYBERE:
+      fuldtekst-søgning, kategoritræ-rekursion, søgning på INDIVID-numre
+      (37403, D9000…) så bevarede maskiner får egne fotos; (b) **Geograph
+      Britain & Ireland** — enormt UK-jernbanearkiv, alt CC BY-SA; hent via
+      Commons-spejlet (kategorier "Images from Geograph…" + `insource:`-søgning)
+      så licens/attribution-pipelinen er uændret; (c) Flickr KUN via
+      Commons-spejlet "Files from Flickr" (direkte Flickr-API kræver nøgle →
+      U10, valgfrit). Regler: KUN åbne licenser (PD/CC0/CC BY/CC BY-SA),
+      attribution + kilde-URL obligatorisk (gaten håndhæver allerede), dedup
+      på commonsUrl. Kvalitet frem for kvantitet: prioritér høj opløsning,
+      hero-egnede motiver; sortIndex sættes så det bedste billede er først.
+      **Accept:** median ≥8 assets/klasse (i dag ~3,9); landmarks ≥25; alle
+      bevarede individer med Commons-billeder har egne fotos; de 14
+      0-billede-klasser endeligt afklaret i DATA-QUALITY.md; 0 licens-brud.
+- [ ] **F12.5** [Medium] **"On film" — video-sektionen.** To trin: **(a) uden
+      nøgle (byg nu):** hver klasse-/individ-side får en "On film"-sektion med
+      et deterministisk "Watch on YouTube →"-søgelink (query af klassenavn +
+      kaldenavn, individ-nummer) — ærligt, altid aktuelt, ingen API; OG:
+      Wikimedia Commons HAR videofiler (webm/ogv) — udvid media-seeden med
+      `MediaKind.VIDEO` (additiv enum) og afspil dem lokalt i galleriet.
+      **(b) med YouTube Data API-nøgle (U10, afventer Ronni):** kuratér 3-5
+      verificerede videoer pr. landmark-klasse i ny additiv `VideoLink`-tabel
+      (classId/locoId, videoId, title, channel, publishedAt, retrievedAt) —
+      vises som thumbnail-kort der åbner YouTube i ny fane (ingen embed =
+      ingen tracking/CSP-bøvl). **Accept (a):** alle klassesider har On
+      film-sektion; Commons-videoer afspilles lokalt hvor de findes.
+      **Accept (b):** landmark-klasser viser kuraterede videoer m. titel+kanal.
+- [ ] **F12.6** [Low] **og:image skal være ABSOLUT URL** (i dag relativ
+      `/data/media/…` — crawlere/link-previews kræver `https://tog.hostrup.org/…`).
+      Samme tjek på /loco og forsiden. **Accept:** delt link viser billede i
+      preview-værktøj (fx opengraph.xyz).
 
 ## Review af F11-implementeringen (2026-07-08, Claude Fable 5) + Ronnis storytelling-ønske
 
@@ -495,6 +592,7 @@ testet om brugeren naturligt opdager dem ved zoom/pan).
 - [x] **U2** ~~Skal discovery udvides ud over de 7 æraers "major classes" til ALT rullende materiel? — OG omvendt: skal ikke-lokomotiver UD?~~ **Overhalet af F6.5-pivoten 2026-07-07:** datasættet er nu 100% britiske diesel-LOKOMOTIVER (98 klasser; godsvogne/ikke-lokomotiver blev renset ud af `clean-non-diesel.ts`). Spørgsmålet genopstår som U7.
 - [ ] **U7** Skal damp- og el-æraerne genindføres i datasættet, og i givet fald hvornår? (Briefen siger "all trains of all eras"; diesel-scope var en bevidst kompletheds-prioritering. Genudvidelse rører æra-strukturen (F9.5a), kort-layoutet (dieselLayout.ts er diesel-specifik) og fleet-seeden.) **Anbefaling: udskyd til F9's datakomplethed er lukket for diesel — ellers gentages "halvt produkt"-problemet fra F7 i tre traktioner på én gang.**
 - [x] **U8** ✅ LUKKET 2026-07-08 af SPEC-F11-MUSEUM-UI.md §10: alle fire linser er responsive borgere (Table→kortliste, Timeline→vandret scroll, filter-bottom-sheet) — ingen separat mobilstrategi nødvendig, fordi kortet (mobil-problemets kilde) pensioneres. **Mobil-strategi.** Tubemappet er designet desktop-først (Ronnis 4K-krav i F5-amendmentet); på en telefon er pan/zoom-SVG med 98 stationer en dårlig oplevelse. Valg: (a) **anbefalet:** små skærme får linjediagrammerne (F10.3) og /classes som primær indgang — kortet vises med en "best on a larger screen"-note; (b) dedikeret mobil-tilpasning af selve kortet (dyrt, tvivlsom gevinst); (c) mobil ignoreres bevidst. Berører navigation, så beslut FØR F10.3 poleres færdig.
+- [ ] **U10** **API-nøgler til video/billed-udvidelse (F12.4c/F12.5b):** YouTube Data API v3-nøgle (gratis, Google Cloud Console) til kuraterede videolinks, og evt. Flickr API-nøgle til direkte CC-søgning. Lægges i `/hostrup/docker/.env` (fx `TP_YT_KEY`). Uden nøgler bygges F12.5a (søgelinks + Commons-video) og F12.4a/b — intet blokeres hårdt.
 - [ ] **U9** **Kuraterede fortællinger/ture** ("The Deltic story", "Pilot Scheme-fiaskoerne" — en sekvens af eksisterende klasse-/individsider med korte overgangstekster). Det ville give sitet en redaktionel stemme, men overgangstekster er PR DEFINITION ikke-citeret indhold — en bevidst undtagelse fra strict factuality-princippet, som kun Ronni kan give. Alternativ inden for princippet: ture uden fritekst, kun kuraterede sekvenser med kilde-citerede uddrag.
 - [x] **U3** ✅ BESLUTTET 2026-07-07: Navneskema-vælger med default TOPS ("Class 37"); søgning matcher alle aliasser (D6700, English Electric Type 3, "Tractor"). → implementeres i F5.2 + F5.6.
 - [x] **U4** ✅ BESLUTTET 2026-07-07: **Option A** — Steam = Metropolitan-magenta `#9B0058`, Diesel = District-grøn `#007D32`, Electric = Victoria-lyseblå `#0098D8`, Experimental/Other = Jubilee-grå `#A0A5A9`.
