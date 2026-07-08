@@ -1,73 +1,326 @@
 <script lang="ts">
 	import type { PageData } from './$types.js';
-	import type { LocomotiveClass } from '$lib/types.js';
-	import TubeMap from '$lib/tubemap/TubeMap.svelte';
-	import FilterOverlay from '$lib/components/FilterOverlay.svelte';
-	import MuseumPlacard from '$lib/components/MuseumPlacard.svelte';
+	import { resolve } from '$app/paths';
+	import { tractionColor, mediaSrcset } from '$lib/loco.js';
 	import { resolveDisplayName } from '$lib/nameScheme.js';
 
 	let { data } = $props<{ data: PageData }>();
-
-	// Interactive filter states
-	let selectedEraId = $state<number | null>(null);
-	let selectedWheelArrangement = $state<string | null>(null);
-
-	// Navigation/selection states
-	let selectedClass = $state<LocomotiveClass | null>(null);
-
-	// Extract unique, non-null wheel arrangements from seeded dataset with explicit types
-	const wheelArrangements = $derived(
-		Array.from(
-			new Set(
-				data.classes
-					.map((c: LocomotiveClass) => c.wheelArrangement)
-					.filter((wa: string | null): wa is string => wa !== null && wa !== '')
-			)
-		).sort() as string[]
-	);
-
-	// Kortet dæmper (opacity) i stedet for at fjerne stationer ved filtrering (se
-	// TubeMap.svelte), så optællingen her er den eneste plads brugeren ser "N af M
-	// klasser matcher" — afgørende feedback når en kombination rammer få/ingen.
-	const matchCount = $derived(
-		data.classes.filter(
-			(c: LocomotiveClass) =>
-				(selectedEraId === null || c.eraId === selectedEraId) &&
-				(selectedWheelArrangement === null || c.wheelArrangement === selectedWheelArrangement)
-		).length
-	);
 </script>
 
 <svelte:head>
-	<title>The Tube Map — Trainpedia</title>
+	<title>Trainpedia — A working museum of British rail traction</title>
+	<meta
+		name="description"
+		content="Explore {data.stats
+			.classCount} classes of British diesel and electric locomotives. Browse, compare, and discover the machines that shaped Britain's railways."
+	/>
 </svelte:head>
 
-<div
-	class="relative flex h-full w-full flex-col overflow-hidden"
-	style="background: var(--map-bg);"
->
-	<!-- Top Navigation Filters -->
-	<FilterOverlay
-		eras={data.eras}
-		{wheelArrangements}
-		bind:selectedEraId
-		bind:selectedWheelArrangement
-		{matchCount}
-		total={data.classes.length}
-	/>
+<div style="background: var(--map-bg);">
+	<!-- §1. Hero -->
+	<section
+		class="relative flex flex-col items-center justify-center px-4 py-20 text-center sm:py-28"
+		style="background: linear-gradient(180deg, color-mix(in srgb, var(--tfl-blue) 8%, var(--map-bg)) 0%, var(--map-bg) 100%);"
+	>
+		<h1
+			class="text-4xl font-bold tracking-tight sm:text-5xl"
+			style="font-family: var(--font-map); color: var(--map-ink);"
+		>
+			Trainpedia
+		</h1>
+		<p class="mt-2 text-lg font-serif italic" style="color: var(--map-ink-soft);">
+			A working museum of British rail traction
+		</p>
 
-	<!-- Tube map -->
-	<div class="flex flex-col flex-1 min-h-0 w-full">
-		<TubeMap
-			classes={data.classes}
-			eras={data.eras}
-			bind:selectedClass
-			{selectedEraId}
-			{selectedWheelArrangement}
-			displayName={(c) => resolveDisplayName(c.name, c.aliases ?? [], data.nameScheme)}
-		/>
-	</div>
+		<form
+			action={resolve('/browse')}
+			method="GET"
+			class="mx-auto mt-8 flex w-full max-w-lg items-center"
+			role="search"
+		>
+			<input
+				type="search"
+				name="q"
+				placeholder="Search classes, numbers, names…"
+				aria-label="Search the collection"
+				class="w-full rounded-l-xl border-y border-l px-5 py-3 text-base outline-none transition-all focus:ring-2"
+				style="background: var(--map-bg); color: var(--map-ink); border-color: var(--map-zone); --tw-ring-color: var(--tfl-blue);"
+			/>
+			<button
+				type="submit"
+				class="rounded-r-xl border px-5 py-3 text-sm font-semibold text-white transition-colors hover:opacity-90"
+				style="background: var(--tfl-blue); border-color: var(--tfl-blue);"
+			>
+				Search
+			</button>
+		</form>
 
-	<!-- Side Info placard drawer -->
-	<MuseumPlacard classData={selectedClass} onClose={() => (selectedClass = null)} />
+		<div class="mt-6 flex gap-4">
+			<a
+				href={resolve('/browse')}
+				class="rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-transform hover:scale-105"
+				style="background: var(--tfl-blue);"
+			>
+				Browse the collection
+			</a>
+			<!-- eslint-disable svelte/no-navigation-without-resolve -- all hrefs use resolve() -->
+			<a
+				href={resolve('/browse') + '?lens=timeline'}
+				class="rounded-full border px-5 py-2.5 text-sm font-semibold transition-transform hover:scale-105"
+				style="border-color: var(--tfl-blue); color: var(--tfl-blue);"
+			>
+				Explore the timeline
+			</a>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+		</div>
+	</section>
+
+	<!-- §2. The collection at a glance -->
+	<section class="mx-auto max-w-5xl px-4 py-12 sm:px-6">
+		<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+			<!-- eslint-disable svelte/no-navigation-without-resolve -- all hrefs use resolve() -->
+			{#each [{ label: 'Classes', value: data.stats.classCount, href: resolve('/browse') }, { label: 'Individuals tracked', value: data.stats.locomotiveCount, href: resolve('/browse') }, { label: 'Preserved', value: data.stats.preservedCount, href: resolve('/browse') + '?surviving=yes' }, { label: 'Photographs', value: data.stats.mediaCount, href: resolve('/browse') }] as stat (stat.label)}
+				<a
+					href={stat.href}
+					class="group flex flex-col items-center rounded-xl border p-5 text-center transition-all hover:-translate-y-0.5"
+					style="border-color: var(--map-zone); background: var(--map-bg); box-shadow: var(--shadow-subtle);"
+				>
+					<span
+						class="text-3xl font-bold tabular-nums"
+						style="font-family: var(--font-map); color: var(--tfl-blue);"
+					>
+						{stat.value.toLocaleString('en-GB')}
+					</span>
+					<span
+						class="mt-1 text-xs font-semibold tracking-wider uppercase"
+						style="color: var(--map-ink-soft);">{stat.label}</span
+					>
+				</a>
+			{/each}
+		</div>
+		<p class="mt-4 text-center text-xs" style="color: var(--map-ink-soft);">
+			Fleet histories traced for {data.stats.classesWithFleet} of {data.stats.classCount} classes — the
+			archive grows weekly
+		</p>
+	</section>
+
+	<!-- §3. Featured exhibits -->
+	{#if data.featured.length > 0}
+		<section class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+			<h2
+				class="mb-6 text-xl font-semibold"
+				style="font-family: var(--font-map); color: var(--map-ink);"
+			>
+				Featured Exhibits
+			</h2>
+			<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+				{#each data.featured as cls (cls.wikidataQid)}
+					<a
+						href={resolve('/class/[qid]', { qid: cls.wikidataQid })}
+						class="group overflow-hidden rounded-xl border transition-all duration-300 hover:-translate-y-1"
+						style="--line-color: {tractionColor(
+							cls.regions
+						)}; border-color: var(--map-zone); border-top: 3px solid var(--line-color); background: var(--map-bg); box-shadow: var(--shadow-subtle);"
+					>
+						{#if cls.media.length > 0}
+							{@const img = mediaSrcset(cls.media[0].localPath)}
+							<div class="aspect-[3/2] overflow-hidden">
+								<img
+									src={img.src}
+									srcset={img.srcset}
+									sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+									alt={cls.media[0].title ?? cls.name}
+									loading="lazy"
+									class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+								/>
+							</div>
+						{/if}
+						<div class="p-4">
+							<h3
+								class="font-semibold"
+								style="font-family: var(--font-map); color: var(--map-ink);"
+							>
+								{resolveDisplayName(cls.name, cls.aliases, data.nameScheme)}
+							</h3>
+							{#if cls.nickname}
+								<p class="font-serif text-sm italic" style="color: var(--line-color);">
+									"{cls.nickname}"
+								</p>
+							{/if}
+							{#if cls.narrative}
+								<p
+									class="mt-2 line-clamp-3 text-xs leading-relaxed"
+									style="font-family: var(--font-narrative); color: var(--map-ink-soft);"
+								>
+									{cls.narrative}
+								</p>
+							{/if}
+							<span class="mt-3 inline-block text-xs font-semibold" style="color: var(--tfl-blue);">
+								Visit exhibit →
+							</span>
+						</div>
+					</a>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	<!-- §4. The Eras -->
+	<section class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+		<h2
+			class="mb-6 text-xl font-semibold"
+			style="font-family: var(--font-map); color: var(--map-ink);"
+		>
+			The Eras
+		</h2>
+		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+			{#each data.eras as era (era.slug)}
+				<a
+					href={`${resolve('/browse')}?era=${era.slug}`}
+					class="group rounded-xl border-l-4 p-4 transition-all hover:-translate-y-0.5"
+					style="background: var(--map-bg); border: 1px solid var(--map-zone); border-left: 4px solid color-mix(in srgb, var(--tfl-blue) {40 -
+						data.eras.indexOf(era) * 8}%, var(--map-zone)); box-shadow: var(--shadow-subtle);"
+				>
+					<h3
+						class="text-sm font-semibold"
+						style="font-family: var(--font-map); color: var(--map-ink);"
+					>
+						{era.name}
+					</h3>
+					<p class="mt-0.5 text-[11px] tabular-nums" style="color: var(--map-ink-soft);">
+						{era.startYear}–{era.endYear ?? 'present'} · {era.classCount}
+						class{era.classCount === 1 ? '' : 'es'}
+					</p>
+					{#if era.narrative}
+						<p
+							class="mt-1 line-clamp-2 text-[11px] leading-relaxed"
+							style="font-family: var(--font-narrative); color: var(--map-ink-soft);"
+						>
+							{era.narrative}
+						</p>
+					{/if}
+				</a>
+			{/each}
+		</div>
+		<!-- eslint-enable svelte/no-navigation-without-resolve -->
+	</section>
+
+	<!-- §5. The Record Books (mini-leaderboards) -->
+	<section class="py-12" style="background: color-mix(in srgb, var(--tfl-blue) 4%, var(--map-bg));">
+		<div class="mx-auto max-w-5xl px-4 sm:px-6">
+			<h2
+				class="mb-6 text-xl font-semibold"
+				style="font-family: var(--font-map); color: var(--map-ink);"
+			>
+				The Record Books
+			</h2>
+			<div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
+				{#each [{ title: 'Fastest', icon: '🏎️', items: data.leaderboards.fastest }, { title: 'Most Numerous', icon: '🏭', items: data.leaderboards.mostNumerous }, { title: 'Longest Lived', icon: '⏳', items: data.leaderboards.longestLived }] as board (board.title)}
+					<div
+						class="rounded-xl border p-5"
+						style="border-color: var(--map-zone); background: var(--map-bg);"
+					>
+						<h3
+							class="mb-3 text-sm font-semibold tracking-wider uppercase"
+							style="color: var(--map-ink-soft);"
+						>
+							{board.icon}
+							{board.title}
+						</h3>
+						<ol class="space-y-2">
+							{#each board.items as item, i (item.qid)}
+								<li class="flex items-baseline gap-2">
+									<span
+										class="text-lg font-bold tabular-nums"
+										style="font-family: var(--font-map); color: var(--tfl-blue);"
+									>
+										{i + 1}
+									</span>
+									<a
+										href={resolve('/class/[qid]', { qid: item.qid })}
+										class="flex-1 text-sm font-medium hover:underline"
+										style="color: var(--map-ink);"
+									>
+										{resolveDisplayName(item.name, item.aliases, data.nameScheme)}
+									</a>
+									<span class="text-xs font-medium tabular-nums" style="color: var(--map-ink-soft);"
+										>{item.value}</span
+									>
+								</li>
+							{/each}
+						</ol>
+					</div>
+				{/each}
+			</div>
+		</div>
+	</section>
+
+	<!-- §6. From the Archive (daily photo) -->
+	{#if data.dailyPhoto}
+		{@const img = mediaSrcset(data.dailyPhoto.localPath)}
+		<section class="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+			<h2
+				class="mb-4 text-xl font-semibold"
+				style="font-family: var(--font-map); color: var(--map-ink);"
+			>
+				From the Archive
+			</h2>
+			<div class="overflow-hidden rounded-xl border" style="border-color: var(--map-zone);">
+				<img
+					src={img.src}
+					srcset={img.srcset}
+					sizes="(min-width: 640px) 80vw, 100vw"
+					alt={data.dailyPhoto.title ?? 'Archive photograph'}
+					class="w-full"
+				/>
+				<div class="p-4" style="background: var(--map-bg);">
+					<p
+						class="text-sm font-medium"
+						style="font-family: var(--font-narrative); color: var(--map-ink);"
+					>
+						{data.dailyPhoto.title}
+					</p>
+					<p class="mt-1 text-[11px]" style="color: var(--map-ink-soft);">
+						{data.dailyPhoto.year ? `${data.dailyPhoto.year} · ` : ''}{data.dailyPhoto
+							.attribution ?? 'Unknown photographer'}
+						{data.dailyPhoto.license ? ` · ${data.dailyPhoto.license}` : ''}
+						{#if data.dailyPhoto.class}
+							·
+							<a
+								href={resolve('/class/[qid]', { qid: data.dailyPhoto.class.wikidataQid })}
+								class="hover:underline"
+								style="color: var(--tfl-blue);"
+							>
+								{data.dailyPhoto.class.name}
+							</a>
+						{/if}
+					</p>
+				</div>
+			</div>
+		</section>
+	{/if}
+
+	<!-- §7. Footer -->
+	<footer
+		class="border-t px-4 py-8 text-center text-xs sm:px-6"
+		style="border-color: var(--map-zone); color: var(--map-ink-soft);"
+	>
+		<p>Trainpedia is built on strict factuality: every data point links to a verifiable source.</p>
+		<p class="mt-2">
+			Data sourced from
+			<a href="https://www.wikidata.org" class="hover:underline" style="color: var(--tfl-blue);"
+				>Wikidata</a
+			>
+			·
+			<a href="https://en.wikipedia.org" class="hover:underline" style="color: var(--tfl-blue);"
+				>Wikipedia</a
+			>
+			·
+			<a
+				href="https://commons.wikimedia.org"
+				class="hover:underline"
+				style="color: var(--tfl-blue);">Wikimedia Commons</a
+			>
+		</p>
+	</footer>
 </div>

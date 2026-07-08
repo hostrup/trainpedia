@@ -1,8 +1,7 @@
 <script lang="ts">
 	import type { LocomotiveClass } from '$lib/types.js';
 	import { resolve } from '$app/paths';
-	import { lineColorVar, LINE_NAMES } from '$lib/tubemap/colors.js';
-	import type { Traction } from '$lib/tubemap/layout.js';
+	import { tractionColor, tractionLabel } from '$lib/loco.js';
 
 	let { classData, onClose } = $props<{
 		classData: LocomotiveClass | null;
@@ -10,11 +9,12 @@
 	}>();
 
 	const isOpen = $derived(classData !== null);
-	const primaryRegion = $derived(
-		classData && classData.regions[0] ? (classData.regions[0] as Traction) : null
+	const lineColor = $derived(
+		classData && classData.regions.length > 0 ? tractionColor(classData.regions) : 'var(--tfl-blue)'
 	);
-	const lineColor = $derived(primaryRegion ? lineColorVar(primaryRegion) : 'var(--tfl-blue)');
-	const lineLabel = $derived(primaryRegion ? LINE_NAMES[primaryRegion] : 'Unclassified');
+	const lineLabel = $derived(
+		classData && classData.regions.length > 0 ? tractionLabel(classData.regions) : 'Unclassified'
+	);
 </script>
 
 <!-- Backdrop overlay (closes drawer when clicked) -->

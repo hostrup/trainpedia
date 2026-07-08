@@ -1,17 +1,32 @@
 // Delte helpers for lokomotivklasse-præsentation (badges, farver, srcset).
-import { lineColorVar, REGION_SHORT_NAMES } from './tubemap/colors.js';
-import type { Traction } from './tubemap/layout.js';
+// Region-farver og -navne (indlejret fra pensioneret tubemap/colors.ts).
 
-function isRegion(value: string): value is Traction {
+type Region = 'WESTERN' | 'EASTERN' | 'MIDLAND' | 'SOUTHERN' | 'SCOTTISH';
+
+const REGION_COLORS: Record<Region, string> = {
+	WESTERN: 'var(--color-western)',
+	EASTERN: 'var(--color-eastern)',
+	MIDLAND: 'var(--color-midland)',
+	SOUTHERN: 'var(--color-southern)',
+	SCOTTISH: 'var(--color-scottish)'
+};
+
+const REGION_SHORT_NAMES: Record<Region, string> = {
+	WESTERN: 'Western Region',
+	EASTERN: 'Eastern Region',
+	MIDLAND: 'Midland Region',
+	SOUTHERN: 'Southern Region',
+	SCOTTISH: 'Scottish Region'
+};
+
+function isRegion(value: string): value is Region {
 	return ['WESTERN', 'EASTERN', 'MIDLAND', 'SOUTHERN', 'SCOTTISH'].includes(value);
 }
 
-// Samme farvekilde som kortet (U4 Option A) — ingen parallel palet. `regions`
-// kommer fra LocomotiveClass.regions (DB); klassens `traction`-felt er altid
-// DIESEL siden F6.5-scope-pivoten og bærer ingen linje-betydning.
+// Farvekilde for regionsbaserede badges. `regions` er DB-felt.
 export function tractionColor(regions: string[]): string {
 	const primary = regions[0];
-	return primary && isRegion(primary) ? lineColorVar(primary) : 'var(--tfl-blue)';
+	return primary && isRegion(primary) ? REGION_COLORS[primary] : 'var(--tfl-blue)';
 }
 
 export function tractionLabel(regions: string[]): string {
