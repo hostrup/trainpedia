@@ -57,7 +57,12 @@ function inferTraction(c: ClassRow): Traction | null {
 	return null;
 }
 
-function introYear(c: ClassRow): number | null {
+function introYear(c: {
+	wikidataQid: string;
+	buildStart: number | null;
+	serviceEntry: Date | null;
+}): number | null {
+	if (c.wikidataQid === 'Q4970802') return 1972;
 	if (c.buildStart !== null) return c.buildStart;
 	if (c.serviceEntry) return c.serviceEntry.getUTCFullYear();
 	return null;
@@ -220,9 +225,10 @@ async function main() {
 	const eraBySlug = new Map(eras.map((e) => [e.slug, e]));
 	const eraById = new Map(eras.map((e) => [e.id, e]));
 
-	const classes: (ClassRow & { eraId: number })[] = await prisma.locomotiveClass.findMany({
+	const classes = await prisma.locomotiveClass.findMany({
 		select: {
 			id: true,
+			wikidataQid: true,
 			name: true,
 			wikipediaTitle: true,
 			wheelArrangement: true,
@@ -290,6 +296,10 @@ async function main() {
 		const data: Record<string, unknown> = {};
 		if (newTraction !== c.traction) data.traction = newTraction;
 		if (newEraId !== c.eraId) data.eraId = newEraId;
+		if (c.wikidataQid === 'Q4970802') {
+			data.buildStart = 1972;
+			data.serviceEntry = new Date('1972-01-01');
+		}
 		data.powerType = powerType; // always set (may be null)
 		data.builder = builder; // always set (may be null)
 

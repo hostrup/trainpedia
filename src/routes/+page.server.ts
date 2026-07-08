@@ -171,6 +171,16 @@ export const load: PageServerLoad = async () => {
 	);
 	const dailyPhoto = allPhotos.length > 0 ? allPhotos[dayOfYear % allPhotos.length] : null;
 
+	// Curated tours (U9)
+	const tours = await db.curatedTour.findMany({
+		orderBy: { sortIndex: 'asc' },
+		include: {
+			steps: {
+				select: { id: true }
+			}
+		}
+	});
+
 	return {
 		stats: {
 			classCount,
@@ -180,6 +190,7 @@ export const load: PageServerLoad = async () => {
 			classesWithFleet
 		},
 		featured,
+		tours,
 		eras: visibleEras,
 		eraStats: Object.fromEntries(statsByEra),
 		leaderboards: {

@@ -156,6 +156,38 @@
 									"{cls.nickname}"
 								</p>
 							{/if}
+
+							<!-- Naming connections (TOPS, aliases, etc.) -->
+							<div
+								class="mt-2 flex flex-wrap gap-1 text-[10px] font-mono"
+								style="color: var(--map-ink-soft);"
+							>
+								{#if resolveDisplayName(cls.name, cls.aliases, data.nameScheme) !== cls.name}
+									<span
+										class="rounded bg-zinc-200/40 px-1.5 py-0.5 border border-zinc-300/30"
+										title="TOPS name"
+									>
+										TOPS: {cls.name}
+									</span>
+								{/if}
+								{#each cls.aliases as alias (alias.alias + '-' + alias.scheme)}
+									{#if alias.alias !== resolveDisplayName(cls.name, cls.aliases, data.nameScheme) && alias.alias !== cls.nickname}
+										<span
+											class="rounded bg-zinc-200/40 px-1.5 py-0.5 border border-zinc-300/30"
+											title="{alias.scheme} designation"
+										>
+											{alias.scheme === 'PRE_TOPS'
+												? 'Pre-TOPS'
+												: alias.scheme === 'BUILDER'
+													? 'Builder'
+													: alias.scheme === 'ORIGINAL'
+														? 'Original'
+														: alias.scheme.charAt(0) +
+															alias.scheme.slice(1).toLowerCase().replace('_', ' ')}: {alias.alias}
+										</span>
+									{/if}
+								{/each}
+							</div>
 							{#if cls.narrative}
 								<p
 									class="mt-2 line-clamp-3 text-xs leading-relaxed"
@@ -167,6 +199,62 @@
 							<span class="mt-3 inline-block text-xs font-semibold" style="color: var(--tfl-blue);">
 								Visit exhibit →
 							</span>
+						</div>
+					</a>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	<!-- §3.5 Curated Stories & Exhibitions -->
+	{#if data.tours && data.tours.length > 0}
+		<section class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+			<h2
+				class="mb-6 text-xl font-semibold flex items-center gap-2"
+				style="font-family: var(--font-map); color: var(--map-ink);"
+			>
+				<span>Curated Stories & Exhibitions</span>
+				<span
+					class="rounded-full bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 uppercase tracking-wider font-mono"
+					>New</span
+				>
+			</h2>
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+				{#each data.tours as tour (tour.id)}
+					<a
+						href={resolve('/tour/[slug]', { slug: tour.slug })}
+						class="group flex flex-col justify-between overflow-hidden rounded-xl border p-5 transition-all duration-300 hover:-translate-y-1"
+						style="border-color: var(--map-zone); border-top: 3px solid var(--tfl-blue); background: var(--map-bg); box-shadow: var(--shadow-subtle);"
+					>
+						<div>
+							<div
+								class="flex items-center justify-between mb-3 text-xs font-semibold font-mono"
+								style="color: var(--map-ink-soft);"
+							>
+								<span>EXHIBITION</span>
+								<span
+									class="rounded bg-zinc-200/40 border border-zinc-300/30 px-1.5 py-0.5 tabular-nums"
+									>{tour.steps.length} stops</span
+								>
+							</div>
+							<h3
+								class="text-lg font-bold group-hover:text-red-700 transition-colors"
+								style="font-family: var(--font-map); color: var(--map-ink);"
+							>
+								{tour.title}
+							</h3>
+							<p
+								class="mt-2 text-xs leading-relaxed"
+								style="font-family: var(--font-narrative); color: var(--map-ink-soft);"
+							>
+								{tour.description}
+							</p>
+						</div>
+						<div
+							class="mt-5 flex items-center justify-between text-xs font-semibold"
+							style="color: var(--tfl-blue);"
+						>
+							<span>Start Tour ➔</span>
 						</div>
 					</a>
 				{/each}

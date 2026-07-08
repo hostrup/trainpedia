@@ -76,6 +76,7 @@ model LocomotiveClass {
   locomotives      Locomotive[]
   narratives       NarrativeSection[]
   videos           VideoLink[]
+  curatedSteps     CuratedTourStep[]
   sourceUrl        String? // Wikipedia-artikel
   sourceRevision   String? // revisions-id for citatets version
   retrievedAt      DateTime?
@@ -215,4 +216,25 @@ model VideoLink {
   retrievedAt  DateTime?
 
   @@unique([classId, youtubeId])
+}
+
+/// Redaktionelle ture/fortællinger (U9)
+model CuratedTour {
+  id          String            @id @default(uuid())
+  slug        String            @unique // f.eks. "the-deltic-story"
+  title       String // f.eks. "The Deltics: Masters of the East Coast"
+  description String // beskrivelse af turen
+  sortIndex   Int               @default(0)
+  steps       CuratedTourStep[]
+}
+
+/// Et trin i en redaktionel tur (U9)
+model CuratedTourStep {
+  id          String          @id @default(uuid())
+  tourId      String
+  tour        CuratedTour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  classId     Int
+  class       LocomotiveClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  sortIndex   Int
+  narrative   String          @db.Text // overgangstekst eller formidlende tekst
 }

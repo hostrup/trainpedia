@@ -15,7 +15,7 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright install && playwright test",
-		"seed": "tsx scripts/seed/01-discover.ts && tsx scripts/seed/02-enrich.ts && tsx scripts/seed/03-media.ts && tsx scripts/seed/backfill-value-numeric.ts && tsx scripts/seed/backfill-total-built.ts && tsx scripts/seed/backfill-regions.ts && tsx scripts/seed/04-reclassify.ts && tsx scripts/seed/05-aliases.ts && tsx scripts/seed/06-fleet.ts && tsx scripts/seed/07-landmarks.ts && tsx scripts/seed/09-eras.ts && tsx scripts/seed/08-validate.ts",
+		"seed": "tsx scripts/seed/01-discover.ts && tsx scripts/seed/02-enrich.ts && tsx scripts/seed/03-media.ts && tsx scripts/seed/backfill-value-numeric.ts && tsx scripts/seed/backfill-total-built.ts && tsx scripts/seed/backfill-regions.ts && tsx scripts/seed/04-reclassify.ts && tsx scripts/seed/05-aliases.ts && tsx scripts/seed/06-fleet.ts && tsx scripts/seed/07-landmarks.ts && tsx scripts/seed/09-eras.ts && tsx scripts/seed/10-tours.ts && tsx scripts/seed/08-validate.ts",
 		"seed:media": "tsx scripts/seed/03-media.ts",
 		"validate": "tsx scripts/seed/08-validate.ts"
 	},

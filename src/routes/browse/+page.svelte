@@ -411,6 +411,38 @@
 						</p>
 					{/if}
 
+					<!-- Naming connections (TOPS, aliases, etc.) -->
+					<div
+						class="mt-2 flex flex-wrap gap-1 text-[10px] font-mono"
+						style="color: var(--map-ink-soft);"
+					>
+						{#if resolveDisplayName(cls.name, cls.aliases, data.nameScheme) !== cls.name}
+							<span
+								class="rounded bg-zinc-200/40 px-1.5 py-0.5 border border-zinc-300/30"
+								title="TOPS name"
+							>
+								TOPS: {cls.name}
+							</span>
+						{/if}
+						{#each cls.aliases as alias (alias.alias + '-' + alias.scheme)}
+							{#if alias.alias !== resolveDisplayName(cls.name, cls.aliases, data.nameScheme) && alias.alias !== cls.nickname}
+								<span
+									class="rounded bg-zinc-200/40 px-1.5 py-0.5 border border-zinc-300/30"
+									title="{alias.scheme} designation"
+								>
+									{alias.scheme === 'PRE_TOPS'
+										? 'Pre-TOPS'
+										: alias.scheme === 'BUILDER'
+											? 'Builder'
+											: alias.scheme === 'ORIGINAL'
+												? 'Original'
+												: alias.scheme.charAt(0) +
+													alias.scheme.slice(1).toLowerCase().replace('_', ' ')}: {alias.alias}
+								</span>
+							{/if}
+						{/each}
+					</div>
+
 					<!-- Data points -->
 					<div
 						class="mt-auto flex items-center justify-between border-t pt-3 text-[11px]"
