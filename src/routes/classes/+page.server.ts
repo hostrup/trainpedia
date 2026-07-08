@@ -1,9 +1,16 @@
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types.js';
 import { db } from '$lib/server/db.js';
 import type { Prisma } from '@prisma/client';
 
 export const load: PageServerLoad = async ({ url }) => {
+	// F11.1: /classes → /browse 301-redirect (query-parametre oversættes)
+	const browseUrl = new URL('/browse', url.origin);
+	for (const [key, value] of url.searchParams) {
+		browseUrl.searchParams.set(key, value);
+	}
+	redirect(301, browseUrl.pathname + browseUrl.search);
+
 	const q = url.searchParams.get('q')?.trim() ?? '';
 	const eraSlug = url.searchParams.get('era') ?? '';
 

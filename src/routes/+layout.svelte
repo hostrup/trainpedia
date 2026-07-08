@@ -14,12 +14,15 @@
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	const navItems = [
-		{ href: resolve('/'), label: 'Map' },
-		{ href: resolve('/classes'), label: 'Explore' }
+		{ href: resolve('/'), label: 'Home' },
+		{ href: resolve('/browse'), label: 'Browse' },
+		{ href: resolve('/browse') + '?lens=timeline', label: 'Timeline' }
 	];
 
 	function isActive(href: string): boolean {
-		if (href === '/') return page.url.pathname === '/';
+		if (href === resolve('/') || href === '/')
+			return page.url.pathname === '/' || page.url.pathname === resolve('/');
+		if (href.includes('?')) return page.url.pathname + page.url.search === href;
 		return page.url.pathname.startsWith(href);
 	}
 
@@ -54,6 +57,7 @@
 			>
 		</a>
 
+		<!-- eslint-disable svelte/no-navigation-without-resolve -- navItems are pre-resolved -->
 		<nav class="flex items-center gap-1">
 			{#each navItems as item (item.href)}
 				<a
@@ -87,7 +91,7 @@
 			</select>
 		</div>
 
-		<form action="/classes" method="GET" class="flex items-center" role="search">
+		<form action={resolve('/browse')} method="GET" class="flex items-center" role="search">
 			<input
 				type="search"
 				name="q"
