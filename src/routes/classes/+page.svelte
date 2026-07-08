@@ -143,4 +143,37 @@
 			{/each}
 		</div>
 	{/if}
+
+	<!-- F9.3: Individual locomotive results -->
+	{#if data.individuals.length > 0}
+		<div class="mt-10">
+			<h2 class="mb-4 text-lg font-semibold" style="font-family: var(--font-map); color: var(--map-ink);">
+				Individual Locomotives
+			</h2>
+			<p class="mb-3 text-xs" style="color: var(--map-ink-soft);">
+				{data.individuals.length} individual{data.individuals.length === 1 ? '' : 's'} matching "{data.filters.q}"
+			</p>
+			<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+				{#each data.individuals as loco (loco.currentNumber)}
+					<a
+						href={resolve('/loco/[number]', { number: loco.currentNumber })}
+						class="flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors hover:border-[var(--tfl-blue)]"
+						style="border-color: var(--map-zone); background: var(--map-bg);"
+					>
+						<span class="text-base font-semibold tabular-nums" style="color: var(--map-ink);">
+							{loco.currentNumber}
+						</span>
+						{#if loco.currentName}
+							<span class="font-serif text-sm italic" style="color: var(--map-ink-soft);">
+								{loco.currentName}
+							</span>
+						{/if}
+						<span class="ml-auto text-[10px] tracking-wider uppercase" style="color: var(--map-ink-soft);">
+							{loco.className}
+						</span>
+					</a>
+				{/each}
+			</div>
+		</div>
+	{/if}
 </div>

@@ -47,8 +47,42 @@ export const load: PageServerLoad = async ({ url }) => {
 			})
 		]);
 
+		// F9.3: Also search for individual locomotives by number/name
+		let individuals: {
+			currentNumber: string;
+			currentName: string | null;
+			status: string;
+			className: string;
+		}[] = [];
+
+		if (q) {
+			const locos = await db.locomotive.findMany({
+				where: {
+					OR: [
+						{ currentNumber: { contains: q, mode: 'insensitive' } },
+						{ currentName: { contains: q, mode: 'insensitive' } },
+						{ identities: { some: { number: { contains: q, mode: 'insensitive' } } } }
+					]
+				},
+				take: 20,
+				select: {
+					currentNumber: true,
+					currentName: true,
+					status: true,
+					class: { select: { name: true } }
+				}
+			});
+			individuals = locos.map((l) => ({
+				currentNumber: l.currentNumber,
+				currentName: l.currentName,
+				status: l.status,
+				className: l.class.name
+			}));
+		}
+
 		return {
 			classes,
+			individuals,
 			eras: eras.map((e) => ({ slug: e.slug, name: e.name })),
 			total,
 			filters: { q, era: eraSlug }
@@ -58,3 +92,4 @@ export const load: PageServerLoad = async ({ url }) => {
 		throw error(503, 'Database unavailable. Please try again later.');
 	}
 };
+
