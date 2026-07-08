@@ -23,6 +23,10 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 # Playwright
 test-results
+playwright-screenshots
+
+# Scratch/debug scripts
+scratch
 
 # Seeding Media Assets
 /data/media/

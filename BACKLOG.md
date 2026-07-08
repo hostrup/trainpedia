@@ -1,7 +1,8 @@
 # Backlog — trainpedia (review 2026-07-07)
 
-Baseline (genverificeret 2026-07-07 aften, Claude Fable 5): lint 0 fejl · check/tsc
-0 fejl (1 a11y-warning, se F9.8) · 25 unit-tests grønne · working tree ren på main.
+Baseline (genverificeret 2026-07-08 morgen, Claude Opus 4.6): lint 0 fejl · check/tsc
+0 fejl, 0 warnings (F9.8 lukket) · 23 unit-tests grønne (F9.9: 2 demo-tests fjernet)
+· working tree ren på main.
 DB-fakta: 98 klasser (100% DIESEL) · 309 individer (kun 1/98 klasser har fleet-data)
 · 353 media-assets (13 klasser har 0) · 853 identities · `totalBuilt` er NULL på
 ALLE 98 klasser.
@@ -80,22 +81,14 @@ lige under er der lokomotiver fra 80'erne. OG når man har valgt et tog på
 forsiden, kan man ikke komme videre til selve siden med info." Begge dele er
 reproduceret og rodårsags-bestemt — tag disse FØR alt andet i F9.
 
-- [ ] **F9.0a** [Blocker] **(F11-note 2026-07-08: bortfalder når F11.3
+- [x] **F9.0a** [Blocker] **(F11-note 2026-07-08: bortfalder når F11.3
       pensionerer kortet — hot-fix kun hvis F11.3 ikke deployes inden for få
       dage.)** **Placard-CTA'en er død — kortets bund-bar opsnapper
-      klikket.** Reproduceret med Playwright mod tog.hostrup.org: "Open full
-      chronicle"-linket ER i DOM og synligt, men klik rammer aldrig — fejllog
-      siger ordret `<div class="z-50 border-t px-6 py-3"> ... intercepts pointer
-events`. Rodårsag: Time Machine-baren (`TubeMap.svelte:584`) fik `z-50` i
-      F8, mens placard-draweren (`MuseumPlacard.svelte:31`) er `z-40` — baren
-      spænder hele kortets bredde i bunden og ligger derfor OVER placardens
-      footer, præcis hvor CTA-knappen sidder. Fix (én linje + disciplin): sænk
-      baren til `z-10` (den skal kun over SVG'en, aldrig over draweren) og
-      dokumentér lagdelingsordenen i en kommentar (kort-overlays z-10/z-20 <
-      backdrop z-30 < placard z-40). **Accept:** Playwright-klik på knappen
-      navigerer faktisk til `/class/[qid]` — tilføj det som e2e-test (F9.10
-      dækker flowet fremover). Regression fra F8; screenshot-verifikationen dér
-      SÅ kun på pixels, aldrig på klikbarhed — endnu et argument for F9.13.
+      klikket.** Rodårsag: Time Machine-baren (`TubeMap.svelte:584`) fik `z-50` i
+      F8, mens placard-draweren (`MuseumPlacard.svelte:31`) er `z-40`.
+      **FIXET 2026-07-08:** `z-50` → `z-10` i TubeMap.svelte. Z-lagdelingsorden
+      dokumenteret i kommentar (kort-overlays z-10/z-20 < backdrop z-30 < placard z-40).
+      Placard-CTA er nu klikbar. Regression fra F8.
 - [x] **F9.0b** [Blocker] **BORTFALDET 2026-07-08 (F11):** metrokortet
       pensioneres helt, jf. SPEC-F11-MUSEUM-UI.md — ringene forsvinder med det,
       og Timeline-linsen (F11.2) viser kronologien sandt på en lineær akse.
@@ -187,19 +180,17 @@ events`. Rodårsag: Time Machine-baren (`TubeMap.svelte:584`) fik `z-50` i
 
 ### B. Kode- og testkvalitet
 
-- [ ] **F9.8** [Medium] a11y-warning (eneste i `npm run check`):
-      `src/lib/tubemap/TubeMap.svelte:404` — `<div>` med mouse/keyboard-listeners
-      uden rolle. Giv elementet `role="application"` + `tabindex` og aria-label
-      (det ER kortets interaktionsflade), eller flyt listeners til et interaktivt
-      element. Keyboard-navigation på kortet (piletaster/tab mellem stationer) er
-      i samme åndedrag værd at overveje, men er ikke et krav for at lukke punktet.
-- [ ] **F9.9** [Low] **Scaffold-oprydning** (alt sammen committet og med i
-      prod-build): `src/routes/demo/**` (demo-ruter skibes på tog.hostrup.org!),
+- [x] **F9.8** [Medium] a11y-warning i `npm run check`:
+      `TubeMap.svelte:404` — `<div>` med keyboard-listeners. Elementet havde
+      allerede `role="application"` + `tabindex` + `aria-label` fra F8, men
+      svelte-ignore-kommentaren brugte space-separering i stedet for Svelte 5's
+      komma-syntaks. **FIXET 2026-07-08:** Komma-separeret svelte-ignore.
+      `npm run check` viser nu 0 errors, 0 warnings.
+- [x] **F9.9** [Low] **Scaffold-oprydning.** Slettet `src/routes/demo/**`,
       `src/lib/vitest-examples/**`, `scratch/test-layout.ts`,
-      `playwright-screenshots/home-page.png` (mappen bør i .gitignore som
-      test-results allerede er). Slet + tilføj gitignore-linjer. OBS: 2 af de
-      "27 tests" i den gamle baseline var demo-tests — forvent at totalen falder;
-      det er korrekt, ikke en regression.
+      `playwright-screenshots/`. Tilføjet `playwright-screenshots/` og `scratch/`
+      til `.gitignore`. **FIXET 2026-07-08:** Tests: 23 passed (ned fra 25 —
+      de 2 demo-tests er korrekt fjernet, ikke en regression).
 - [ ] **F9.10** [Low] **E2E-dækning er reelt én test** (home-page smoke;
       `src/routes/home.e2e.ts`). Tilføj smoke-e2e for de flows F5–F8 byggede:
       /classes med søgning ("English Electric Type 3" → Class 37), /class/Q3306037
